@@ -21,6 +21,7 @@ foreach ($role_per_folder as $folder => $roles) {
 }
 
 check_access($allowed_roles);
+$needs_datatables = preg_match('~/(admin/(users|monitoring|pengajaran)|guru/materi)\.php$~',$script_path)===1;
 ?>
 <!DOCTYPE html>
 <html lang="id">
@@ -28,20 +29,20 @@ check_access($allowed_roles);
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($_SESSION['role_nama'] ?? 'Pengguna', ENT_QUOTES, 'UTF-8') ?> - LMS SMK Jaya Buana</title>
-    <link rel="icon" type="image/png" href="../assets/img/jb.png">
+    <link rel="icon" type="image/png" href="../assets/img/jb-mobile.png">
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome 6 -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- DataTables Bootstrap 5 CSS -->
-    <link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+    <?php if($needs_datatables): ?><link href="https://cdn.datatables.net/1.13.7/css/dataTables.bootstrap5.min.css" rel="stylesheet"><?php endif; ?>
     <!-- SweetAlert2 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/sweetalert2@11/dist/sweetalert2.min.css" rel="stylesheet">
     <!-- Custom CSS -->
     <style>
         :root { --sidebar-width: 250px; }
         body { background-color: #f4f6f9; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        #wrapper { display: flex; width: 100%; height: 100vh; overflow-x: hidden; }
+        #wrapper { display: flex; width: 100%; height: 100vh; height:100dvh; overflow-x: hidden; }
         #sidebar-wrapper { width: var(--sidebar-width); background: #1e293b; color: #fff; flex-shrink: 0; transition: all 0.3s; }
         #sidebar-wrapper .sidebar-heading { padding: 1.25rem 1.5rem; font-size: 1.2rem; font-weight: bold; border-bottom: 1px solid rgba(255,255,255,0.1); }
         #sidebar-wrapper .sidebar-school-logo { width: 46px; height: 46px; padding: 4px; border-radius: 12px; background: #fff; box-shadow: 0 5px 14px rgba(0,0,0,0.22); flex: 0 0 46px; display: grid; place-items: center; overflow: hidden; }

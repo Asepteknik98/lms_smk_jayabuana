@@ -28,6 +28,9 @@ $stmt_t = $db->prepare("
 ");
 $stmt_t->execute([$siswa_id, $kelas_id]);
 $tugas_list = $stmt_t->fetchAll();
+$daftar_mapel=[];foreach($tugas_list as $item)$daftar_mapel[$item['nama_mapel']]=$item['nama_mapel'];ksort($daftar_mapel);
+$filter_status=$_GET['status']??'semua';$filter_mapel=trim($_GET['mapel']??'');if(!in_array($filter_status,['semua','aktif','selesai','terlambat'],true))$filter_status='semua';
+$tugas_list=array_values(array_filter($tugas_list,static function($item)use($filter_status,$filter_mapel){$submitted=!empty($item['jawaban_file']);$expired=strtotime($item['deadline'])<time();$statusOk=$filter_status==='semua'||($filter_status==='selesai'&&$submitted)||($filter_status==='aktif'&&!$submitted&&!$expired)||($filter_status==='terlambat'&&!$submitted&&$expired);return $statusOk&&($filter_mapel===''||$item['nama_mapel']===$filter_mapel);}));
 
 // Batasi jumlah kartu agar halaman tetap ringkas meskipun tugas sangat banyak.
 $tugas_per_halaman = 3;
@@ -70,6 +73,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
     </nav>
 
     <div class="container-fluid p-3 p-md-4">
+        <form class="card border-0 shadow-sm p-3 mb-3" method="get"><div class="row g-2"><div class="col-6"><select class="form-select form-select-sm" name="status"><option value="semua">Semua Status</option><?php foreach(['aktif'=>'Aktif','selesai'=>'Selesai','terlambat'=>'Terlambat'] as $key=>$label): ?><option value="<?= $key ?>" <?= $filter_status===$key?'selected':'' ?>><?= $label ?></option><?php endforeach ?></select></div><div class="col-6"><select class="form-select form-select-sm" name="mapel"><option value="">Semua Mapel</option><?php foreach($daftar_mapel as $mapel): ?><option value="<?= sanitize($mapel) ?>" <?= $filter_mapel===$mapel?'selected':'' ?>><?= sanitize($mapel) ?></option><?php endforeach ?></select></div><div class="col-12 d-grid"><button class="btn btn-sm btn-primary"><i class="fa-solid fa-filter me-1"></i>Terapkan Filter</button></div></div></form>
         <?php if (!$tugas_list): ?>
             <div class="card border-0 shadow-sm text-center p-5">
                 <i class="fa-solid fa-clipboard-check fa-3x text-primary opacity-50 mb-3"></i>
@@ -106,7 +110,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                     <?php endif; ?>
 
                     <?php if ($t['file_lampiran']): ?>
-                        <a href="file_pembelajaran.php?jenis=tugas&amp;id=<?= (int)$t['id'] ?>" target="_blank" rel="noopener" class="btn btn-primary btn-sm w-100 mb-2">
+                        <a href="file_pembelajaran.php?jenis=tugas&amp;id=<?= (int)$t['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-primary btn-sm w-100 mb-2">
                             <i class="fa-solid fa-file-arrow-down me-1"></i> Buka / Unduh Soal Tugas
                         </a>
                     <?php else: ?>
@@ -138,7 +142,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                         <?php endif; ?>
 
                         <?php if ($is_submitted): ?>
-                            <a href="file_pembelajaran.php?jenis=jawaban&amp;id=<?= (int)$t['pengumpulan_id'] ?>" target="_blank" rel="noopener" class="btn btn-link btn-sm w-100 mt-1">
+                            <a href="file_pembelajaran.php?jenis=jawaban&amp;id=<?= (int)$t['pengumpulan_id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-link btn-sm w-100 mt-1">
                                 <i class="fa-solid fa-eye me-1"></i> Lihat jawaban yang sudah dikirim
                             </a>
                         <?php endif; ?>
@@ -159,16 +163,16 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
         <?php if ($total_tugas > 0): ?>
             <nav class="mt-4" aria-label="Navigasi halaman tugas">
                 <div class="d-flex d-md-none justify-content-between align-items-center gap-2">
-                    <a class="btn btn-sm btn-outline-primary <?= $halaman <= 1 ? 'disabled' : '' ?>" href="?page=<?= max(1, $halaman - 1) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a>
+                    <a class="btn btn-sm btn-outline-primary <?= $halaman <= 1 ? 'disabled' : '' ?>" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>max(1,$halaman-1)]) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a>
                     <small class="text-muted">Halaman <?= $halaman ?> / <?= $total_halaman ?></small>
-                    <a class="btn btn-sm btn-outline-primary <?= $halaman >= $total_halaman ? 'disabled' : '' ?>" href="?page=<?= min($total_halaman, $halaman + 1) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a>
+                    <a class="btn btn-sm btn-outline-primary <?= $halaman >= $total_halaman ? 'disabled' : '' ?>" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>min($total_halaman,$halaman+1)]) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a>
                 </div>
                 <ul class="pagination pagination-sm justify-content-center d-none d-md-flex mb-0">
-                    <li class="page-item <?= $halaman <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= max(1, $halaman - 1) ?>" aria-label="Sebelumnya">&laquo;</a></li>
+                    <li class="page-item <?= $halaman <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>max(1,$halaman-1)]) ?>" aria-label="Sebelumnya">&laquo;</a></li>
                     <?php for ($nomor = 1; $nomor <= $total_halaman; $nomor++): ?>
-                        <li class="page-item <?= $nomor === $halaman ? 'active' : '' ?>"><a class="page-link" href="?page=<?= $nomor ?>"><?= $nomor ?></a></li>
+                        <li class="page-item <?= $nomor === $halaman ? 'active' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>$nomor]) ?>"><?= $nomor ?></a></li>
                     <?php endfor; ?>
-                    <li class="page-item <?= $halaman >= $total_halaman ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= min($total_halaman, $halaman + 1) ?>" aria-label="Berikutnya">&raquo;</a></li>
+                    <li class="page-item <?= $halaman >= $total_halaman ? 'disabled' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>min($total_halaman,$halaman+1)]) ?>" aria-label="Berikutnya">&raquo;</a></li>
                 </ul>
                 <p class="text-center text-muted small mt-2 mb-0">Menampilkan maksimal <?= $tugas_per_halaman ?> dari <?= $total_tugas ?> tugas</p>
             </nav>
@@ -190,14 +194,16 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                     <input type="hidden" name="tugas_id" id="modalTugasId">
 
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Unggah File Jawaban (PDF/ZIP/DOCX/Gambar)</label>
-                        <input type="file" name="file_jawaban" class="form-control" required>
+                        <label class="form-label fw-semibold">Unggah File Jawaban</label>
+                        <input type="file" name="file_jawaban" class="form-control" accept=".pdf,.docx,.zip,.rar,.png,.jpg,.jpeg,.webp,.heic,.heif" required>
+                        <div class="form-text">PDF, DOCX, ZIP/RAR, JPG/JPEG, PNG, WEBP, atau HEIC · maksimal 10 MB.</div>
+                        <div class="progress mt-3 d-none" id="uploadProgress" style="height:8px"><div class="progress-bar" style="width:0%"></div></div>
                     </div>
 
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Kirim Tugas</button>
+                    <button type="submit" class="btn btn-primary" id="submitTaskButton">Kirim Tugas</button>
                 </div>
             </form>
         </div>
@@ -216,12 +222,14 @@ $(document).ready(function() {
         e.preventDefault();
         let formData = new FormData(this);
 
+        const button=$('#submitTaskButton'),progress=$('#uploadProgress'),bar=progress.find('.progress-bar');button.prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-1"></span>Mengunggah...');progress.removeClass('d-none');
         $.ajax({
             url: 'tugas_action.php',
             type: 'POST',
             data: formData,
             contentType: false,
             processData: false,
+            xhr:function(){const xhr=$.ajaxSettings.xhr();if(xhr.upload)xhr.upload.addEventListener('progress',function(ev){if(ev.lengthComputable)bar.css('width',Math.round(ev.loaded/ev.total*100)+'%')});return xhr},
             success: function(res) {
                 if(res.status === 'success') {
                     submitModal.hide();
@@ -229,7 +237,9 @@ $(document).ready(function() {
                 } else {
                     Swal.fire('Gagal!', res.message, 'error');
                 }
-            }
+            },
+            error:function(xhr){Swal.fire('Koneksi Bermasalah','Jawaban belum berhasil dikirim. Periksa internet Anda lalu coba kembali.','error')},
+            complete:function(){button.prop('disabled',false).html('Kirim Tugas');progress.addClass('d-none');bar.css('width','0%')}
         });
     });
 });

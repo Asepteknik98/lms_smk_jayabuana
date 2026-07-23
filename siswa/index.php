@@ -38,12 +38,13 @@ $tugas_aktif = $stmt_tugas->fetchColumn();
 
 // Total Ujian/Kuis Mendatang
 $stmt_ujian = $db->prepare("
-    SELECT COUNT(*) 
+    SELECT COUNT(*)
     FROM ujian u
     JOIN pengajaran p ON u.pengajaran_id = p.id
-    WHERE p.kelas_id = ? AND u.waktu_selesai >= NOW()
+    LEFT JOIN sesi_ujian su ON su.ujian_id=u.id AND su.siswa_id=?
+    WHERE p.kelas_id = ? AND u.waktu_selesai >= NOW() AND (su.id IS NULL OR su.status<>'Selesai')
 ");
-$stmt_ujian->execute([$kelas_id]);
+$stmt_ujian->execute([$siswa_id,$kelas_id]);
 $ujian_aktif = $stmt_ujian->fetchColumn();
 
 // 3. Ambil Daftar Ujian Online Mendatang / Berlangsung
@@ -53,11 +54,12 @@ $stmt_cbt = $db->prepare("
     JOIN pengajaran p ON u.pengajaran_id = p.id
     JOIN mapel m ON p.mapel_id = m.id
     JOIN guru g ON p.guru_id = g.id
-    WHERE p.kelas_id = ? AND u.waktu_selesai >= NOW()
+    LEFT JOIN sesi_ujian su ON su.ujian_id=u.id AND su.siswa_id=?
+    WHERE p.kelas_id = ? AND u.waktu_selesai >= NOW() AND (su.id IS NULL OR su.status<>'Selesai')
     ORDER BY u.waktu_mulai ASC
     LIMIT 5
 ");
-$stmt_cbt->execute([$kelas_id]);
+$stmt_cbt->execute([$siswa_id,$kelas_id]);
 $daftar_ujian = $stmt_cbt->fetchAll();
 
 // Tugas terdekat yang belum dikumpulkan, agar siswa langsung melihat prioritasnya.
@@ -119,7 +121,7 @@ $stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$st
             <div class="d-flex align-items-center gap-2 min-w-0">
                 <div class="min-w-0"><strong class="d-block text-truncate">Dashboard Siswa</strong><small class="text-muted d-block text-truncate"><?= sanitize($siswa['nama_kelas'] ?? 'Kelas belum ditentukan') ?></small></div>
             </div>
-            <img src="../assets/img/jb.png" width="38" height="38" class="object-fit-contain flex-shrink-0" alt="Logo sekolah">
+            <img src="../assets/img/jb-mobile.png" width="38" height="38" class="object-fit-contain flex-shrink-0" alt="Logo sekolah">
         </div>
     </nav>
 
@@ -135,12 +137,12 @@ $stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$st
             <div class="col-6 col-md-3"><a href="materi.php" class="quick-link"><span class="quick-icon bg-primary-subtle text-primary"><i class="fa-solid fa-book-open-reader"></i></span><span>Materi</span></a></div>
             <div class="col-6 col-md-3"><a href="tugas.php" class="quick-link"><span class="quick-icon bg-warning-subtle text-warning"><i class="fa-solid fa-list-check"></i></span><span>Tugas <?php if($tugas_aktif): ?><span class="badge bg-danger rounded-pill ms-1"><?= (int)$tugas_aktif ?></span><?php endif; ?></span></a></div>
             <div class="col-6 col-md-3"><a href="absensi.php" class="quick-link"><span class="quick-icon bg-success-subtle text-success"><i class="fa-solid fa-user-check"></i></span><span>Absensi</span></a></div>
-            <div class="col-6 col-md-3"><a href="#jadwal-ujian" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Kuis <?php if($ujian_aktif): ?><span class="badge bg-danger rounded-pill ms-1"><?= (int)$ujian_aktif ?></span><?php endif; ?></span></a></div>
+            <div class="col-6 col-md-3"><a href="ujian.php" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Ujian <?php if($ujian_aktif): ?><span class="badge bg-danger rounded-pill ms-1"><?= (int)$ujian_aktif ?></span><?php endif; ?></span></a></div>
         </div></section>
 
         <div class="row g-2 mb-4">
             <div class="col-6"><div class="card compact-stat h-100"><div class="card-body text-center"><h3 class="fw-bold text-warning mb-0"><?= (int)$tugas_aktif ?></h3><small class="text-muted">Tugas belum selesai</small></div></div></div>
-            <div class="col-6"><div class="card compact-stat h-100"><div class="card-body text-center"><h3 class="fw-bold text-danger mb-0"><?= (int)$ujian_aktif ?></h3><small class="text-muted">Kuis aktif</small></div></div></div>
+            <div class="col-6"><div class="card compact-stat h-100"><div class="card-body text-center"><h3 class="fw-bold text-danger mb-0"><?= (int)$ujian_aktif ?></h3><small class="text-muted">Ujian menunggu</small></div></div></div>
         </div>
 
         <div class="row g-3">
@@ -150,7 +152,7 @@ $stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$st
                 <?php endforeach; endif; ?>
             </div></section></div>
 
-            <div class="col-lg-6" id="jadwal-ujian"><section class="card section-card h-100"><div class="card-body p-4"><h2 class="h6 fw-bold mb-2"><i class="fa-solid fa-calendar-check text-danger me-2"></i>Jadwal Kuis</h2>
+            <div class="col-lg-6" id="jadwal-ujian"><section class="card section-card h-100"><div class="card-body p-4"><div class="d-flex justify-content-between"><h2 class="h6 fw-bold mb-2"><i class="fa-solid fa-calendar-check text-danger me-2"></i>Jadwal Ujian</h2><a href="ujian.php" class="small text-decoration-none">Lihat semua</a></div>
                 <?php if(!$daftar_ujian): ?><div class="text-center py-4"><i class="fa-solid fa-calendar-check text-success fa-2x mb-2"></i><p class="small text-muted mb-0">Belum ada kuis yang dijadwalkan.</p></div><?php else: foreach($daftar_ujian as $u): $belum_mulai=strtotime($u['waktu_mulai'])>time(); ?>
                     <div class="item-row"><span class="quick-icon bg-danger-subtle text-danger flex-shrink-0"><i class="fa-solid fa-file-pen"></i></span><span class="item-copy"><strong class="d-block"><?= sanitize($u['nama_ujian']) ?></strong><small class="text-muted d-block"><?= sanitize($u['nama_mapel']) ?> · <?= (int)$u['durasi_menit'] ?> menit</small><small class="<?= $belum_mulai?'text-muted':'text-success fw-semibold' ?>"><?= $belum_mulai?'Mulai '.date('d M, H:i',strtotime($u['waktu_mulai'])):'Sedang berlangsung' ?></small></span><a href="ujian_kerjakan.php?id=<?= (int)$u['id'] ?>" class="btn btn-sm <?= $belum_mulai?'btn-light disabled':'btn-danger' ?>"><?= $belum_mulai?'Nanti':'Mulai' ?></a></div>
                 <?php endforeach; endif; ?>

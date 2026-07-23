@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="assets/img/jb.png" alt="Logo SMKS Jaya Buana" width="120">
+  <img src="assets/img/jb-mobile.png" alt="Logo SMKS Jaya Buana" width="120">
 
   # LMS SMKS Jaya Buana
 

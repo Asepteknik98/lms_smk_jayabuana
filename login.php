@@ -101,7 +101,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <link rel="icon" type="image/png" href="assets/img/jb.png">
+    <link rel="icon" type="image/png" href="assets/img/jb-mobile.png">
     <style>
         :root{--navy:#0b1f3a;--blue:#1769e0;--cyan:#37b8f1;--ink:#162033;--muted:#718096}
         *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;min-height:100vh;min-height:100dvh;background:#eef3f9;font-family:Inter,"Segoe UI",sans-serif;color:var(--ink)}
@@ -141,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <section class="login-panel">
       <div class="login-card">
         <div class="brand-row">
-            <span class="logo-wrap"><img src="assets/img/jb.png" alt="Logo SMKS Jaya Buana" class="logo-img"></span>
+            <span class="logo-wrap"><img src="assets/img/jb-mobile.png" alt="Logo SMKS Jaya Buana" class="logo-img"></span>
             <div><div class="brand-name">SMKS JAYA BUANA</div><div class="brand-subtitle">MUDA, MANDIRI, MAJU</div></div>
         </div>
         <div class="eyebrow">Selamat Datang</div>

@@ -1,25 +1,32 @@
 <?php
-require_once __DIR__ . '/../includes/header.php';
+require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../config/helper.php';
 
 check_access([3]);
 $db = Database::getInstance();
 
 $ujian_id = intval($_GET['id'] ?? 0);
 
-$stmt_s = $db->prepare("SELECT id FROM siswa WHERE user_id = ?");
+$stmt_s = $db->prepare("SELECT id,kelas_id FROM siswa WHERE user_id = ?");
 $stmt_s->execute([$_SESSION['user_id']]);
 $siswa = $stmt_s->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 
-// Ambil Detail Ujian
-$stmt_u = $db->prepare("SELECT * FROM ujian WHERE id = ?");
-$stmt_u->execute([$ujian_id]);
+// Ujian hanya dapat dibuka oleh siswa pada kelas yang benar.
+$stmt_u = $db->prepare("SELECT u.* FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id WHERE u.id=? AND p.kelas_id=?");
+$stmt_u->execute([$ujian_id,$siswa['kelas_id']??0]);
 $ujian = $stmt_u->fetch();
 
 if (!$ujian) {
-    die("Ujian tidak ditemukan.");
+    http_response_code(404);exit("Ujian tidak ditemukan untuk kelas Anda.");
 }
+$sekarang=time();$jadwal_mulai=strtotime($ujian['waktu_mulai']);$jadwal_selesai=strtotime($ujian['waktu_selesai']);
+if($sekarang<$jadwal_mulai){exit("Ujian belum dimulai.");}
+if($sekarang>$jadwal_selesai){exit("Jadwal ujian telah berakhir.");}
+$stmt_count=$db->prepare('SELECT COUNT(*) FROM soal_ujian WHERE ujian_id=?');$stmt_count->execute([$ujian_id]);
+if(!(int)$stmt_count->fetchColumn()){exit('Ujian belum memiliki soal.');}
 
 // Inisialisasi atau Dapatkan Sesi Ujian
 $stmt_sesi = $db->prepare("SELECT * FROM sesi_ujian WHERE ujian_id = ? AND siswa_id = ?");
@@ -42,14 +49,14 @@ if (!$sesi) {
 // Hitung Sisa Waktu Detik
 $durasi_detik = $ujian['durasi_menit'] * 60;
 $waktu_terpakai = time() - $waktu_mulai;
-$sisa_detik = $durasi_detik - $waktu_terpakai;
+$sisa_detik = min($durasi_detik - $waktu_terpakai,$jadwal_selesai-time());
 
 if ($sisa_detik <= 0) {
     $sisa_detik = 0;
 }
 
 // Ambil Soal
-$order_by = $ujian['acak_soal'] ? "RAND()" : "su.id ASC";
+$order_by = $ujian['acak_soal'] ? "RAND(".(int)$sesi_id.")" : "su.id ASC";
 $stmt_soal = $db->prepare("
     SELECT su.*, js.jawaban_pg, js.jawaban_esai 
     FROM soal_ujian su
@@ -61,6 +68,7 @@ $soal_list = $stmt_soal->fetchAll();
 $total_soal = count($soal_list);
 $terjawab = count(array_filter($soal_list, static fn($soal) => $soal['jawaban_pg'] !== null || !empty($soal['jawaban_esai'])));
 ?>
+<?php require_once __DIR__ . '/../includes/header.php'; ?>
 
 <style>
     body { background:#f3f6fb; }
@@ -189,6 +197,7 @@ $terjawab = count(array_filter($soal_list, static fn($soal) => $soal['jawaban_pg
 <script>
 let totalDetik = <?= $sisa_detik ?>;
 let sesiId = <?= $sesi_id ?>;
+const csrfToken = <?= json_encode($_SESSION['csrf_token'],JSON_HEX_TAG|JSON_HEX_APOS|JSON_HEX_AMP|JSON_HEX_QUOT) ?>;
 const totalSoal = <?= $total_soal ?>;
 const pendingStorageKey = 'lms_exam_pending_' + sesiId;
 const essayTimers = {};
@@ -278,7 +287,8 @@ function simpanJawaban(soalId, tipe, jawaban, no) {
         sesi_id: sesiId,
         soal_id: soalId,
         tipe: tipe,
-        jawaban: jawaban
+        jawaban: jawaban,
+        csrf_token: csrfToken
         }
     }).done(function(res) {
         if(res.status === 'success') {
@@ -327,6 +337,7 @@ window.addEventListener('beforeunload', function () {
             data.append('soal_id', soalId);
             data.append('tipe', 'ESAI');
             data.append('jawaban', textarea.value);
+            data.append('csrf_token', csrfToken);
             navigator.sendBeacon('ujian_action.php?action=save_jawaban', data);
         }
     });
@@ -377,7 +388,7 @@ function confirmFinish() {
 }
 
 function finishUjian(waktuHabis = false) {
-    $.post('ujian_action.php?action=finish_ujian', { sesi_id: sesiId, waktu_habis: waktuHabis ? 1 : 0 }, function(res) {
+    $.post('ujian_action.php?action=finish_ujian', { sesi_id: sesiId, waktu_habis: waktuHabis ? 1 : 0, csrf_token: csrfToken }, function(res) {
         if(res.status === 'success') {
             localStorage.removeItem(pendingStorageKey);
             Swal.fire('Ujian Selesai!', res.message, 'success').then(() => {

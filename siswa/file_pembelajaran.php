@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/database.php';
 check_access([3]);
 
 $jenis = $_GET['jenis'] ?? '';
+$mode = ($_GET['mode']??'download')==='preview'?'preview':'download';
 $id = (int)($_GET['id'] ?? 0);
 $db = Database::getInstance();
 $stmt = $db->prepare('SELECT id,kelas_id FROM siswa WHERE user_id=?');
@@ -39,7 +40,8 @@ $mime = (new finfo(FILEINFO_MIME_TYPE))->file($path) ?: 'application/octet-strea
 $nama = preg_replace('/[^A-Za-z0-9._-]/', '_', basename($file));
 header('Content-Type: ' . $mime);
 header('Content-Length: ' . filesize($path));
-header('Content-Disposition: attachment; filename="' . $nama . '"');
+$inline=in_array($mime,['application/pdf','image/png','image/jpeg','image/webp'],true)&&$mode==='preview';
+header('Content-Disposition: '.($inline?'inline':'attachment').'; filename="' . $nama . '"');
 header('X-Content-Type-Options: nosniff');
 header('Cache-Control: private, no-store');
 readfile($path);

@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $fileSize    = $_FILES['file_jawaban']['size'];
     $fileExt     = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-    $allowedExts = ['pdf', 'docx', 'zip', 'rar', 'png', 'jpg'];
+    $allowedExts = ['pdf', 'docx', 'zip', 'rar', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];
     if (!in_array($fileExt, $allowedExts)) {
         echo json_encode(['status' => 'error', 'message' => 'Format file tidak diizinkan! (PDF/DOCX/ZIP/Gambar)']);
         exit();
@@ -73,6 +73,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         echo json_encode(['status' => 'error', 'message' => 'Ukuran file jawaban maksimal 10 MB!']);
         exit();
     }
+    $mime=(new finfo(FILEINFO_MIME_TYPE))->file($fileTmpPath)?:'';
+    $allowedMimes=['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/zip','application/x-zip-compressed','application/vnd.rar','application/x-rar-compressed','image/png','image/jpeg','image/webp','image/heic','image/heif','application/octet-stream'];
+    if(!in_array($mime,$allowedMimes,true)){echo json_encode(['status'=>'error','message'=>'Isi file tidak sesuai dengan format yang diizinkan.']);exit;}
 
     $newFileName = 'jawaban_' . $tugas_id . '_' . $siswa_id . '_' . time() . '.' . $fileExt;
     $uploadDir   = __DIR__ . '/../assets/upload/jawaban/';

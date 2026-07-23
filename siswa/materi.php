@@ -53,14 +53,14 @@ $materi_list = $stmt_materi->fetchAll();
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 
 <div id="page-content-wrapper">
-    <nav class="navbar navbar-expand-lg navbar-light top-navbar px-4 py-3">
+    <nav class="navbar navbar-expand-lg navbar-light top-navbar px-3 px-md-4 py-3">
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 w-100">
             <h5 class="mb-0 fw-bold"><i class="fa-solid fa-book-open-reader text-primary me-2"></i> Materi Pembelajaran</h5>
             <span class="badge bg-primary px-3 py-2">Kelas: <?= sanitize($siswa['nama_kelas'] ?? 'Belum ditentukan') ?></span>
         </div>
     </nav>
 
-    <div class="container-fluid p-4">
+    <div class="container-fluid p-3 p-md-4">
         <?php if (!$siswa): ?>
             <div class="alert alert-danger">Profil Siswa tidak ditemukan. Hubungi Administrator.</div>
         <?php elseif (!$kelas_id): ?>
@@ -99,7 +99,7 @@ $materi_list = $stmt_materi->fetchAll();
                     <?php foreach ($materi_list as $materi): ?>
                         <div class="col-md-6 col-xl-4">
                             <article class="card border-0 shadow-sm h-100">
-                                <div class="card-body p-4 d-flex flex-column">
+                                <div class="card-body p-3 p-md-4 d-flex flex-column">
                                     <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
                                         <span class="badge bg-primary">Pertemuan <?= (int)$materi['pertemuan_ke'] ?></span>
                                         <small class="text-muted"><?= date('d/m/Y', strtotime($materi['created_at'])) ?></small>
@@ -117,8 +117,8 @@ $materi_list = $stmt_materi->fetchAll();
                                     <?php endif; ?>
 
                                     <?php if ($materi['file_path']): ?>
-                                        <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
-                                            <i class="fa-solid fa-download me-1"></i> Buka / Unduh Modul
+                                        <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
+                                            <i class="fa-solid fa-eye me-1"></i> Buka Materi
                                         </a>
                                     <?php else: ?>
                                         <span class="btn btn-light disabled w-100">Materi tanpa lampiran</span>

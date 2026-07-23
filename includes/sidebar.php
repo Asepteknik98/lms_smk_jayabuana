@@ -140,7 +140,7 @@ if ($role_id === 3 && class_exists('Database')) {
 <div id="sidebar-wrapper">
     <div class="sidebar-profile">
         <div class="sidebar-profile-logo">
-            <img src="../assets/img/jb.png" alt="Logo SMKS Jaya Buana">
+            <img src="../assets/img/jb-mobile.png" alt="Logo SMKS Jaya Buana">
         </div>
         <div class="sidebar-profile-info">
             <span class="sidebar-profile-name"><?= sanitize($sidebar_profile_name) ?></span>
@@ -225,6 +225,9 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="tugas.php" class="list-group-item list-group-item-action <?= ($current_page === 'tugas.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check me-2"></i> Tugas
         </a>
+        <a href="ujian.php" class="list-group-item list-group-item-action <?= in_array($current_page,['ujian.php','ujian_kerjakan.php'],true) ? 'active' : '' ?>">
+            <i class="fa-solid fa-file-pen me-2"></i> Ujian
+        </a>
         <?php endif; ?>
         <a href="../logout.php" class="list-group-item list-group-item-action text-danger mt-4">
             <i class="fa-solid fa-right-from-bracket me-2"></i> Keluar
@@ -239,7 +242,7 @@ if ($role_id === 3 && class_exists('Database')) {
         #sidebar-wrapper { position:fixed; inset:0 auto 0 0; z-index:1045; height:100dvh; overflow-y:auto; transform:translateX(-100%); box-shadow:12px 0 30px rgba(15,23,42,.25); }
         body.student-menu-open #sidebar-wrapper { transform:translateX(0); }
         #page-content-wrapper { width:100%; min-width:0; }
-        .portal-sidebar-trigger { display:grid; place-items:center; position:fixed; top:11px; left:12px; z-index:1035; width:42px; height:42px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; color:#1e293b; box-shadow:0 4px 14px rgba(15,23,42,.12); }
+        .portal-sidebar-trigger { display:grid; place-items:center; position:fixed; top:10px; left:12px; z-index:1035; width:44px; height:44px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; color:#1e293b; box-shadow:0 4px 14px rgba(15,23,42,.12); }
         .portal-sidebar-overlay { display:block; position:fixed; inset:0; z-index:1040; background:rgba(15,23,42,.45); opacity:0; visibility:hidden; transition:opacity .2s ease,visibility .2s ease; }
         body.student-menu-open .portal-sidebar-overlay { opacity:1; visibility:visible; }
         .portal-sidebar-overlay ~ #page-content-wrapper > nav:first-child { padding-left:4.25rem!important; min-height:64px; }

@@ -15,18 +15,24 @@ $siswa = $stmt_s->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 
 $action = $_GET['action'] ?? '';
+if($_SERVER['REQUEST_METHOD']!=='POST'||!verify_csrf($_POST['csrf_token']??'')){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Permintaan tidak sah. Muat ulang halaman ujian.']);exit;}
 
 // ------------------- SIMPAN JAWABAN REAL-TIME / AUTO-SAVE -------------------
 if ($action === 'save_jawaban') {
     $sesi_id  = intval($_POST['sesi_id'] ?? 0);
     $soal_id  = intval($_POST['soal_id'] ?? 0);
-    $tipe     = sanitize($_POST['tipe'] ?? 'PG');
-    $jawaban  = sanitize($_POST['jawaban'] ?? '');
+    $tipe     = strtoupper(trim($_POST['tipe'] ?? 'PG'));
+    $jawaban  = trim((string)($_POST['jawaban'] ?? ''));
 
     if ($sesi_id <= 0 || $soal_id <= 0) {
         echo json_encode(['status' => 'error', 'message' => 'Data tidak lengkap']);
         exit();
     }
+
+    if(!in_array($tipe,['PG','ESAI'],true)||($tipe==='PG'&&!in_array(strtoupper($jawaban),['A','B','C','D','E'],true))){echo json_encode(['status'=>'error','message'=>'Jawaban tidak valid.']);exit;}
+    if($tipe==='ESAI'&&mb_strlen($jawaban)>20000){echo json_encode(['status'=>'error','message'=>'Jawaban esai terlalu panjang.']);exit;}
+    $stmt_akses=$db->prepare("SELECT su.id,su.ujian_id FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id JOIN soal_ujian so ON so.ujian_id=u.id AND so.id=? JOIN pengajaran p ON p.id=u.pengajaran_id JOIN siswa s ON s.id=su.siswa_id AND s.kelas_id=p.kelas_id WHERE su.id=? AND su.siswa_id=? AND su.status='Berlangsung' AND NOW() BETWEEN u.waktu_mulai AND u.waktu_selesai AND so.tipe_soal=?");
+    $stmt_akses->execute([$soal_id,$sesi_id,$siswa_id,$tipe]);if(!$stmt_akses->fetch()){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Sesi, soal, atau waktu ujian tidak valid.']);exit;}
 
     // Cek Kunci Jawaban jika PG
     $is_benar = 0;
@@ -70,7 +76,7 @@ if ($action === 'save_jawaban') {
 if ($action === 'finish_ujian') {
     $sesi_id = intval($_POST['sesi_id'] ?? 0);
 
-    $stmt_sesi = $db->prepare("SELECT * FROM sesi_ujian WHERE id = ? AND siswa_id = ?");
+    $stmt_sesi = $db->prepare("SELECT su.*,u.waktu_mulai jadwal_mulai,u.waktu_selesai jadwal_selesai FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id WHERE su.id=? AND su.siswa_id=?");
     $stmt_sesi->execute([$sesi_id, $siswa_id]);
     $sesi = $stmt_sesi->fetch();
 
@@ -94,14 +100,15 @@ if ($action === 'finish_ujian') {
 
     $stmt_batas = $db->prepare(
         "SELECT u.durasi_menit,
-                TIMESTAMPDIFF(SECOND, su.waktu_mulai, NOW()) AS detik_berjalan
+                TIMESTAMPDIFF(SECOND, su.waktu_mulai, NOW()) AS detik_berjalan,
+                (NOW() >= u.waktu_selesai) AS jadwal_berakhir
          FROM sesi_ujian su
          JOIN ujian u ON u.id = su.ujian_id
          WHERE su.id = ?"
     );
     $stmt_batas->execute([$sesi_id]);
     $batas = $stmt_batas->fetch();
-    $waktu_benar_habis = $batas && (int)$batas['detik_berjalan'] >= max(0, ((int)$batas['durasi_menit'] * 60) - 2);
+    $waktu_benar_habis = $batas && ((int)$batas['jadwal_berakhir']===1 || (int)$batas['detik_berjalan'] >= max(0, ((int)$batas['durasi_menit'] * 60) - 2));
 
     if ($jumlah_belum > 0 && !$waktu_benar_habis) {
         echo json_encode([
@@ -110,10 +117,13 @@ if ($action === 'finish_ujian') {
         ]);
         exit();
     }
+    if($sesi['status']==='Selesai'){echo json_encode(['status'=>'success','message'=>'Ujian sudah selesai.']);exit;}
+    if(time()<strtotime($sesi['jadwal_mulai'])){echo json_encode(['status'=>'error','message'=>'Ujian belum dimulai.']);exit;}
 
     // Update status sesi menjadi Selesai
-    $stmt_fin = $db->prepare("UPDATE sesi_ujian SET status = 'Selesai', waktu_selesai = NOW() WHERE id = ?");
-    $stmt_fin->execute([$sesi_id]);
+    $db->beginTransaction();
+    $stmt_fin = $db->prepare("UPDATE sesi_ujian SET status='Selesai',waktu_selesai=NOW() WHERE id=? AND siswa_id=? AND status='Berlangsung'");
+    $stmt_fin->execute([$sesi_id,$siswa_id]);
 
     // Kalkulasi Otomatis Nilai Pilihan Ganda (PG)
     $stmt_calc = $db->prepare("
@@ -135,8 +145,10 @@ if ($action === 'finish_ujian') {
     // Insert / Update Nilai
     $stmt_n = $db->prepare("INSERT INTO nilai_ujian (ujian_id, siswa_id, nilai_pg, nilai_total) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE nilai_pg = ?, nilai_total = ?");
     $stmt_n->execute([$ujian_id, $siswa_id, $nilai_pg, $nilai_pg, $nilai_pg, $nilai_pg]);
+    $db->commit();
 
     catat_log($_SESSION['user_id'], "Menyelesaikan Ujian ID: $ujian_id dengan Nilai PG: $nilai_pg");
     echo json_encode(['status' => 'success', 'message' => 'Ujian telah selesai dikerjakan!']);
     exit();
 }
+http_response_code(400);echo json_encode(['status'=>'error','message'=>'Aksi tidak dikenali.']);

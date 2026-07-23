@@ -223,12 +223,12 @@ $riwayat = $stmt_riwayat->fetchAll();
                         <thead class="table-light"><tr><th>Tanggal</th><th>Pembelajaran</th><th>Pertemuan</th><th>Status</th><th>Check-in/Keterangan</th></tr></thead>
                         <tbody>
                         <?php foreach ($riwayat as $item): ?>
-                            <?php $sudah_absen = !empty($item['waktu_checkin']); ?>
+                            <?php $label_status=$item['status']?:'Belum Absen';$warna_status=['Hadir'=>'bg-success','Sakit'=>'bg-warning text-dark','Izin'=>'bg-info text-dark','Alpa'=>'bg-danger'][$label_status]??'bg-secondary'; ?>
                             <tr>
                                 <td><?= date('d/m/Y', strtotime($item['tanggal'])) ?></td>
                                 <td><strong><?= sanitize($item['nama_mapel']) ?></strong><br><small class="text-muted"><?= sanitize($item['nama_guru']) ?> · <?= sanitize($item['semester']) ?></small></td>
                                 <td><?= (int)$item['pertemuan_ke'] ?></td>
-                                <td><span class="badge <?= $sudah_absen ? 'bg-success' : 'bg-secondary' ?>"><?= $sudah_absen ? 'Sudah Absen' : 'Belum Absen' ?></span></td>
+                                <td><span class="badge <?= $warna_status ?>"><?= sanitize($label_status) ?></span></td>
                                 <td><?= $item['waktu_checkin'] ? date('H:i:s', strtotime($item['waktu_checkin'])) : sanitize($item['keterangan'] ?: '-') ?></td>
                             </tr>
                         <?php endforeach; ?>
@@ -237,8 +237,8 @@ $riwayat = $stmt_riwayat->fetchAll();
                 </div>
                 <div class="d-md-none">
                     <?php foreach ($riwayat as $item): ?>
-                        <?php $sudah_absen = !empty($item['waktu_checkin']); ?>
-                        <div class="history-item d-flex align-items-start gap-2"><span class="badge <?= $sudah_absen ? 'bg-success' : 'bg-secondary' ?> mt-1"><?= $sudah_absen ? 'Sudah Absen' : 'Belum Absen' ?></span><div class="history-copy flex-grow-1"><strong class="d-block small"><?= sanitize($item['nama_mapel']) ?></strong><small class="text-muted d-block"><?= date('d/m/Y',strtotime($item['tanggal'])) ?> &middot; Pertemuan <?= (int)$item['pertemuan_ke'] ?></small><small class="text-muted"><?= sanitize($item['nama_guru']) ?><?php if($item['waktu_checkin']): ?> &middot; <?= date('H:i:s',strtotime($item['waktu_checkin'])) ?><?php elseif($item['keterangan']): ?> &middot; <?= sanitize($item['keterangan']) ?><?php endif; ?></small></div></div>
+                        <?php $label_status=$item['status']?:'Belum Absen';$warna_status=['Hadir'=>'bg-success','Sakit'=>'bg-warning text-dark','Izin'=>'bg-info text-dark','Alpa'=>'bg-danger'][$label_status]??'bg-secondary'; ?>
+                        <div class="history-item d-flex align-items-start gap-2"><span class="badge <?= $warna_status ?> mt-1"><?= sanitize($label_status) ?></span><div class="history-copy flex-grow-1"><strong class="d-block small"><?= sanitize($item['nama_mapel']) ?></strong><small class="text-muted d-block"><?= date('d/m/Y',strtotime($item['tanggal'])) ?> &middot; Pertemuan <?= (int)$item['pertemuan_ke'] ?></small><small class="text-muted"><?= sanitize($item['nama_guru']) ?><?php if($item['waktu_checkin']): ?> &middot; <?= date('H:i:s',strtotime($item['waktu_checkin'])) ?><?php elseif($item['keterangan']): ?> &middot; <?= sanitize($item['keterangan']) ?><?php endif; ?></small></div></div>
                     <?php endforeach; ?>
                 </div>
                 <?php if (!$riwayat): ?><p class="text-center text-muted mb-0">Belum ada riwayat absensi.</p><?php endif; ?>
