@@ -109,7 +109,12 @@ $stmt_aktif = $db->prepare(
      JOIN guru g ON g.id = p.guru_id
      LEFT JOIN detail_absensi da ON da.sesi_absensi_id = sa.id AND da.siswa_id = ?
      WHERE p.kelas_id = ? AND sa.status = 'Dibuka'
-     ORDER BY (sa.waktu_tutup >= NOW()) DESC, sa.waktu_buka ASC"
+     ORDER BY
+       CASE WHEN da.id IS NULL AND NOW() BETWEEN sa.waktu_buka AND sa.waktu_tutup THEN 0
+            WHEN da.id IS NULL AND NOW() < sa.waktu_buka THEN 1
+            WHEN da.id IS NOT NULL THEN 2
+            ELSE 3 END,
+       sa.waktu_buka DESC, sa.id DESC"
 );
 $stmt_aktif->execute([$siswa_id, $kelas_id]);
 $sesi_aktif = $stmt_aktif->fetchAll();
@@ -124,10 +129,11 @@ $stmt_riwayat = $db->prepare(
      JOIN mapel m ON m.id = p.mapel_id
      JOIN guru g ON g.id = p.guru_id
      WHERE da.siswa_id = ?
-     ORDER BY sa.tanggal DESC, sa.pertemuan_ke DESC"
+     ORDER BY sa.tanggal DESC, COALESCE(da.waktu_checkin,sa.waktu_buka) DESC, sa.pertemuan_ke DESC"
 );
 $stmt_riwayat->execute([$siswa_id]);
 $riwayat = $stmt_riwayat->fetchAll();
+$riwayat_per_halaman=5;$total_halaman_riwayat=max(1,(int)ceil(count($riwayat)/$riwayat_per_halaman));
 ?>
 
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
@@ -150,7 +156,10 @@ $riwayat = $stmt_riwayat->fetchAll();
         .attendance-content { padding:13px!important; }
         .attendance-card { border-radius:14px; }
         .attendance-card .card-body { padding:15px!important; }
-        .attendance-grid { --bs-gutter-y:.7rem; }
+        .attendance-grid { display:block; margin:0; }
+        .attendance-grid > .attendance-slide { display:none; width:100%; padding:0; }
+        .attendance-grid > .attendance-slide.is-active { display:block; }
+        .attendance-pagination { display:flex!important; }
     }
 </style>
 <div id="page-content-wrapper">
@@ -171,15 +180,15 @@ $riwayat = $stmt_riwayat->fetchAll();
             <div class="alert alert-warning">Anda belum ditempatkan pada kelas.</div>
         <?php else: ?>
             <?php if ($sesi_aktif): ?>
-            <div class="row g-3 attendance-grid mb-4">
-                <?php foreach ($sesi_aktif as $sesi): ?>
+            <div class="row g-3 attendance-grid mb-3">
+                <?php foreach ($sesi_aktif as $sesi_index=>$sesi): ?>
                     <?php
                     $sekarang = new DateTime();
                     $belum_dibuka = $sekarang < new DateTime($sesi['waktu_buka']);
                     $sudah_berakhir = $sekarang > new DateTime($sesi['waktu_tutup']);
                     $sudah_checkin = !empty($sesi['status_siswa']);
                     ?>
-                    <div class="col-12 col-md-6 col-xl-4">
+                    <div class="col-12 col-md-6 col-xl-4 attendance-slide <?= $sesi_index===0?'is-active':'' ?>" data-attendance-index="<?= $sesi_index ?>">
                         <article class="card attendance-card <?= (!$sudah_checkin && !$sudah_berakhir && !$belum_dibuka) ? 'is-ready' : '' ?> h-100">
                             <div class="card-body p-3 d-flex flex-column">
                                 <div class="d-flex justify-content-between gap-2 mb-2">
@@ -214,6 +223,7 @@ $riwayat = $stmt_riwayat->fetchAll();
                     </div>
                 <?php endforeach; ?>
             </div>
+            <?php if(count($sesi_aktif)>1): ?><nav class="attendance-pagination d-none justify-content-between align-items-center gap-2 mb-4" aria-label="Navigasi sesi absensi"><button type="button" class="btn btn-outline-primary btn-sm" id="attendancePrev" disabled><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</button><span class="small text-muted"><strong id="attendanceCurrent">1</strong> / <?= count($sesi_aktif) ?></span><button type="button" class="btn btn-primary btn-sm" id="attendanceNext">Selanjutnya<i class="fa-solid fa-chevron-right ms-1"></i></button></nav><?php endif ?>
             <?php endif; ?>
 
             <div class="card attendance-card"><div class="card-body p-3 p-md-4">
@@ -236,10 +246,11 @@ $riwayat = $stmt_riwayat->fetchAll();
                     </table>
                 </div>
                 <div class="d-md-none">
-                    <?php foreach ($riwayat as $item): ?>
+                    <?php foreach ($riwayat as $riwayat_index=>$item): ?>
                         <?php $label_status=$item['status']?:'Belum Absen';$warna_status=['Hadir'=>'bg-success','Sakit'=>'bg-warning text-dark','Izin'=>'bg-info text-dark','Alpa'=>'bg-danger'][$label_status]??'bg-secondary'; ?>
-                        <div class="history-item d-flex align-items-start gap-2"><span class="badge <?= $warna_status ?> mt-1"><?= sanitize($label_status) ?></span><div class="history-copy flex-grow-1"><strong class="d-block small"><?= sanitize($item['nama_mapel']) ?></strong><small class="text-muted d-block"><?= date('d/m/Y',strtotime($item['tanggal'])) ?> &middot; Pertemuan <?= (int)$item['pertemuan_ke'] ?></small><small class="text-muted"><?= sanitize($item['nama_guru']) ?><?php if($item['waktu_checkin']): ?> &middot; <?= date('H:i:s',strtotime($item['waktu_checkin'])) ?><?php elseif($item['keterangan']): ?> &middot; <?= sanitize($item['keterangan']) ?><?php endif; ?></small></div></div>
+                        <div class="history-item history-mobile-item <?= $riwayat_index>=$riwayat_per_halaman?'d-none':'' ?>" data-history-page="<?= intdiv($riwayat_index,$riwayat_per_halaman)+1 ?>"><div class="d-flex align-items-start gap-2"><span class="badge <?= $warna_status ?> mt-1"><?= sanitize($label_status) ?></span><div class="history-copy flex-grow-1"><strong class="d-block small"><?= sanitize($item['nama_mapel']) ?></strong><small class="text-muted d-block"><?= date('d/m/Y',strtotime($item['tanggal'])) ?> &middot; Pertemuan <?= (int)$item['pertemuan_ke'] ?></small><small class="text-muted"><?= sanitize($item['nama_guru']) ?><?php if($item['waktu_checkin']): ?> &middot; <?= date('H:i:s',strtotime($item['waktu_checkin'])) ?><?php elseif($item['keterangan']): ?> &middot; <?= sanitize($item['keterangan']) ?><?php endif; ?></small></div></div></div>
                     <?php endforeach; ?>
+                    <?php if($total_halaman_riwayat>1): ?><nav class="d-flex justify-content-between align-items-center gap-2 pt-3" aria-label="Navigasi riwayat kehadiran"><button type="button" class="btn btn-sm btn-outline-primary" id="historyPrev" disabled><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</button><span class="small text-muted"><strong id="historyCurrent">1</strong> / <?= $total_halaman_riwayat ?></span><button type="button" class="btn btn-sm btn-primary" id="historyNext">Selanjutnya<i class="fa-solid fa-chevron-right ms-1"></i></button></nav><?php endif ?>
                 </div>
                 <?php if (!$riwayat): ?><p class="text-center text-muted mb-0">Belum ada riwayat absensi.</p><?php endif; ?>
             </div></div>
@@ -247,3 +258,9 @@ $riwayat = $stmt_riwayat->fetchAll();
     </div>
 </div>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
+<?php if(count($sesi_aktif)>1): ?><script>
+document.addEventListener('DOMContentLoaded',function(){const cards=[...document.querySelectorAll('.attendance-slide')],prev=document.getElementById('attendancePrev'),next=document.getElementById('attendanceNext'),current=document.getElementById('attendanceCurrent');let index=0;function show(target){index=Math.max(0,Math.min(target,cards.length-1));cards.forEach((card,i)=>card.classList.toggle('is-active',i===index));current.textContent=index+1;prev.disabled=index===0;next.disabled=index===cards.length-1}prev.addEventListener('click',()=>show(index-1));next.addEventListener('click',()=>show(index+1));show(0)});
+</script><?php endif ?>
+<?php if($total_halaman_riwayat>1): ?><script>
+document.addEventListener('DOMContentLoaded',function(){const items=[...document.querySelectorAll('.history-mobile-item')],prev=document.getElementById('historyPrev'),next=document.getElementById('historyNext'),current=document.getElementById('historyCurrent'),total=<?= $total_halaman_riwayat ?>;let page=1;function show(target){page=Math.max(1,Math.min(target,total));items.forEach(item=>item.classList.toggle('d-none',Number(item.dataset.historyPage)!==page));current.textContent=page;prev.disabled=page===1;next.disabled=page===total}prev.addEventListener('click',()=>show(page-1));next.addEventListener('click',()=>show(page+1));show(1)});
+</script><?php endif ?>
