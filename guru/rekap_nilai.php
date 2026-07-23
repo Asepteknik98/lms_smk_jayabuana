@@ -41,7 +41,7 @@ if ($selected_pengajaran > 0) {
                       WHERE u.pengajaran_id = p.id AND nu.siswa_id = s.id), 0) AS avg_ujian,
             COALESCE((SELECT AVG(CASE da.status
                                     WHEN 'Hadir' THEN 100
-                                    WHEN 'Terlambat' THEN 75
+                                    WHEN 'Terlambat' THEN 100
                                     WHEN 'Sakit' THEN 100
                                     WHEN 'Izin' THEN 100
                                     ELSE 0

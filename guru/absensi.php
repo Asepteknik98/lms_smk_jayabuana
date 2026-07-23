@@ -26,21 +26,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
         $tanggal = trim($_POST['tanggal'] ?? '');
         $waktu_buka_input = trim($_POST['waktu_buka'] ?? '');
-        $batas_terlambat_input = trim($_POST['batas_terlambat'] ?? '');
         $waktu_tutup_input = trim($_POST['waktu_tutup'] ?? '');
 
         $waktu_buka = DateTime::createFromFormat('Y-m-d\TH:i', $waktu_buka_input);
-        $batas_terlambat = DateTime::createFromFormat('Y-m-d\TH:i', $batas_terlambat_input);
         $waktu_tutup = DateTime::createFromFormat('Y-m-d\TH:i', $waktu_tutup_input);
         $tanggal_valid = DateTime::createFromFormat('Y-m-d', $tanggal);
 
-        if ($pengajaran_id < 1 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || !$tanggal_valid || !$waktu_buka || !$batas_terlambat || !$waktu_tutup) {
+        if ($pengajaran_id < 1 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || !$tanggal_valid || !$waktu_buka || !$waktu_tutup) {
             $_SESSION['flash_error'] = 'Data sesi absensi belum lengkap atau tidak valid.';
             redirect('absensi.php');
         }
 
-        if ($waktu_buka >= $batas_terlambat || $batas_terlambat >= $waktu_tutup || $tanggal !== $waktu_buka->format('Y-m-d')) {
-            $_SESSION['flash_error'] = 'Urutan waktu harus: waktu buka, batas terlambat, lalu waktu tutup pada tanggal yang sama.';
+        if ($waktu_buka >= $waktu_tutup || $tanggal !== $waktu_buka->format('Y-m-d')) {
+            $_SESSION['flash_error'] = 'Waktu tutup harus setelah waktu buka pada tanggal yang sama.';
             redirect('absensi.php');
         }
 
@@ -62,7 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $pertemuan_ke,
                 $tanggal,
                 $waktu_buka->format('Y-m-d H:i:s'),
-                $batas_terlambat->format('Y-m-d H:i:s'),
+                $waktu_tutup->format('Y-m-d H:i:s'),
                 $waktu_tutup->format('Y-m-d H:i:s'),
             ]);
             catat_log($_SESSION['user_id'], "Membuka absensi pertemuan $pertemuan_ke");
@@ -134,7 +132,6 @@ $stmt_pengajaran->execute([$guru_id]);
 $pengajaran_list = $stmt_pengajaran->fetchAll();
 
 $awal = new DateTime();
-$akhir_terlambat = (clone $awal)->modify('+15 minutes');
 $akhir = (clone $awal)->modify('+30 minutes');
 ?>
 
@@ -196,10 +193,9 @@ $akhir = (clone $awal)->modify('+30 minutes');
                             </select>
                         </div>
                         <div class="col-5 col-md-6"><label class="form-label fw-semibold">Tanggal</label><input type="date" name="tanggal" value="<?= $awal->format('Y-m-d') ?>" class="form-control" required></div>
-                        <div class="col-12 col-md-4"><div class="time-field"><label class="form-label fw-semibold">Waktu Buka</label><input type="datetime-local" name="waktu_buka" value="<?= $awal->format('Y-m-d\TH:i') ?>" class="form-control" required></div></div>
-                        <div class="col-12 col-md-4"><div class="time-field"><label class="form-label fw-semibold">Batas Tepat Waktu</label><input type="datetime-local" name="batas_terlambat" value="<?= $akhir_terlambat->format('Y-m-d\TH:i') ?>" class="form-control" required></div></div>
-                        <div class="col-12 col-md-4"><div class="time-field"><label class="form-label fw-semibold">Waktu Tutup</label><input type="datetime-local" name="waktu_tutup" value="<?= $akhir->format('Y-m-d\TH:i') ?>" class="form-control" required></div></div>
-                        <div class="col-12"><div class="attendance-tip p-3"><i class="fa-solid fa-circle-info text-primary me-1"></i>Siswa yang check-in setelah batas tepat waktu akan tercatat terlambat. Pastikan urutan waktunya benar.</div></div>
+                        <div class="col-12 col-md-6"><div class="time-field"><label class="form-label fw-semibold">Waktu Buka</label><input type="datetime-local" name="waktu_buka" value="<?= $awal->format('Y-m-d\TH:i') ?>" class="form-control" required></div></div>
+                        <div class="col-12 col-md-6"><div class="time-field"><label class="form-label fw-semibold">Waktu Tutup</label><input type="datetime-local" name="waktu_tutup" value="<?= $akhir->format('Y-m-d\TH:i') ?>" class="form-control" required></div></div>
+                        <div class="col-12"><div class="attendance-tip p-3"><i class="fa-solid fa-circle-info text-primary me-1"></i>Siswa yang check-in selama sesi dibuka akan tercatat Hadir. Siswa yang belum check-in saat sesi ditutup akan tercatat Alpa.</div></div>
                         <div class="col-12"><button class="btn btn-primary open-attendance-button w-100" type="submit"><i class="fa-solid fa-door-open me-2"></i>Buka Absensi Sekarang</button></div></div>
                     </form>
                     <?php endif; ?>

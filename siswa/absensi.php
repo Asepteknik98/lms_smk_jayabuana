@@ -60,7 +60,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $sekarang = new DateTime();
         $waktu_buka = new DateTime($sesi['waktu_buka']);
-        $batas_terlambat = new DateTime($sesi['batas_terlambat']);
         $waktu_tutup = new DateTime($sesi['waktu_tutup']);
 
         if ($sekarang < $waktu_buka) {
@@ -70,7 +69,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             throw new RuntimeException('Waktu check-in sudah berakhir. Hubungi Guru jika ada kendala.');
         }
 
-        $status = $sekarang <= $batas_terlambat ? 'Hadir' : 'Terlambat';
+        $status = 'Hadir';
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
         $stmt_checkin = $db->prepare(
             'INSERT INTO detail_absensi
@@ -103,7 +102,7 @@ $stmt_aktif = $db->prepare(
     "SELECT sa.id, sa.pertemuan_ke, sa.tanggal, sa.waktu_buka, sa.batas_terlambat,
             sa.waktu_tutup, sa.status AS status_sesi,
             p.semester, p.tahun_ajaran, m.nama_mapel, g.nama_lengkap AS nama_guru,
-            da.status AS status_siswa, da.waktu_checkin
+            CASE WHEN da.status = 'Terlambat' THEN 'Hadir' ELSE da.status END AS status_siswa, da.waktu_checkin
      FROM sesi_absensi sa
      JOIN pengajaran p ON p.id = sa.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
@@ -118,7 +117,7 @@ $sesi_aktif = $stmt_aktif->fetchAll();
 $stmt_riwayat = $db->prepare(
     "SELECT sa.pertemuan_ke, sa.tanggal, p.semester, p.tahun_ajaran,
             m.nama_mapel, g.nama_lengkap AS nama_guru,
-            da.status, da.waktu_checkin, da.keterangan
+            CASE WHEN da.status = 'Terlambat' THEN 'Hadir' ELSE da.status END AS status, da.waktu_checkin, da.keterangan
      FROM detail_absensi da
      JOIN sesi_absensi sa ON sa.id = da.sesi_absensi_id
      JOIN pengajaran p ON p.id = sa.pengajaran_id
@@ -192,7 +191,7 @@ $riwayat = $stmt_riwayat->fetchAll();
                                 <div class="attendance-meta mb-3">
                                     <div><small>Tanggal</small><strong><?= date('d/m/Y', strtotime($sesi['tanggal'])) ?></strong></div>
                                     <div><small>Waktu</small><strong><?= date('H:i', strtotime($sesi['waktu_buka'])) ?>–<?= date('H:i', strtotime($sesi['waktu_tutup'])) ?></strong></div>
-                                    <div><small>Tepat waktu</small><strong>s.d. <?= date('H:i', strtotime($sesi['batas_terlambat'])) ?></strong></div>
+                                    <div><small>Check-in dibuka</small><strong>s.d. <?= date('H:i', strtotime($sesi['waktu_tutup'])) ?></strong></div>
                                 </div>
                                 <div class="mt-auto">
                                 <?php if ($sudah_checkin): ?>

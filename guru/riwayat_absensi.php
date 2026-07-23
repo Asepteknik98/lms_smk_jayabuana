@@ -11,8 +11,8 @@ $guru_id = (int)($stmt_guru->fetchColumn() ?: 0);
 $stmt_sesi = $db->prepare(
     "SELECT sa.*, m.nama_mapel, k.nama_kelas,
             COUNT(da.id) AS jumlah_tercatat,
-            SUM(da.status = 'Hadir') AS jumlah_hadir,
-            SUM(da.status = 'Terlambat') AS jumlah_terlambat,
+            SUM(da.status IN ('Hadir','Terlambat')) AS jumlah_hadir,
+            0 AS jumlah_terlambat,
             SUM(da.status = 'Alpa') AS jumlah_alpa
      FROM sesi_absensi sa
      JOIN pengajaran p ON p.id = sa.pengajaran_id
@@ -47,7 +47,8 @@ $sesi_list = array_slice($seluruh_sesi, ($halaman - 1) * $sesi_per_halaman, $ses
     .session-mobile-card { border:1px solid #e8edf4; border-radius:14px; padding:14px; background:#fff; box-shadow:0 4px 14px rgba(15,23,42,.035); }
     .session-mobile-card.session-open { border-color:rgba(25,135,84,.3); box-shadow:0 6px 18px rgba(25,135,84,.08); }
     .session-mobile-card + .session-mobile-card { margin-top:10px; }
-    .session-stats { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; }
+    .session-stats { display:grid; grid-template-columns:repeat(2,1fr); gap:6px; }
+    .attendance-chips .text-warning, .session-stats > div:nth-child(2) { display:none; }
     .session-stats > div { background:#f8fafc; border-radius:9px; padding:8px 3px; text-align:center; }
     .session-stats strong { display:block; line-height:1.1; }
     .session-stats small { color:#64748b; font-size:.65rem; }

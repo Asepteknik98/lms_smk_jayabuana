@@ -33,7 +33,7 @@ $siswa_list = $db->query(
             (SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.siswa_id = s.id) AS tugas_dikumpulkan,
             (SELECT COUNT(*) FROM nilai_ujian nu WHERE nu.siswa_id = s.id) AS ujian_selesai,
             (SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id = s.id) AS total_absensi,
-            (SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id = s.id AND da.status IN ('Hadir','Terlambat','Sakit','Izin')) AS hadir_absensi,
+            (SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id = s.id AND da.status IN ('Hadir','Terlambat')) AS hadir_absensi,
             (SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id = s.id AND da.status = 'Alpa') AS alpa_absensi
      FROM siswa s
      JOIN users u ON u.id = s.user_id
@@ -71,8 +71,7 @@ $sesi_absensi = $db->query(
     "SELECT sa.id, sa.pertemuan_ke, sa.tanggal, sa.status,
             g.nama_lengkap AS nama_guru, m.nama_mapel, k.nama_kelas,
             COUNT(da.id) AS total_tercatat,
-            SUM(da.status = 'Hadir') AS hadir,
-            SUM(da.status = 'Terlambat') AS terlambat,
+            SUM(da.status IN ('Hadir','Terlambat')) AS hadir,
             SUM(da.status = 'Sakit') AS sakit,
             SUM(da.status = 'Izin') AS izin,
             SUM(da.status = 'Alpa') AS alpa
@@ -111,7 +110,7 @@ $siswa_id = (int)($_GET['siswa_id'] ?? 0);
 if ($siswa_id > 0) {
     $stmt = $db->prepare(
         "SELECT s.id, s.nisn, s.nama_lengkap, s.email, k.nama_kelas, u.username, u.is_active,
-                da.status AS status_absensi, da.waktu_checkin, sa.tanggal, sa.pertemuan_ke,
+                CASE WHEN da.status = 'Terlambat' THEN 'Hadir' ELSE da.status END AS status_absensi, da.waktu_checkin, sa.tanggal, sa.pertemuan_ke,
                 m.nama_mapel
          FROM siswa s
          JOIN users u ON u.id = s.user_id
@@ -257,7 +256,7 @@ if ($siswa_id > 0) {
             </tbody></table></div><?php if (!$aktivitas_pembelajaran): ?><p class="text-muted text-center">Belum ada aktivitas.</p><?php endif; ?></div></div>
 
             <div class="col-xl-6 monitor-panel" data-panel="absensi"><div class="card content-card p-4 h-100"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h6 class="fw-bold mb-0">Monitoring Absensi Terbaru</h6><div class="export-actions"><a href="monitoring_export.php?jenis=absensi&amp;format=pdf" class="btn btn-sm btn-danger"><i class="fa-solid fa-file-pdf me-1"></i> Semua PDF</a><a href="monitoring_export.php?jenis=absensi&amp;format=excel" class="btn btn-sm btn-success"><i class="fa-solid fa-file-excel me-1"></i> Semua Excel</a></div></div><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Pembelajaran</th><th>Status</th><th>Rekap</th></tr></thead><tbody>
-                <?php foreach ($sesi_absensi as $sesi): ?><tr><td><strong><?= sanitize($sesi['nama_mapel']) ?></strong><br><small><?= sanitize($sesi['nama_kelas']) ?> · Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> · <?= sanitize($sesi['nama_guru']) ?></small></td><td><span class="badge bg-<?= $sesi['status'] === 'Dibuka' ? 'success' : 'secondary' ?>"><?= sanitize($sesi['status']) ?></span></td><td><small>H <?= (int)$sesi['hadir'] ?> · T <?= (int)$sesi['terlambat'] ?> · S <?= (int)$sesi['sakit'] ?> · I <?= (int)$sesi['izin'] ?> · A <?= (int)$sesi['alpa'] ?></small></td></tr><?php endforeach; ?>
+                <?php foreach ($sesi_absensi as $sesi): ?><tr><td><strong><?= sanitize($sesi['nama_mapel']) ?></strong><br><small><?= sanitize($sesi['nama_kelas']) ?> · Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> · <?= sanitize($sesi['nama_guru']) ?></small></td><td><span class="badge bg-<?= $sesi['status'] === 'Dibuka' ? 'success' : 'secondary' ?>"><?= sanitize($sesi['status']) ?></span></td><td><small>H <?= (int)$sesi['hadir'] ?> · S <?= (int)$sesi['sakit'] ?> · I <?= (int)$sesi['izin'] ?> · A <?= (int)$sesi['alpa'] ?></small></td></tr><?php endforeach; ?>
             </tbody></table></div><?php if (!$sesi_absensi): ?><p class="text-muted text-center">Belum ada sesi absensi.</p><?php endif; ?></div></div>
         </div>
     </div>

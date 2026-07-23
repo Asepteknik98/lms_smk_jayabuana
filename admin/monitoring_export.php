@@ -33,16 +33,16 @@ if ($jenis === 'guru') {
     }
 } elseif ($jenis === 'siswa') {
     $where = $id > 0 ? 'WHERE s.id=?' : '';
-    $stmt = $db->prepare("SELECT s.nisn,s.nama_lengkap,COALESCE(k.nama_kelas,'-') nama_kelas,u.username,IF(u.is_active=1,'Aktif','Nonaktif') status_akun,(SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.siswa_id=s.id) tugas,(SELECT COUNT(*) FROM nilai_ujian nu WHERE nu.siswa_id=s.id) ujian,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Hadir') hadir,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Terlambat') terlambat,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Sakit') sakit,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Izin') izin,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Alpa') alpa FROM siswa s JOIN users u ON u.id=s.user_id LEFT JOIN kelas k ON k.id=s.kelas_id $where ORDER BY k.nama_kelas,s.nama_lengkap");
+    $stmt = $db->prepare("SELECT s.nisn,s.nama_lengkap,COALESCE(k.nama_kelas,'-') nama_kelas,u.username,IF(u.is_active=1,'Aktif','Nonaktif') status_akun,(SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.siswa_id=s.id) tugas,(SELECT COUNT(*) FROM nilai_ujian nu WHERE nu.siswa_id=s.id) ujian,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status IN ('Hadir','Terlambat')) hadir,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Sakit') sakit,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Izin') izin,(SELECT COUNT(*) FROM detail_absensi da WHERE da.siswa_id=s.id AND da.status='Alpa') alpa FROM siswa s JOIN users u ON u.id=s.user_id LEFT JOIN kelas k ON k.id=s.kelas_id $where ORDER BY k.nama_kelas,s.nama_lengkap");
     $stmt->execute($id > 0 ? [$id] : []); $data = $stmt->fetchAll();
     if ($id > 0 && !$data) { http_response_code(404); exit('Data siswa tidak ditemukan.'); }
     $judul = $id > 0 ? 'Rekap Siswa - ' . $data[0]['nama_lengkap'] : 'Rekap Keseluruhan Siswa';
-    $headers = ['NISN','Nama Siswa','Kelas','Username','Status','Tugas','Ujian','Hadir','Terlambat','Sakit','Izin','Alpa'];
-    foreach ($data as $r) $rows[] = [$r['nisn'],$r['nama_lengkap'],$r['nama_kelas'],$r['username'],$r['status_akun'],$r['tugas'],$r['ujian'],$r['hadir'],$r['terlambat'],$r['sakit'],$r['izin'],$r['alpa']];
+    $headers = ['NISN','Nama Siswa','Kelas','Username','Status','Tugas','Ujian','Hadir','Sakit','Izin','Alpa'];
+    foreach ($data as $r) $rows[] = [$r['nisn'],$r['nama_lengkap'],$r['nama_kelas'],$r['username'],$r['status_akun'],$r['tugas'],$r['ujian'],$r['hadir'],$r['sakit'],$r['izin'],$r['alpa']];
 } else {
     $where = '';
     if ($id > 0) $where = $scope === 'guru' ? 'WHERE p.guru_id=?' : 'WHERE da.siswa_id=?';
-    $stmt = $db->prepare("SELECT sa.tanggal,sa.pertemuan_ke,m.nama_mapel,k.nama_kelas,g.nama_lengkap nama_guru,s.nisn,s.nama_lengkap nama_siswa,da.status,da.waktu_checkin FROM detail_absensi da JOIN sesi_absensi sa ON sa.id=da.sesi_absensi_id JOIN pengajaran p ON p.id=sa.pengajaran_id JOIN guru g ON g.id=p.guru_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id JOIN siswa s ON s.id=da.siswa_id $where ORDER BY sa.tanggal DESC,k.nama_kelas,s.nama_lengkap");
+    $stmt = $db->prepare("SELECT sa.tanggal,sa.pertemuan_ke,m.nama_mapel,k.nama_kelas,g.nama_lengkap nama_guru,s.nisn,s.nama_lengkap nama_siswa,CASE WHEN da.status='Terlambat' THEN 'Hadir' ELSE da.status END status,da.waktu_checkin FROM detail_absensi da JOIN sesi_absensi sa ON sa.id=da.sesi_absensi_id JOIN pengajaran p ON p.id=sa.pengajaran_id JOIN guru g ON g.id=p.guru_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id JOIN siswa s ON s.id=da.siswa_id $where ORDER BY sa.tanggal DESC,k.nama_kelas,s.nama_lengkap");
     $stmt->execute($id > 0 ? [$id] : []); $data = $stmt->fetchAll();
     if ($id > 0 && $scope === 'guru') {
         $judul = 'Rekap Absensi Guru' . ($data ? ' - '.$data[0]['nama_guru'] : '');
