@@ -1,7 +1,25 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
 $role_id = (int)($_SESSION['role_id'] ?? 0);
+$sidebar_profile_name = $_SESSION['username'] ?? 'Pengguna';
+$sidebar_profile_role = [1 => 'Administrator', 2 => 'Guru', 3 => 'Siswa'][$role_id] ?? 'Pengguna';
 $sidebar_mapel_siswa = [];
+if (class_exists('Database')) {
+    try {
+        $sidebar_db = Database::getInstance();
+        if ($role_id === 2) {
+            $sidebar_profile_stmt = $sidebar_db->prepare('SELECT nama_lengkap FROM guru WHERE user_id = ?');
+            $sidebar_profile_stmt->execute([$_SESSION['user_id']]);
+            $sidebar_profile_name = $sidebar_profile_stmt->fetchColumn() ?: $sidebar_profile_name;
+        } elseif ($role_id === 3) {
+            $sidebar_profile_stmt = $sidebar_db->prepare('SELECT nama_lengkap FROM siswa WHERE user_id = ?');
+            $sidebar_profile_stmt->execute([$_SESSION['user_id']]);
+            $sidebar_profile_name = $sidebar_profile_stmt->fetchColumn() ?: $sidebar_profile_name;
+        }
+    } catch (Throwable $e) {
+        error_log('Profil sidebar gagal dimuat: ' . $e->getMessage());
+    }
+}
 if ($role_id === 3 && class_exists('Database')) {
     try {
         $sidebar_db = Database::getInstance();
@@ -20,12 +38,114 @@ if ($role_id === 3 && class_exists('Database')) {
     }
 }
 ?>
+<style>
+    .sidebar-profile {
+        border-bottom: 1px solid rgba(255,255,255,.08);
+        text-align: center;
+    }
+    .sidebar-profile-logo {
+        height: 132px;
+        padding: 12px 20px 16px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(180deg, #edf2f7 0%, #e3e9f0 100%);
+        overflow: hidden;
+    }
+    .sidebar-profile-logo img {
+        display: block;
+        width: 96px;
+        height: 96px;
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+        mix-blend-mode: multiply;
+    }
+    .sidebar-profile-info {
+        padding: 13px 12px 14px;
+        border-top: 1px solid rgba(255,255,255,.12);
+        background: linear-gradient(180deg, #4c5967 0%, #414c59 100%);
+    }
+    .sidebar-profile-name {
+        display: block;
+        color: #fff;
+        font-size: .88rem;
+        font-weight: 750;
+        line-height: 1.3;
+        text-transform: uppercase;
+        overflow-wrap: anywhere;
+    }
+    .sidebar-profile-role {
+        display: block;
+        margin-top: 5px;
+        color: #b8c1cc;
+        font-size: .78rem;
+        font-weight: 650;
+    }
+    #sidebar-wrapper .list-group {
+        padding: 3px 7px 12px;
+        margin-top: 7px !important;
+        gap: 2px;
+    }
+    #sidebar-wrapper .list-group-item {
+        min-height: 42px;
+        padding: 9px 11px;
+        border: 0 !important;
+        border-radius: 9px;
+        color: #a7b3c5;
+        font-size: .84rem;
+        line-height: 1.25;
+        display: flex;
+        align-items: center;
+        transition: color .18s ease, background .18s ease, transform .18s ease;
+    }
+    #sidebar-wrapper .list-group-item i {
+        width: 21px;
+        margin-right: 7px !important;
+        color: #8fa0b7;
+        font-size: .88rem;
+        text-align: center;
+        transition: color .18s ease;
+    }
+    #sidebar-wrapper .list-group-item:hover {
+        color: #e2e8f0;
+        background: rgba(255,255,255,.055);
+        transform: translateX(2px);
+    }
+    #sidebar-wrapper .list-group-item:hover i {
+        color: #7dd3fc;
+    }
+    #sidebar-wrapper .list-group-item.active {
+        color: #38bdf8;
+        background: #111c30;
+        box-shadow: inset 3px 0 0 #38bdf8, 0 4px 12px rgba(2,8,23,.12);
+    }
+    #sidebar-wrapper .list-group-item.active i {
+        color: #38bdf8;
+    }
+    #sidebar-wrapper .list-group-item.text-danger {
+        margin-top: 10px !important;
+        color: #fb7185 !important;
+    }
+    #sidebar-wrapper .list-group-item.text-danger i {
+        color: #fb7185;
+    }
+    @media (max-height: 700px) {
+        .sidebar-profile-logo { height: 108px; padding: 9px 20px 12px; }
+        .sidebar-profile-logo img { width: 80px; height: 80px; }
+        .sidebar-profile-info { padding: 10px 10px 11px; }
+        #sidebar-wrapper .list-group-item { min-height: 38px; padding: 7px 10px; font-size: .8rem; }
+        #sidebar-wrapper .list-group-item i { font-size: .82rem; }
+    }
+</style>
 <div id="sidebar-wrapper">
-    <div class="sidebar-heading d-flex align-items-center gap-3">
-        <span class="sidebar-school-logo">
-            <img src="../assets/img/jb.png" alt="Logo SMK Jaya Buana">
-        </span>
-        <span class="sidebar-school-name">SMK JAYA BUANA</span>
+    <div class="sidebar-profile">
+        <div class="sidebar-profile-logo">
+            <img src="../assets/img/jb.png" alt="Logo SMKS Jaya Buana">
+        </div>
+        <div class="sidebar-profile-info">
+            <span class="sidebar-profile-name"><?= sanitize($sidebar_profile_name) ?></span>
+            <span class="sidebar-profile-role"><?= sanitize($sidebar_profile_role) ?></span>
+        </div>
     </div>
     <div class="list-group list-group-flush mt-3">
         <?php if ($role_id === 1): ?>
