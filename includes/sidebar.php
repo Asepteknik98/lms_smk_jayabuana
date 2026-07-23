@@ -72,6 +72,9 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="riwayat_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'riwayat_absensi.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Absensi
         </a>
+        <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_absensi.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
+        </a>
         <a href="ujian.php" class="list-group-item list-group-item-action <?= ($current_page === 'ujian.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-file-circle-question me-2"></i> Ujian
         </a>
