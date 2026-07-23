@@ -2,7 +2,7 @@
 require_once __DIR__.'/../config/session.php';require_once __DIR__.'/../config/auth.php';require_once __DIR__.'/../config/database.php';check_access([2]);
 $db=Database::getInstance();$format=$_GET['format']??'';$ujianId=(int)($_GET['ujian_id']??0);$siswaId=(int)($_GET['siswa_id']??0);
 if(!in_array($format,['excel','pdf'],true)||$ujianId<1){http_response_code(400);exit('Permintaan ekspor tidak valid.');}
-$stmt=$db->prepare("SELECT u.id,u.nama_ujian,u.jenis_ujian,m.nama_mapel,k.nama_kelas,g.nama_lengkap nama_guru
+$stmt=$db->prepare("SELECT u.id,u.nama_ujian,u.jenis_ujian,p.kelas_id,m.nama_mapel,k.nama_kelas,g.nama_lengkap nama_guru
  FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id JOIN guru g ON g.id=p.guru_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id
  WHERE u.id=? AND g.user_id=?");$stmt->execute([$ujianId,$_SESSION['user_id']]);$info=$stmt->fetch();if(!$info){http_response_code(403);exit('Ujian bukan milik Anda.');}
 $headers=[];$rows=[];$judul='';$subjudul=$info['nama_mapel'].' | '.$info['nama_kelas'].' | Guru: '.$info['nama_guru'];
@@ -15,12 +15,12 @@ if($siswaId>0){
   FROM soal_ujian so LEFT JOIN jawaban_siswa js ON js.soal_id=so.id AND js.sesi_ujian_id=? WHERE so.ujian_id=? ORDER BY so.id");$stmt->execute([$siswa['id'],$ujianId]);
  $headers=['No','Tipe','Pertanyaan','Jawaban Siswa','Kunci','Hasil','Bobot'];foreach($stmt->fetchAll() as $i=>$r){$jawaban=$r['tipe_soal']==='PG'?($r['jawaban_pg']??'-'):($r['jawaban_esai']?:'-');$hasil=$jawaban==='-'?'Belum Dijawab':($r['tipe_soal']==='PG'?((int)$r['is_benar']===1?'Benar':'Salah'):'Perlu Dinilai');$rows[]=[$i+1,$r['tipe_soal'],$r['pertanyaan'],$jawaban,$r['kunci_jawaban']?:'-',$hasil,$r['bobot']];}
 }else{
- $judul='Rekap Hasil Kelas - '.$info['nama_ujian'];$stmt=$db->prepare("SELECT s.nisn,s.nama_lengkap,su.status,
+ $judul='Rekap Hasil Kelas - '.$info['nama_ujian'];$stmt=$db->prepare("SELECT s.nisn,s.nama_lengkap,COALESCE(su.status,'Belum Mengerjakan') status,
   SUM(CASE WHEN js.id IS NOT NULL AND (js.jawaban_pg IS NOT NULL OR (js.jawaban_esai IS NOT NULL AND TRIM(js.jawaban_esai)<>'')) THEN 1 ELSE 0 END) dijawab,
-  (SELECT COUNT(*) FROM soal_ujian so WHERE so.ujian_id=su.ujian_id) total_soal,su.waktu_mulai,su.waktu_selesai,COALESCE(nu.nilai_total,0) nilai
-  FROM sesi_ujian su JOIN siswa s ON s.id=su.siswa_id LEFT JOIN jawaban_siswa js ON js.sesi_ujian_id=su.id
-  LEFT JOIN nilai_ujian nu ON nu.ujian_id=su.ujian_id AND nu.siswa_id=su.siswa_id WHERE su.ujian_id=? GROUP BY su.id ORDER BY s.nama_lengkap");$stmt->execute([$ujianId]);
- $headers=['No','NISN','Nama Siswa','Status','Dijawab','Total Soal','Mulai','Selesai','Nilai'];foreach($stmt->fetchAll() as $i=>$r)$rows[]=[$i+1,$r['nisn'],$r['nama_lengkap'],$r['status'],$r['dijawab'],$r['total_soal'],date('d/m/Y H:i',strtotime($r['waktu_mulai'])),$r['waktu_selesai']?date('d/m/Y H:i',strtotime($r['waktu_selesai'])):'-',number_format($r['nilai'],2)];
+  (SELECT COUNT(*) FROM soal_ujian so WHERE so.ujian_id=?) total_soal,su.waktu_mulai,su.waktu_selesai,COALESCE(nu.nilai_total,0) nilai
+  FROM siswa s LEFT JOIN sesi_ujian su ON su.siswa_id=s.id AND su.ujian_id=? LEFT JOIN jawaban_siswa js ON js.sesi_ujian_id=su.id
+  LEFT JOIN nilai_ujian nu ON nu.ujian_id=? AND nu.siswa_id=s.id WHERE s.kelas_id=? GROUP BY s.id ORDER BY s.nama_lengkap");$stmt->execute([$ujianId,$ujianId,$ujianId,$info['kelas_id']]);
+ $headers=['No','NISN','Nama Siswa','Status','Dijawab','Total Soal','Mulai','Selesai','Nilai'];foreach($stmt->fetchAll() as $i=>$r)$rows[]=[$i+1,$r['nisn'],$r['nama_lengkap'],$r['status'],$r['dijawab'],$r['total_soal'],$r['waktu_mulai']?date('d/m/Y H:i',strtotime($r['waktu_mulai'])):'-',$r['waktu_selesai']?date('d/m/Y H:i',strtotime($r['waktu_selesai'])):'-',$r['waktu_mulai']?number_format($r['nilai'],2):'-'];
 }
 $safe=preg_replace('/[^A-Za-z0-9_-]+/','_',$judul);$filename=trim($safe,'_').'_'.date('Ymd');
 if($format==='excel'){$x=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_XML1,'UTF-8');header('Content-Type: application/vnd.ms-excel; charset=UTF-8');header('Content-Disposition: attachment; filename="'.$filename.'.xls"');header('Cache-Control: no-store');echo '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>';?>

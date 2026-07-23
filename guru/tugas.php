@@ -65,6 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $aksi = $_POST['action'] ?? '';
+    $lampiran_baru = null;
     try {
         if ($aksi === 'create' || $aksi === 'update') {
             $id = (int)($_POST['id'] ?? 0);
@@ -128,6 +129,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             kembali_tugas('success', 'Tugas beserta pengumpulannya berhasil dihapus.');
         }
     } catch (Throwable $e) {
+        if ($lampiran_baru) @unlink(__DIR__ . '/../assets/upload/tugas/' . basename($lampiran_baru));
         kembali_tugas('error', $e instanceof RuntimeException ? $e->getMessage() : 'Tugas gagal diproses. Silakan coba kembali.');
     }
 }
@@ -224,7 +226,7 @@ $daftar_tugas = array_slice($daftar_tugas, ($halaman_tugas - 1) * $tugas_per_hal
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><span class="badge task-badge bg-primary-subtle text-primary"><?= sanitize($t['nama_mapel']) ?> &middot; <?= sanitize($t['nama_kelas']) ?></span><span class="badge <?= $lewat?'bg-secondary':'bg-success' ?> flex-shrink-0"><?= $lewat?'Ditutup':'Aktif' ?></span></div>
                     <h2 class="task-heading fw-bold mb-2"><?= sanitize($t['judul']) ?></h2>
                     <div class="task-meta-box text-muted mb-2"><div><i class="fa-solid fa-calendar-day me-1"></i>Pertemuan <?= (int)$t['pertemuan_ke'] ?> &middot; <?= sanitize($t['semester']) ?></div><div><i class="fa-regular fa-clock me-1"></i><?= date('d M Y, H:i', strtotime($t['deadline'])) ?></div></div>
-                    <?php if ($t['file_lampiran']): ?><a href="../assets/upload/tugas/<?= rawurlencode(basename($t['file_lampiran'])) ?>" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mb-3"><i class="fa-solid fa-paperclip me-1"></i>Lihat lampiran soal</a><?php else: ?><small class="text-muted d-block mb-3"><i class="fa-solid fa-file-circle-xmark me-1"></i>Tanpa lampiran soal</small><?php endif; ?>
+                    <?php if ($t['file_lampiran']): ?><a href="tugas_lampiran.php?id=<?= (int)$t['id'] ?>" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mb-3"><i class="fa-solid fa-paperclip me-1"></i>Lihat lampiran soal</a><?php else: ?><small class="text-muted d-block mb-3"><i class="fa-solid fa-file-circle-xmark me-1"></i>Tanpa lampiran soal</small><?php endif; ?>
                     <div class="task-stats mb-3"><div><strong><?= (int)$t['total_siswa'] ?></strong><small>Siswa</small></div><div><strong class="text-success"><?= (int)$t['sudah_mengumpulkan'] ?></strong><small>Terkumpul</small></div><div><strong class="text-warning"><?= (int)$t['belum_dinilai'] ?></strong><small>Belum Nilai</small></div></div>
                     <div class="d-flex gap-2 mt-auto"><a href="tugas_penilaian.php?tugas_id=<?= (int)$t['id'] ?>" class="btn btn-primary btn-sm task-action-main flex-grow-1"><i class="fa-solid fa-users-viewfinder me-1"></i>Lihat & Nilai</a><button class="btn btn-outline-secondary btn-sm task-action-icon" data-bs-toggle="modal" data-bs-target="#modalTugas" aria-label="Edit tugas" onclick='editTugas(<?= json_encode(["id"=>(int)$t["id"],"pengajaran_id"=>(int)$t["pengajaran_id"],"pertemuan_ke"=>(int)$t["pertemuan_ke"],"judul"=>$t["judul"],"deskripsi"=>$t["deskripsi"],"deadline"=>date("Y-m-d\\TH:i",strtotime($t["deadline"]))], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen"></i></button><form method="post" class="d-flex" onsubmit="return confirm('Hapus tugas beserta seluruh jawaban siswa?')"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><button class="btn btn-outline-danger btn-sm task-action-icon" aria-label="Hapus tugas"><i class="fa-solid fa-trash"></i></button></form></div>
                 </div></article></div>

@@ -5,9 +5,12 @@ $stmt=$db->prepare('SELECT id FROM guru WHERE user_id=?');$stmt->execute([$_SESS
 $stmt=$db->prepare('SELECT p.kelas_id,m.nama_mapel,k.nama_kelas,g.nama_lengkap nama_guru,p.semester,p.tahun_ajaran FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id JOIN guru g ON g.id=p.guru_id WHERE p.id=? AND p.guru_id=?');$stmt->execute([$pid,$gid]);$info=$stmt->fetch();if(!$info){http_response_code(403);exit('Pengajaran bukan milik Anda.');}
 $stmt=$db->prepare('SELECT id,nama_komponen,bobot FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$pid]);$components=$stmt->fetchAll();if(abs(array_sum(array_column($components,'bobot'))-100)>.001){$_SESSION['flash_error']='Total bobot wajib tepat 100% sebelum rekap diunduh.';header('Location: rekap_nilai.php?pengajaran_id='.$pid);exit;}
 $stmt=$db->prepare("SELECT s.id,s.nisn,s.nama_lengkap,
- COALESCE((SELECT AVG(nu.nilai_total) FROM nilai_ujian nu JOIN ujian u ON u.id=nu.ujian_id WHERE nu.siswa_id=s.id AND u.pengajaran_id=? AND u.jenis_ujian='Kuis'),0) nilai_ulangan,
- COALESCE((SELECT AVG(pt.nilai) FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id WHERE pt.siswa_id=s.id AND t.pengajaran_id=? AND pt.nilai IS NOT NULL),0) nilai_tugas,
- COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Terlambat','Sakit','Izin') THEN 100 ELSE 0 END) FROM detail_absensi da JOIN sesi_absensi sa ON sa.id=da.sesi_absensi_id WHERE da.siswa_id=s.id AND sa.pengajaran_id=? AND sa.status='Ditutup'),0) nilai_kehadiran
+ COALESCE((SELECT AVG(COALESCE(nu.nilai_total,0)) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=s.id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW()),0) nilai_ulangan,
+ COALESCE((SELECT AVG(COALESCE(pt.nilai,0)) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
+ COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Sakit','Izin') THEN 100 ELSE 0 END)
+           FROM sesi_absensi sa
+           LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=s.id
+           WHERE sa.pengajaran_id=? AND sa.status='Ditutup'),0) nilai_kehadiran
  FROM siswa s WHERE s.kelas_id=? ORDER BY s.nama_lengkap");
 $stmt->execute([$pid,$pid,$pid,$info['kelas_id']]);$students=$stmt->fetchAll();
 $stmt=$db->prepare('SELECT nk.siswa_id,nk.komponen_id,nk.nilai FROM nilai_komponen nk JOIN komponen_penilaian kp ON kp.id=nk.komponen_id WHERE kp.pengajaran_id=?');$stmt->execute([$pid]);$scores=[];foreach($stmt->fetchAll() as $n)$scores[$n['siswa_id']][$n['komponen_id']]=$n['nilai'];

@@ -52,15 +52,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         try {
             $stmt = $db->prepare(
                 "INSERT INTO sesi_absensi
-                    (pengajaran_id, pertemuan_ke, tanggal, waktu_buka, batas_terlambat, waktu_tutup, status)
-                 VALUES (?, ?, ?, ?, ?, ?, 'Dibuka')"
+                    (pengajaran_id, pertemuan_ke, tanggal, waktu_buka, waktu_tutup, status)
+                 VALUES (?, ?, ?, ?, ?, 'Dibuka')"
             );
             $stmt->execute([
                 $pengajaran_id,
                 $pertemuan_ke,
                 $tanggal,
                 $waktu_buka->format('Y-m-d H:i:s'),
-                $waktu_tutup->format('Y-m-d H:i:s'),
                 $waktu_tutup->format('Y-m-d H:i:s'),
             ]);
             catat_log($_SESSION['user_id'], "Membuka absensi pertemuan $pertemuan_ke");

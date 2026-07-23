@@ -16,7 +16,7 @@ $kelas_id = $siswa['kelas_id'] ?? 0;
 
 // Ambil Daftar Tugas Berdasarkan Kelas Siswa
 $stmt_t = $db->prepare("
-    SELECT t.*, m.nama_mapel, g.nama_lengkap as nama_guru, pt.nilai,
+    SELECT t.*, m.nama_mapel, g.nama_lengkap as nama_guru, pt.id pengumpulan_id, pt.nilai,
            pt.catatan_guru, pt.file_tugas as jawaban_file
     FROM tugas t
     JOIN pengajaran p ON t.pengajaran_id = p.id
@@ -106,7 +106,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                     <?php endif; ?>
 
                     <?php if ($t['file_lampiran']): ?>
-                        <a href="../assets/upload/tugas/<?= rawurlencode(basename($t['file_lampiran'])) ?>" target="_blank" rel="noopener" class="btn btn-primary btn-sm w-100 mb-2">
+                        <a href="file_pembelajaran.php?jenis=tugas&amp;id=<?= (int)$t['id'] ?>" target="_blank" rel="noopener" class="btn btn-primary btn-sm w-100 mb-2">
                             <i class="fa-solid fa-file-arrow-down me-1"></i> Buka / Unduh Soal Tugas
                         </a>
                     <?php else: ?>
@@ -138,7 +138,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                         <?php endif; ?>
 
                         <?php if ($is_submitted): ?>
-                            <a href="../assets/upload/jawaban/<?= rawurlencode(basename($t['jawaban_file'])) ?>" target="_blank" rel="noopener" class="btn btn-link btn-sm w-100 mt-1">
+                            <a href="file_pembelajaran.php?jenis=jawaban&amp;id=<?= (int)$t['pengumpulan_id'] ?>" target="_blank" rel="noopener" class="btn btn-link btn-sm w-100 mt-1">
                                 <i class="fa-solid fa-eye me-1"></i> Lihat jawaban yang sudah dikirim
                             </a>
                         <?php endif; ?>

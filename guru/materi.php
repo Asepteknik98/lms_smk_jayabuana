@@ -72,13 +72,15 @@ $materi_list = $stmt_m->fetchAll();
             <!-- Form Tambah Materi -->
             <div class="col-lg-5">
                 <section class="card material-panel"><div class="card-body p-4">
-                    <div class="mb-3"><h6 class="fw-bold mb-1"><i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru</h6><small class="text-muted">Lengkapi data sebelum dipublikasikan.</small></div>
+                    <div class="mb-3"><h6 class="fw-bold mb-1" id="judulFormMateri"><i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru</h6><small class="text-muted">Lengkapi data sebelum dipublikasikan.</small></div>
                     <form id="formMateri" enctype="multipart/form-data">
-                        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
+                        <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
+                        <input type="hidden" name="materi_id" id="materiId">
+                        <input type="hidden" id="aksiMateri" value="create_materi">
                         
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Pilih Kelas / Mata Pelajaran</label>
-                            <select name="pengajaran_id" class="form-select" required>
+                            <select name="pengajaran_id" id="pengajaranMateri" class="form-select" required>
                                 <option value="">-- Pilih Mapel & Kelas --</option>
                                 <?php foreach($pengajaran_list as $p): ?>
                                     <option value="<?= $p['pengajaran_id'] ?>">
@@ -91,7 +93,7 @@ $materi_list = $stmt_m->fetchAll();
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Pertemuan Ke</label>
-                            <select name="pertemuan_ke" class="form-select" required>
+                            <select name="pertemuan_ke" id="pertemuanMateri" class="form-select" required>
                                 <option value="">-- Pilih Pertemuan --</option>
                                 <?php for ($pertemuan = 1; $pertemuan <= 20; $pertemuan++): ?>
                                     <option value="<?= $pertemuan ?>">Pertemuan <?= $pertemuan ?></option>
@@ -102,12 +104,12 @@ $materi_list = $stmt_m->fetchAll();
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Judul Materi</label>
-                            <input type="text" name="judul" class="form-control" placeholder="Contoh: Pengenalan Topologi Jaringan" required>
+                            <input type="text" name="judul" id="judulMateri" class="form-control" maxlength="200" placeholder="Contoh: Pengenalan Topologi Jaringan" required>
                         </div>
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Deskripsi / Tautan Video</label>
-                            <textarea name="deskripsi" class="form-control" rows="3" placeholder="Tambahkan ringkasan materi atau tautan video..."></textarea>
+                            <textarea name="deskripsi" id="deskripsiMateri" class="form-control" rows="3" placeholder="Tambahkan ringkasan materi atau tautan video..."></textarea>
                         </div>
 
                         <div class="mb-3">
@@ -116,7 +118,8 @@ $materi_list = $stmt_m->fetchAll();
                             <small class="text-muted">PDF, DOCX, PPTX, atau ZIP · maksimal 10 MB.</small>
                         </div>
 
-                        <button type="submit" class="btn btn-primary publish-button w-100"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi</button>
+                        <button type="submit" class="btn btn-primary publish-button w-100" id="tombolMateri"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi</button>
+                        <button type="button" class="btn btn-light w-100 mt-2 d-none" id="batalEditMateri" onclick="resetFormMateri()">Batal Mengedit</button>
                     </form>
                 </div></section>
             </div>
@@ -136,7 +139,7 @@ $materi_list = $stmt_m->fetchAll();
                                     <th>Semester/Pertemuan</th>
                                     <th>Judul Materi</th>
                                     <th>File</th>
-                                    <th>Tanggal</th>
+                                    <th>Tanggal</th><th>Aksi</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -153,14 +156,14 @@ $materi_list = $stmt_m->fetchAll();
                                     <td><?= sanitize($m['judul']) ?></td>
                                     <td>
                                         <?php if($m['file_path']): ?>
-                                            <a href="../assets/upload/materi/<?= rawurlencode(basename($m['file_path'])) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
+                                            <a href="materi_file.php?id=<?= (int)$m['id'] ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
                                                 <i class="fa-solid fa-download me-1"></i>Unduh
                                             </a>
                                         <?php else: ?>
                                             <span class="text-muted small">Tanpa File</span>
                                         <?php endif; ?>
                                     </td>
-                                    <td class="small text-muted"><?= date('d/m/Y', strtotime($m['created_at'])) ?></td>
+                                    <td class="small text-muted"><?= date('d/m/Y', strtotime($m['created_at'])) ?></td><td><div class="d-flex gap-1"><button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit materi" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen"></i></button><button type="button" class="btn btn-sm btn-outline-danger" aria-label="Hapus materi" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash"></i></button></div></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -172,7 +175,7 @@ $materi_list = $stmt_m->fetchAll();
                                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><span class="badge bg-primary">Pertemuan <?= (int)$m['pertemuan_ke'] ?></span><small class="text-muted"><?= date('d/m/Y',strtotime($m['created_at'])) ?></small></div>
                                 <h2 class="material-title fw-bold mb-1"><?= sanitize($m['judul']) ?></h2>
                                 <p class="material-meta text-muted mb-3"><?= sanitize($m['nama_mapel']) ?> &middot; <?= sanitize($m['nama_kelas']) ?><br><?= sanitize($m['semester']) ?> <?= sanitize($m['tahun_ajaran']) ?></p>
-                                <?php if($m['file_path']): ?><a href="../assets/upload/materi/<?= rawurlencode(basename($m['file_path'])) ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary w-100"><i class="fa-solid fa-download me-1"></i>Buka / Unduh Modul</a><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?>
+                                <?php if($m['file_path']): ?><a href="materi_file.php?id=<?= (int)$m['id'] ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary w-100"><i class="fa-solid fa-download me-1"></i>Buka / Unduh Modul</a><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?><div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash me-1"></i>Hapus</button></div>
                             </article>
                         <?php endforeach; ?>
                     </div>
@@ -194,7 +197,7 @@ $(document).ready(function() {
         let formData = new FormData(this);
 
         $.ajax({
-            url: 'materi_action.php?action=create_materi',
+            url: 'materi_action.php?action=' + document.getElementById('aksiMateri').value,
             type: 'POST',
             data: formData,
             contentType: false,
@@ -205,8 +208,36 @@ $(document).ready(function() {
                 } else {
                     Swal.fire('Gagal!', res.message, 'error');
                 }
-            }
+            },
+            error: function(xhr) { Swal.fire('Gagal!', xhr.responseJSON?.message || 'Materi gagal diproses.', 'error'); }
         });
     });
 });
+function editMateri(data){
+    document.getElementById('materiId').value=data.id;
+    document.getElementById('aksiMateri').value='update_materi';
+    document.getElementById('pengajaranMateri').value=data.pengajaran_id;
+    document.getElementById('pertemuanMateri').value=data.pertemuan_ke;
+    document.getElementById('judulMateri').value=data.judul;
+    document.getElementById('deskripsiMateri').value=data.deskripsi||'';
+    document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-pen me-2 text-primary"></i>Edit Materi';
+    document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-floppy-disk me-2"></i>Simpan Perubahan';
+    document.getElementById('batalEditMateri').classList.remove('d-none');
+    document.getElementById('formMateri').scrollIntoView({behavior:'smooth',block:'start'});
+}
+function resetFormMateri(){
+    document.getElementById('formMateri').reset();
+    document.getElementById('materiId').value='';
+    document.getElementById('aksiMateri').value='create_materi';
+    document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru';
+    document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi';
+    document.getElementById('batalEditMateri').classList.add('d-none');
+}
+function hapusMateri(id,judul){
+    Swal.fire({title:'Hapus materi?',text:judul,icon:'warning',showCancelButton:true,confirmButtonText:'Hapus',cancelButtonText:'Batal',confirmButtonColor:'#dc3545'}).then(function(result){
+        if(!result.isConfirmed)return;
+        const data=new FormData();data.append('csrf_token',<?= json_encode($_SESSION['csrf_token']) ?>);data.append('materi_id',id);
+        fetch('materi_action.php?action=delete_materi',{method:'POST',body:data}).then(async function(response){const body=await response.json();if(!response.ok||body.status!=='success')throw new Error(body.message);return body;}).then(function(body){Swal.fire('Berhasil!',body.message,'success').then(()=>location.reload());}).catch(function(error){Swal.fire('Gagal!',error.message||'Materi gagal dihapus.','error');});
+    });
+}
 </script>

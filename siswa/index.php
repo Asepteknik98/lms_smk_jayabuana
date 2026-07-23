@@ -73,6 +73,10 @@ $stmt_tugas_dekat = $db->prepare("
 ");
 $stmt_tugas_dekat->execute([$siswa_id, $kelas_id]);
 $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
+$stmt_terlewat=$db->prepare("SELECT
+ (SELECT COUNT(*) FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=? WHERE p.kelas_id=? AND t.deadline<NOW() AND pt.id IS NULL) tugas,
+ (SELECT COUNT(*) FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=? WHERE p.kelas_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<NOW() AND nu.id IS NULL) kuis");
+$stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$stmt_terlewat->fetch();
 ?>
 
 <?php require_once __DIR__ . '/../includes/header.php'; ?>
@@ -120,6 +124,7 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     </nav>
 
     <main class="student-main p-3 p-md-4">
+        <?php if(($terlewat['tugas']??0)||($terlewat['kuis']??0)): ?><div class="alert alert-danger"><i class="fa-solid fa-bell me-2"></i><strong>Perlu perhatian:</strong> Anda belum mengerjakan <?= (int)$terlewat['tugas'] ?> tugas dan <?= (int)$terlewat['kuis'] ?> kuis yang sudah berakhir. Nilai kegiatan tersebut dihitung 0 pada rekap.</div><?php endif; ?>
         <section class="welcome-card p-4 mb-3">
             <small class="opacity-75">Selamat datang 👋</small>
             <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>

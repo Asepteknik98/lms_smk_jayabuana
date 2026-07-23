@@ -28,13 +28,26 @@ try {
  } elseif($action==='delete'){
    $stmt=$db->prepare('DELETE FROM komponen_penilaian WHERE id=? AND pengajaran_id=?');$stmt->execute([(int)($_POST['id']??0),$pengajaran_id]);
    $_SESSION['flash_success']='Komponen beserta nilainya berhasil dihapus.';
+ } elseif($action==='save_settings'){
+   $kkm=(float)($_POST['kkm']??0);if($kkm<1||$kkm>100)throw new RuntimeException('KKM harus berada di antara 1 sampai 100.');
+   $stmt=$db->prepare('UPDATE pengajaran SET kkm=? WHERE id=? AND guru_id=?');$stmt->execute([$kkm,$pengajaran_id,$guru_id]);
+   $_SESSION['flash_success']='Pengaturan KKM berhasil disimpan.';
+ } elseif($action==='save_note'){
+   $siswa_id=(int)($_POST['siswa_id']??0);$catatan=trim($_POST['catatan']??'');
+   $stmt=$db->prepare('SELECT COUNT(*) FROM siswa s JOIN pengajaran p ON p.kelas_id=s.kelas_id WHERE s.id=? AND p.id=? AND p.guru_id=?');$stmt->execute([$siswa_id,$pengajaran_id,$guru_id]);
+   if(!$stmt->fetchColumn())throw new RuntimeException('Siswa tidak ditemukan pada kelas ini.');
+   if($catatan===''){$db->prepare('DELETE FROM catatan_siswa_pengajaran WHERE pengajaran_id=? AND siswa_id=?')->execute([$pengajaran_id,$siswa_id]);}
+   else{$stmt=$db->prepare('INSERT INTO catatan_siswa_pengajaran(pengajaran_id,siswa_id,catatan) VALUES(?,?,?) ON DUPLICATE KEY UPDATE catatan=VALUES(catatan)');$stmt->execute([$pengajaran_id,$siswa_id,$catatan]);}
+   $_SESSION['flash_success']='Catatan siswa berhasil disimpan.';
  } elseif($action==='save_scores'){
    $stmt=$db->prepare('SELECT id FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$pengajaran_id]);$ids=array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
    $stmt=$db->prepare('SELECT COALESCE(SUM(bobot),0) FROM komponen_penilaian WHERE pengajaran_id=?');$stmt->execute([$pengajaran_id]);
    if(abs((float)$stmt->fetchColumn()-100)>0.001)throw new RuntimeException('Total bobot wajib tepat 100% sebelum nilai disimpan.');
    $stmt=$db->prepare('SELECT s.id FROM siswa s JOIN pengajaran p ON p.kelas_id=s.kelas_id WHERE p.id=? AND p.guru_id=?');$stmt->execute([$pengajaran_id,$guru_id]);$studentIds=array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
-   $up=$db->prepare('INSERT INTO nilai_komponen(komponen_id,siswa_id,nilai) VALUES(?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai)');$db->beginTransaction();
-   foreach(($_POST['nilai']??[]) as $siswa=>$nilaiKomponen)foreach($nilaiKomponen as $komponen=>$nilai){$siswa=(int)$siswa;$komponen=(int)$komponen;if(!in_array($komponen,$ids,true)||!in_array($siswa,$studentIds,true))continue;$v=(float)$nilai;if($v<0||$v>100)throw new RuntimeException('Nilai harus berada di antara 0 sampai 100.');$up->execute([$komponen,$siswa,$v]);}
+   $up=$db->prepare('INSERT INTO nilai_komponen(komponen_id,siswa_id,nilai) VALUES(?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai)');
+   $old=$db->prepare('SELECT nilai FROM nilai_komponen WHERE komponen_id=? AND siswa_id=?');
+   $history=$db->prepare('INSERT INTO riwayat_nilai(pengajaran_id,siswa_id,komponen_id,guru_id,nilai_lama,nilai_baru) VALUES(?,?,?,?,?,?)');$db->beginTransaction();
+   foreach(($_POST['nilai']??[]) as $siswa=>$nilaiKomponen)foreach($nilaiKomponen as $komponen=>$nilai){$siswa=(int)$siswa;$komponen=(int)$komponen;if(!in_array($komponen,$ids,true)||!in_array($siswa,$studentIds,true))continue;$v=(float)$nilai;if($v<0||$v>100)throw new RuntimeException('Nilai harus berada di antara 0 sampai 100.');$old->execute([$komponen,$siswa]);$lama=$old->fetchColumn();if($lama===false||abs((float)$lama-$v)>.001){$up->execute([$komponen,$siswa,$v]);$history->execute([$pengajaran_id,$siswa,$komponen,$guru_id,$lama===false?null:$lama,$v]);}}
    $db->commit();$_SESSION['flash_success']='Nilai seluruh siswa berhasil disimpan.';
  } else throw new RuntimeException('Aksi tidak valid.');
 } catch(Throwable $e){if($db->inTransaction())$db->rollBack();$_SESSION['flash_error']=$e->getMessage();}

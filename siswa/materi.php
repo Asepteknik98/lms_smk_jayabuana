@@ -117,7 +117,7 @@ $materi_list = $stmt_materi->fetchAll();
                                     <?php endif; ?>
 
                                     <?php if ($materi['file_path']): ?>
-                                        <a href="../assets/upload/materi/<?= rawurlencode($materi['file_path']) ?>" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
+                                        <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
                                             <i class="fa-solid fa-download me-1"></i> Buka / Unduh Modul
                                         </a>
                                     <?php else: ?>

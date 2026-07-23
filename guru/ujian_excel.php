@@ -28,6 +28,8 @@ if($action!=='import'||$_SERVER['REQUEST_METHOD']!=='POST'){http_response_code(4
 if(!verify_csrf($_POST['csrf_token']??'')){http_response_code(403);exit('Permintaan tidak sah.');}
 $ujianId=(int)($_POST['ujian_id']??0);$stmt=$db->prepare('SELECT u.id,u.nama_ujian FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id JOIN guru g ON g.id=p.guru_id WHERE u.id=? AND g.user_id=?');$stmt->execute([$ujianId,$_SESSION['user_id']]);$ujian=$stmt->fetch();
 if(!$ujian){$_SESSION['flash_error']='Ujian tidak ditemukan atau bukan milik Anda.';redirect('ujian.php');}
+$stmt=$db->prepare('SELECT EXISTS(SELECT 1 FROM sesi_ujian WHERE ujian_id=?)');$stmt->execute([$ujianId]);
+if($stmt->fetchColumn()){$_SESSION['flash_error']='Soal tidak dapat diimpor karena ujian sudah memiliki peserta.';redirect('ujian.php');}
 $file=$_FILES['file_excel']??null;
 if(!$file||$file['error']!==UPLOAD_ERR_OK){$_SESSION['flash_error']='File Excel gagal diunggah.';redirect('ujian.php');}
 if($file['size']>2*1024*1024||strtolower(pathinfo($file['name'],PATHINFO_EXTENSION))!=='xls'){$_SESSION['flash_error']='Gunakan file template .xls dengan ukuran maksimal 2 MB.';redirect('ujian.php');}

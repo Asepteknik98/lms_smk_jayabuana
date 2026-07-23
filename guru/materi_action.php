@@ -4,176 +4,124 @@ require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/helper.php';
 
-header('Content-Type: application/json');
-check_access([2]); // Hanya Guru
+header('Content-Type: application/json; charset=UTF-8');
+check_access([2]);
 
 $db = Database::getInstance();
 $action = $_GET['action'] ?? '';
 
-// Ambil ID Guru berdasarkan Session User ID
-$stmt_g = $db->prepare("SELECT id FROM guru WHERE user_id = ?");
-$stmt_g->execute([$_SESSION['user_id']]);
-$guru = $stmt_g->fetch();
-
-if (!$guru) {
-    echo json_encode(['status' => 'error', 'message' => 'Data Guru tidak ditemukan!']);
-    exit();
+function respons_materi(string $status, string $message): void
+{
+    echo json_encode(['status' => $status, 'message' => $message], JSON_UNESCAPED_UNICODE);
+    exit;
 }
-$guru_id = $guru['id'];
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!verify_csrf($csrf_token)) {
-        echo json_encode(['status' => 'error', 'message' => 'Invalid CSRF Token']);
-        exit();
+function simpan_file_materi(array $file): ?string
+{
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_NO_FILE) return null;
+    if (($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || ($file['size'] ?? 0) > 10 * 1024 * 1024) {
+        throw new RuntimeException('File gagal diunggah atau melebihi 10 MB.');
     }
+    $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+    $mime = (new finfo(FILEINFO_MIME_TYPE))->file($file['tmp_name']);
+    $allowed = [
+        'pdf' => ['application/pdf'],
+        'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
+        'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip'],
+        'zip' => ['application/zip', 'application/x-zip-compressed'],
+    ];
+    if (!isset($allowed[$ext]) || !in_array($mime, $allowed[$ext], true)) {
+        throw new RuntimeException('Format file harus PDF, DOCX, PPTX, atau ZIP.');
+    }
+    $folder = __DIR__ . '/../assets/upload/materi/';
+    if (!is_dir($folder) && !mkdir($folder, 0755, true) && !is_dir($folder)) {
+        throw new RuntimeException('Folder penyimpanan materi tidak tersedia.');
+    }
+    $nama = 'materi_' . bin2hex(random_bytes(12)) . '.' . $ext;
+    if (!move_uploaded_file($file['tmp_name'], $folder . $nama)) {
+        throw new RuntimeException('File materi gagal disimpan.');
+    }
+    return $nama;
+}
 
-    // ------------------- SIMPAN MATERI BARU -------------------
-    if ($action === 'create_materi') {
-        $pengajaran_id = intval($_POST['pengajaran_id'] ?? 0);
-        $pertemuan_ke  = intval($_POST['pertemuan_ke'] ?? 0);
-        $judul         = sanitize($_POST['judul'] ?? '');
-        $deskripsi     = sanitize($_POST['deskripsi'] ?? '');
-        $file_path     = null;
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    http_response_code(405);
+    respons_materi('error', 'Metode permintaan tidak diizinkan.');
+}
+if (!verify_csrf($_POST['csrf_token'] ?? '')) {
+    http_response_code(403);
+    respons_materi('error', 'Sesi keamanan berakhir. Silakan muat ulang halaman.');
+}
 
-        if ($pengajaran_id <= 0 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || empty($judul)) {
-            echo json_encode(['status' => 'error', 'message' => 'Pengajaran, pertemuan 1-20, dan judul wajib diisi!']);
-            exit();
+$stmt = $db->prepare('SELECT id FROM guru WHERE user_id=?');
+$stmt->execute([$_SESSION['user_id']]);
+$guru_id = (int)($stmt->fetchColumn() ?: 0);
+
+try {
+    if (in_array($action, ['create_materi', 'update_materi'], true)) {
+        $materi_id = (int)($_POST['materi_id'] ?? 0);
+        $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
+        $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
+        $judul = trim($_POST['judul'] ?? '');
+        $deskripsi = trim($_POST['deskripsi'] ?? '');
+        if ($pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || mb_strlen($judul) > 200) {
+            throw new RuntimeException('Pertemuan 1–20 dan judul maksimal 200 karakter wajib diisi.');
         }
+        $stmt = $db->prepare('SELECT id FROM pengajaran WHERE id=? AND guru_id=?');
+        $stmt->execute([$pengajaran_id, $guru_id]);
+        if (!$stmt->fetchColumn()) throw new RuntimeException('Pengajaran tidak valid atau bukan milik Anda.');
 
-        // Pastikan pengajaran benar-benar milik Guru yang sedang login.
-        $stmt_pengajaran = $db->prepare("SELECT id FROM pengajaran WHERE id = ? AND guru_id = ?");
-        $stmt_pengajaran->execute([$pengajaran_id, $guru_id]);
-        if (!$stmt_pengajaran->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => 'Pengajaran tidak valid atau bukan milik Anda.']);
-            exit();
-        }
-
-        $stmt_duplikat = $db->prepare("SELECT id FROM materi WHERE pengajaran_id = ? AND pertemuan_ke = ?");
-        $stmt_duplikat->execute([$pengajaran_id, $pertemuan_ke]);
-        if ($stmt_duplikat->fetch()) {
-            echo json_encode(['status' => 'error', 'message' => "Modul pertemuan ke-$pertemuan_ke sudah tersedia."]);
-            exit();
-        }
-
-        // Upload File Materi (PDF/DOCX/ZIP) jika ada
-        if (isset($_FILES['file_materi']) && $_FILES['file_materi']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['file_materi']['tmp_name'];
-            $fileName    = $_FILES['file_materi']['name'];
-            $fileSize    = $_FILES['file_materi']['size'];
-            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-            $allowedMimeTypes = [
-                'pdf' => ['application/pdf'],
-                'docx' => ['application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/zip'],
-                'pptx' => ['application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/zip'],
-                'zip' => ['application/zip', 'application/x-zip-compressed'],
-            ];
-            $detectedMime = (new finfo(FILEINFO_MIME_TYPE))->file($fileTmpPath);
-            if (!isset($allowedMimeTypes[$fileExtension]) || !in_array($detectedMime, $allowedMimeTypes[$fileExtension], true)) {
-                echo json_encode(['status' => 'error', 'message' => 'Format file tidak diizinkan! (Hanya PDF, DOCX, PPTX, ZIP)']);
-                exit();
+        $file_baru = simpan_file_materi($_FILES['file_materi'] ?? []);
+        if ($action === 'create_materi') {
+            try {
+                $stmt = $db->prepare('INSERT INTO materi (pengajaran_id,pertemuan_ke,judul,deskripsi,file_path) VALUES (?,?,?,?,?)');
+                $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $file_baru]);
+            } catch (Throwable $e) {
+                if ($file_baru) @unlink(__DIR__ . '/../assets/upload/materi/' . $file_baru);
+                throw $e;
             }
-
-            if ($fileSize > 10 * 1024 * 1024) { // Max 10MB
-                echo json_encode(['status' => 'error', 'message' => 'Ukuran file maksimal 10MB!']);
-                exit();
-            }
-
-            $newFileName = 'materi_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $fileExtension;
-            $uploadFileDir = __DIR__ . '/../assets/upload/materi/';
-
-            if(!is_dir($uploadFileDir)){
-                mkdir($uploadFileDir, 0755, true);
-            }
-
-            $dest_path = $uploadFileDir . $newFileName;
-            if(move_uploaded_file($fileTmpPath, $dest_path)) {
-                $file_path = $newFileName;
-            } else {
-                echo json_encode(['status' => 'error', 'message' => 'Gagal mengunggah file materi!']);
-                exit();
-            }
-        }
-
-        try {
-            $stmt = $db->prepare("INSERT INTO materi (pengajaran_id, pertemuan_ke, judul, deskripsi, file_path) VALUES (?, ?, ?, ?, ?)");
-            $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi, $file_path]);
             catat_log($_SESSION['user_id'], "Membuat modul pertemuan $pertemuan_ke: $judul");
-            echo json_encode(['status' => 'success', 'message' => "Modul pertemuan ke-$pertemuan_ke berhasil dipublikasikan!"]);
+            respons_materi('success', 'Materi berhasil dipublikasikan.');
+        }
+
+        $stmt = $db->prepare('SELECT mat.file_path FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id WHERE mat.id=? AND p.guru_id=?');
+        $stmt->execute([$materi_id, $guru_id]);
+        $lama = $stmt->fetch();
+        if (!$lama) {
+            if ($file_baru) @unlink(__DIR__ . '/../assets/upload/materi/' . $file_baru);
+            throw new RuntimeException('Materi tidak ditemukan atau bukan milik Anda.');
+        }
+        try {
+            $file_simpan = $file_baru ?: $lama['file_path'];
+            $stmt = $db->prepare('UPDATE materi SET pengajaran_id=?,pertemuan_ke=?,judul=?,deskripsi=?,file_path=? WHERE id=?');
+            $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $file_simpan, $materi_id]);
         } catch (Throwable $e) {
-            if ($file_path && is_file($uploadFileDir . $file_path)) {
-                unlink($uploadFileDir . $file_path);
-            }
-            error_log('Gagal menyimpan modul: ' . $e->getMessage());
-            echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan modul. Silakan coba kembali.']);
+            if ($file_baru) @unlink(__DIR__ . '/../assets/upload/materi/' . $file_baru);
+            throw $e;
         }
-        exit();
+        if ($file_baru && $lama['file_path']) @unlink(__DIR__ . '/../assets/upload/materi/' . basename($lama['file_path']));
+        catat_log($_SESSION['user_id'], "Mengubah materi: $judul");
+        respons_materi('success', 'Materi berhasil diperbarui.');
     }
 
-    // ------------------- SIMPAN TUGAS BARU -------------------
-    if ($action === 'create_tugas') {
-        $pengajaran_id = intval($_POST['pengajaran_id'] ?? 0);
-        $judul         = sanitize($_POST['judul'] ?? '');
-        $deskripsi     = sanitize($_POST['deskripsi'] ?? '');
-        $deadline      = $_POST['deadline'] ?? '';
-        $file_lampiran = null;
-
-        if ($pengajaran_id <= 0 || empty($judul) || empty($deadline)) {
-            echo json_encode(['status' => 'error', 'message' => 'Judul, Pengajaran, dan Deadline wajib diisi!']);
-            exit();
-        }
-
-        if (isset($_FILES['file_tugas']) && $_FILES['file_tugas']['error'] === UPLOAD_ERR_OK) {
-            $fileTmpPath = $_FILES['file_tugas']['tmp_name'];
-            $fileName    = $_FILES['file_tugas']['name'];
-            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
-
-            $allowedExtensions = ['pdf', 'docx', 'zip', 'rar'];
-            if (!in_array($fileExtension, $allowedExtensions)) {
-                echo json_encode(['status' => 'error', 'message' => 'Format file tugas tidak valid!']);
-                exit();
-            }
-
-            $newFileName = 'tugas_' . time() . '_' . bin2hex(random_bytes(4)) . '.' . $fileExtension;
-            $uploadFileDir = __DIR__ . '/../assets/upload/tugas/';
-
-            if(!is_dir($uploadFileDir)){
-                mkdir($uploadFileDir, 0755, true);
-            }
-
-            if(move_uploaded_file($fileTmpPath, $uploadFileDir . $newFileName)) {
-                $file_lampiran = $newFileName;
-            }
-        }
-
-        $stmt = $db->prepare("INSERT INTO tugas (pengajaran_id, judul, deskripsi, deadline, file_lampiran) VALUES (?, ?, ?, ?, ?)");
-        if ($stmt->execute([$pengajaran_id, $judul, $deskripsi, $deadline, $file_lampiran])) {
-            catat_log($_SESSION['user_id'], "Membuat tugas baru: $judul");
-            echo json_encode(['status' => 'success', 'message' => 'Tugas berhasil dibuat!']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Gagal membuat tugas!']);
-        }
-        exit();
+    if ($action === 'delete_materi') {
+        $materi_id = (int)($_POST['materi_id'] ?? 0);
+        $stmt = $db->prepare('SELECT mat.judul,mat.file_path FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id WHERE mat.id=? AND p.guru_id=?');
+        $stmt->execute([$materi_id, $guru_id]);
+        $materi = $stmt->fetch();
+        if (!$materi) throw new RuntimeException('Materi tidak ditemukan atau bukan milik Anda.');
+        $db->prepare('DELETE FROM materi WHERE id=?')->execute([$materi_id]);
+        if ($materi['file_path']) @unlink(__DIR__ . '/../assets/upload/materi/' . basename($materi['file_path']));
+        catat_log($_SESSION['user_id'], 'Menghapus materi: ' . $materi['judul']);
+        respons_materi('success', 'Materi berhasil dihapus.');
     }
 
-    // ------------------- PENILAIAN TUGAS SISWA -------------------
-    if ($action === 'nilai_tugas') {
-        $pengumpulan_id = intval($_POST['pengumpulan_id'] ?? 0);
-        $nilai          = floatval($_POST['nilai'] ?? 0);
-
-        if ($pengumpulan_id <= 0 || $nilai < 0 || $nilai > 100) {
-            echo json_encode(['status' => 'error', 'message' => 'Nilai harus di antara 0 - 100!']);
-            exit();
-        }
-
-        $stmt = $db->prepare("UPDATE pengumpulan_tugas SET nilai = ? WHERE id = ?");
-        if ($stmt->execute([$nilai, $pengumpulan_id])) {
-            catat_log($_SESSION['user_id'], "Memberikan nilai $nilai pada pengumpulan tugas ID: $pengumpulan_id");
-            echo json_encode(['status' => 'success', 'message' => 'Nilai berhasil disimpan!']);
-        } else {
-            echo json_encode(['status' => 'error', 'message' => 'Gagal menyimpan nilai!']);
-        }
-        exit();
-    }
+    http_response_code(400);
+    respons_materi('error', 'Aksi tidak dikenali.');
+} catch (Throwable $e) {
+    if (!($e instanceof RuntimeException) && $e->getCode() !== '23000') error_log('Aksi materi gagal: ' . $e->getMessage());
+    http_response_code(422);
+    respons_materi('error', $e->getCode() === '23000'
+        ? 'Materi untuk pertemuan tersebut sudah tersedia.'
+        : ($e instanceof RuntimeException ? $e->getMessage() : 'Materi gagal diproses.'));
 }

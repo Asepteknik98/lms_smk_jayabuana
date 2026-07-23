@@ -40,7 +40,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         $db->beginTransaction();
         $stmt_sesi = $db->prepare(
-            "SELECT sa.id, sa.pertemuan_ke, sa.waktu_buka, sa.batas_terlambat, sa.waktu_tutup,
+            "SELECT sa.id, sa.pertemuan_ke, sa.waktu_buka, sa.waktu_tutup,
                     sa.status, m.nama_mapel
              FROM sesi_absensi sa
              JOIN pengajaran p ON p.id = sa.pengajaran_id
@@ -99,10 +99,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt_aktif = $db->prepare(
-    "SELECT sa.id, sa.pertemuan_ke, sa.tanggal, sa.waktu_buka, sa.batas_terlambat,
+    "SELECT sa.id, sa.pertemuan_ke, sa.tanggal, sa.waktu_buka,
             sa.waktu_tutup, sa.status AS status_sesi,
             p.semester, p.tahun_ajaran, m.nama_mapel, g.nama_lengkap AS nama_guru,
-            CASE WHEN da.status = 'Terlambat' THEN 'Hadir' ELSE da.status END AS status_siswa, da.waktu_checkin
+            da.status AS status_siswa, da.waktu_checkin
      FROM sesi_absensi sa
      JOIN pengajaran p ON p.id = sa.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
@@ -117,7 +117,7 @@ $sesi_aktif = $stmt_aktif->fetchAll();
 $stmt_riwayat = $db->prepare(
     "SELECT sa.pertemuan_ke, sa.tanggal, p.semester, p.tahun_ajaran,
             m.nama_mapel, g.nama_lengkap AS nama_guru,
-            CASE WHEN da.status = 'Terlambat' THEN 'Hadir' ELSE da.status END AS status, da.waktu_checkin, da.keterangan
+            da.status, da.waktu_checkin, da.keterangan
      FROM detail_absensi da
      JOIN sesi_absensi sa ON sa.id = da.sesi_absensi_id
      JOIN pengajaran p ON p.id = sa.pengajaran_id
