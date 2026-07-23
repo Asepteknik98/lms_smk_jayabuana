@@ -13,7 +13,7 @@ $guru_id = $guru['id'] ?? 0;
 
 // Daftar Pengajaran
 $stmt_p = $db->prepare("
-    SELECT p.id, m.nama_mapel, k.nama_kelas 
+    SELECT p.id, p.kelas_id, p.mapel_id, m.nama_mapel, k.nama_kelas
     FROM pengajaran p
     JOIN mapel m ON p.mapel_id = m.id
     JOIN kelas k ON p.kelas_id = k.id
@@ -21,8 +21,31 @@ $stmt_p = $db->prepare("
 ");
 $stmt_p->execute([$guru_id]);
 $pengajaran_list = $stmt_p->fetchAll();
+$filter_kelas = max(0, (int)($_GET['kelas_id'] ?? 0));
+$filter_mapel = max(0, (int)($_GET['mapel_id'] ?? 0));
+$kelas_filter_list = [];
+$mapel_filter_list = [];
+foreach ($pengajaran_list as $item) {
+    $kelas_filter_list[(int)$item['kelas_id']] = $item['nama_kelas'];
+    if ($filter_kelas === 0 || (int)$item['kelas_id'] === $filter_kelas) {
+        $mapel_filter_list[(int)$item['mapel_id']] = $item['nama_mapel'];
+    }
+}
+if ($filter_mapel > 0 && !isset($mapel_filter_list[$filter_mapel])) {
+    $filter_mapel = 0;
+}
 
 // Daftar Ujian Guru
+$filter_sql = '';
+$filter_params = [$guru_id];
+if ($filter_kelas > 0) {
+    $filter_sql .= ' AND p.kelas_id = ?';
+    $filter_params[] = $filter_kelas;
+}
+if ($filter_mapel > 0) {
+    $filter_sql .= ' AND p.mapel_id = ?';
+    $filter_params[] = $filter_mapel;
+}
 $stmt_u = $db->prepare("
     SELECT u.*, m.nama_mapel, k.nama_kelas, 
            (SELECT COUNT(*) FROM soal_ujian WHERE ujian_id = u.id) as total_soal
@@ -30,9 +53,9 @@ $stmt_u = $db->prepare("
     JOIN pengajaran p ON u.pengajaran_id = p.id
     JOIN mapel m ON p.mapel_id = m.id
     JOIN kelas k ON p.kelas_id = k.id
-    WHERE p.guru_id = ? ORDER BY u.id DESC
+    WHERE p.guru_id = ? $filter_sql ORDER BY u.id DESC
 ");
-$stmt_u->execute([$guru_id]);
+$stmt_u->execute($filter_params);
 $ujian_list = $stmt_u->fetchAll();
 ?>
 
@@ -44,6 +67,31 @@ $ujian_list = $stmt_u->fetchAll();
     </nav>
 
     <div class="container-fluid p-4">
+        <div class="card border-0 shadow-sm p-3 mb-3">
+            <form method="get" id="filterUjianForm" class="row g-2 align-items-end">
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold">Filter Kelas</label>
+                    <select name="kelas_id" id="filterKelasUjian" class="form-select">
+                        <option value="0">Semua Kelas</option>
+                        <?php foreach ($kelas_filter_list as $kelas_id => $nama_kelas): ?>
+                            <option value="<?= (int)$kelas_id ?>" <?= $filter_kelas === (int)$kelas_id ? 'selected' : '' ?>><?= sanitize($nama_kelas) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label small fw-semibold">Filter Mata Pelajaran</label>
+                    <select name="mapel_id" id="filterMapelUjian" class="form-select">
+                        <option value="0">Semua Mata Pelajaran</option>
+                        <?php foreach ($mapel_filter_list as $mapel_id => $nama_mapel): ?>
+                            <option value="<?= (int)$mapel_id ?>" <?= $filter_mapel === (int)$mapel_id ? 'selected' : '' ?>><?= sanitize($nama_mapel) ?></option>
+                        <?php endforeach; ?>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <button class="btn btn-primary w-100"><i class="fa-solid fa-filter me-1"></i>Terapkan</button>
+                </div>
+            </form>
+        </div>
         <?php if(!empty($_SESSION['flash_success'])): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($_SESSION['flash_success']);unset($_SESSION['flash_success']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
         <?php if(!empty($_SESSION['flash_error'])): ?><div class="alert alert-danger alert-dismissible fade show"><?= sanitize($_SESSION['flash_error']);unset($_SESSION['flash_error']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
@@ -90,6 +138,9 @@ $ujian_list = $stmt_u->fetchAll();
                             </td>
                         </tr>
                         <?php endforeach; ?>
+                        <?php if (!$ujian_list): ?>
+                        <tr><td colspan="6" class="text-center text-muted py-5"><i class="fa-solid fa-filter-circle-xmark fa-2x mb-2 d-block"></i>Tidak ada ujian pada filter yang dipilih.</td></tr>
+                        <?php endif; ?>
                     </tbody>
                 </table>
             </div>
@@ -222,6 +273,14 @@ $ujian_list = $stmt_u->fetchAll();
 <script>
 let modalSoal;
 let modalImport;
+
+document.getElementById('filterKelasUjian')?.addEventListener('change', function () {
+    document.getElementById('filterMapelUjian').disabled = true;
+    document.getElementById('filterUjianForm').submit();
+});
+document.getElementById('filterMapelUjian')?.addEventListener('change', function () {
+    document.getElementById('filterUjianForm').submit();
+});
 
 $(document).ready(function() {
     modalSoal = new bootstrap.Modal(document.getElementById('modalAddSoal'));
