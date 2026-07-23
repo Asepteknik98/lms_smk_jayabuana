@@ -54,14 +54,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     // Upload Berkas Tugas
-    if (!isset($_FILES['file_jawaban']) || $_FILES['file_jawaban']['error'] !== UPLOAD_ERR_OK) {
+    $uploadKey=(isset($_FILES['foto_kamera'])&&$_FILES['foto_kamera']['error']===UPLOAD_ERR_OK)?'foto_kamera':'file_jawaban';
+    if (!isset($_FILES[$uploadKey]) || $_FILES[$uploadKey]['error'] !== UPLOAD_ERR_OK) {
         echo json_encode(['status' => 'error', 'message' => 'Wajib melampirkan file jawaban!']);
         exit();
     }
 
-    $fileTmpPath = $_FILES['file_jawaban']['tmp_name'];
-    $fileName    = $_FILES['file_jawaban']['name'];
-    $fileSize    = $_FILES['file_jawaban']['size'];
+    $fileTmpPath = $_FILES[$uploadKey]['tmp_name'];
+    $fileName    = $_FILES[$uploadKey]['name'];
+    $fileSize    = $_FILES[$uploadKey]['size'];
     $fileExt     = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
     $allowedExts = ['pdf', 'docx', 'zip', 'rar', 'png', 'jpg', 'jpeg', 'webp', 'heic', 'heif'];

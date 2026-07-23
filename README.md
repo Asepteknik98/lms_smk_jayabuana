@@ -123,6 +123,7 @@ Proyek ini tidak memerlukan Composer atau Node.js untuk menjalankan fitur utaman
    ```text
    database/2026_07_23_komponen_penilaian.sql
    database/2026_07_23_penyempurnaan_rekap_nilai.sql
+   database/2026_07_23_notifikasi_materi_siswa.sql
    ```
 
 6. Periksa konfigurasi pada `config/database.php`:

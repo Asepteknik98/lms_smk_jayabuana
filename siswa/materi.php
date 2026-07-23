@@ -37,20 +37,26 @@ if ($pengajaran_id > 0) {
 
 $stmt_materi = $db->prepare(
     'SELECT mat.id, mat.pertemuan_ke, mat.judul, mat.deskripsi, mat.file_path, mat.created_at,
+            CASE WHEN md.materi_id IS NULL THEN 1 ELSE 0 END AS is_baru,
             p.id AS pengajaran_id, p.tahun_ajaran, p.semester,
             m.nama_mapel, g.nama_lengkap AS nama_guru
      FROM materi mat
      JOIN pengajaran p ON p.id = mat.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
      JOIN guru g ON g.id = p.guru_id
+     LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id='.(int)($siswa['id']??0).'
      WHERE p.kelas_id = ?' . $filter_pengajaran . '
-     ORDER BY p.tahun_ajaran DESC, p.semester, m.nama_mapel, mat.pertemuan_ke ASC'
+     ORDER BY mat.created_at DESC, mat.id DESC'
 );
 $stmt_materi->execute($parameter);
 $materi_list = $stmt_materi->fetchAll();
+$materi_groups=[];foreach($materi_list as $materi){$key=(int)$materi['pengajaran_id'];if(!isset($materi_groups[$key]))$materi_groups[$key]=['nama_mapel'=>$materi['nama_mapel'],'nama_guru'=>$materi['nama_guru'],'semester'=>$materi['semester'],'tahun_ajaran'=>$materi['tahun_ajaran'],'items'=>[],'baru'=>0,'terbaru'=>$materi['created_at']];$materi_groups[$key]['items'][]=$materi;$materi_groups[$key]['baru']+=(int)$materi['is_baru'];}
+$materi_baru_ids=array_column(array_filter($materi_list,static fn($m)=>(int)$m['is_baru']===1),'id');
+if($materi_baru_ids&&$siswa){$tandai=$db->prepare('INSERT IGNORE INTO materi_siswa_dibaca(materi_id,siswa_id) VALUES(?,?)');$db->beginTransaction();foreach($materi_baru_ids as $mid)$tandai->execute([(int)$mid,(int)$siswa['id']]);$db->commit();}
 ?>
 
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
+<style>.material-accordion .accordion-item{border:0;border-radius:17px!important;box-shadow:0 6px 20px rgba(15,23,42,.06);overflow:hidden}.material-accordion .accordion-button{padding:18px 20px;background:#fff}.material-accordion .accordion-button:not(.collapsed){color:#175fc0;background:#f5f9ff;box-shadow:none}.subject-icon{width:43px;height:43px;display:grid;place-items:center;border-radius:13px;background:#eaf3ff;color:#1769e0;flex:0 0 43px}.material-row{padding:16px 0;border-bottom:1px solid #edf1f5}.material-row:last-child{border-bottom:0}.material-title{overflow-wrap:anywhere}.material-description{max-height:100px;overflow:auto}@media(max-width:575.98px){.material-accordion .accordion-button{padding:14px}.material-accordion .accordion-body{padding:4px 14px 14px}.material-row .btn{min-height:44px}.subject-icon{width:39px;height:39px;flex-basis:39px}.subject-copy{min-width:0}.subject-copy strong,.subject-copy small{overflow-wrap:anywhere}}</style>
 
 <div id="page-content-wrapper">
     <nav class="navbar navbar-expand-lg navbar-light top-navbar px-3 px-md-4 py-3">
@@ -95,38 +101,14 @@ $materi_list = $stmt_materi->fetchAll();
                     <p class="text-muted mb-0">Guru belum mengunggah materi untuk pilihan ini.</p>
                 </div>
             <?php else: ?>
-                <div class="row g-4">
-                    <?php foreach ($materi_list as $materi): ?>
-                        <div class="col-md-6 col-xl-4">
-                            <article class="card border-0 shadow-sm h-100">
-                                <div class="card-body p-3 p-md-4 d-flex flex-column">
-                                    <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                                        <span class="badge bg-primary">Pertemuan <?= (int)$materi['pertemuan_ke'] ?></span>
-                                        <small class="text-muted"><?= date('d/m/Y', strtotime($materi['created_at'])) ?></small>
-                                    </div>
-                                    <h5 class="fw-bold mb-2"><?= sanitize($materi['judul']) ?></h5>
-                                    <p class="text-primary fw-semibold small mb-1"><?= sanitize($materi['nama_mapel']) ?></p>
-                                    <p class="text-muted small mb-3">
-                                        <i class="fa-solid fa-user-tie me-1"></i><?= sanitize($materi['nama_guru']) ?><br>
-                                        <?= sanitize($materi['semester']) ?> · <?= sanitize($materi['tahun_ajaran']) ?>
-                                    </p>
-                                    <?php if ($materi['deskripsi']): ?>
-                                        <p class="text-secondary small flex-grow-1"><?= nl2br(sanitize($materi['deskripsi'])) ?></p>
-                                    <?php else: ?>
-                                        <div class="flex-grow-1"></div>
-                                    <?php endif; ?>
-
-                                    <?php if ($materi['file_path']): ?>
-                                        <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-outline-primary w-100">
-                                            <i class="fa-solid fa-eye me-1"></i> Buka Materi
-                                        </a>
-                                    <?php else: ?>
-                                        <span class="btn btn-light disabled w-100">Materi tanpa lampiran</span>
-                                    <?php endif; ?>
-                                </div>
-                            </article>
-                        </div>
-                    <?php endforeach; ?>
+                <p class="small text-muted mb-3"><i class="fa-solid fa-arrow-down-wide-short me-1"></i>Mata pelajaran dengan pembaruan terbaru ditampilkan paling atas.</p>
+                <div class="accordion material-accordion d-grid gap-3" id="materialGroups">
+                    <?php foreach($materi_groups as $groupIndex=>$group): $collapseId='materialGroup'.(int)$groupIndex;$open=$groupIndex===array_key_first($materi_groups); ?>
+                    <section class="accordion-item"><h2 class="accordion-header"><button class="accordion-button <?= $open?'':'collapsed' ?>" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $collapseId ?>" aria-expanded="<?= $open?'true':'false' ?>"><span class="subject-icon me-3"><i class="fa-solid fa-book-open"></i></span><span class="subject-copy flex-grow-1"><strong class="d-block"><?= sanitize($group['nama_mapel']) ?></strong><small class="text-muted d-block"><i class="fa-solid fa-user-tie me-1"></i><?= sanitize($group['nama_guru']) ?> · <?= count($group['items']) ?> materi</small></span><?php if($group['baru']): ?><span class="badge bg-danger me-2"><?= $group['baru'] ?> baru</span><?php endif ?></button></h2>
+                    <div id="<?= $collapseId ?>" class="accordion-collapse collapse <?= $open?'show':'' ?>" data-bs-parent="#materialGroups"><div class="accordion-body">
+                        <?php foreach($group['items'] as $materi): ?><article class="material-row"><div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><span><span class="badge bg-primary-subtle text-primary">Pertemuan <?= (int)$materi['pertemuan_ke'] ?></span><?php if($materi['is_baru']): ?> <span class="badge bg-danger">Baru</span><?php endif ?></span><small class="text-muted"><i class="fa-regular fa-clock me-1"></i><?= date('d/m/Y H:i',strtotime($materi['created_at'])) ?></small></div><h3 class="h6 fw-bold material-title mb-2"><?= sanitize($materi['judul']) ?></h3><?php if($materi['deskripsi']): ?><div class="material-description text-secondary small mb-3"><?= nl2br(sanitize($materi['deskripsi'])) ?></div><?php endif ?><?php if($materi['file_path']): ?><a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-eye me-1"></i>Buka Materi</a><?php else: ?><span class="badge bg-light text-muted border">Tanpa lampiran</span><?php endif ?></article><?php endforeach ?>
+                    </div></div></section>
+                    <?php endforeach ?>
                 </div>
             <?php endif; ?>
         <?php endif; ?>

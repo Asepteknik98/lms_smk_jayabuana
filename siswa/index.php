@@ -23,6 +23,14 @@ $siswa = $stmt_siswa->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 $kelas_id = $siswa['kelas_id'] ?? 0;
 
+// Materi yang belum pernah dibuka siswa.
+$stmt_materi_baru=$db->prepare("SELECT COUNT(*) FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id=? WHERE p.kelas_id=? AND md.materi_id IS NULL");
+$stmt_materi_baru->execute([$siswa_id,$kelas_id]);$materi_baru=(int)$stmt_materi_baru->fetchColumn();
+
+// Sesi absensi yang sedang berlangsung dan belum di-check-in siswa.
+$stmt_absensi_menunggu=$db->prepare("SELECT COUNT(*) FROM sesi_absensi sa JOIN pengajaran p ON p.id=sa.pengajaran_id LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=? WHERE p.kelas_id=? AND sa.status='Dibuka' AND NOW() BETWEEN sa.waktu_buka AND sa.waktu_tutup AND da.id IS NULL");
+$stmt_absensi_menunggu->execute([$siswa_id,$kelas_id]);$absensi_menunggu=(int)$stmt_absensi_menunggu->fetchColumn();
+
 // 2. Ambil Ringkasan Statistik Siswa
 // Total Tugas Aktif (Belum Dikerjakan/Dikumpulkan)
 $stmt_tugas = $db->prepare("
@@ -75,10 +83,6 @@ $stmt_tugas_dekat = $db->prepare("
 ");
 $stmt_tugas_dekat->execute([$siswa_id, $kelas_id]);
 $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
-$stmt_terlewat=$db->prepare("SELECT
- (SELECT COUNT(*) FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=? WHERE p.kelas_id=? AND t.deadline<NOW() AND pt.id IS NULL) tugas,
- (SELECT COUNT(*) FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=? WHERE p.kelas_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<NOW() AND nu.id IS NULL) kuis");
-$stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$stmt_terlewat->fetch();
 ?>
 
 <?php require_once __DIR__ . '/../includes/header.php'; ?>
@@ -126,7 +130,7 @@ $stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$st
     </nav>
 
     <main class="student-main p-3 p-md-4">
-        <?php if(($terlewat['tugas']??0)||($terlewat['kuis']??0)): ?><div class="alert alert-danger"><i class="fa-solid fa-bell me-2"></i><strong>Perlu perhatian:</strong> Anda belum mengerjakan <?= (int)$terlewat['tugas'] ?> tugas dan <?= (int)$terlewat['kuis'] ?> kuis yang sudah berakhir. Nilai kegiatan tersebut dihitung 0 pada rekap.</div><?php endif; ?>
+        <?php if($absensi_menunggu): ?><a href="absensi.php" class="alert alert-warning border-warning d-flex align-items-center gap-3 text-decoration-none text-dark shadow-sm"><span class="quick-icon bg-warning text-dark flex-shrink-0"><i class="fa-solid fa-bell fa-shake"></i></span><span class="flex-grow-1"><strong class="d-block">Absensi sedang dibuka!</strong><small>Anda memiliki <?= $absensi_menunggu ?> sesi yang belum di-check-in. Ketuk di sini sebelum waktunya berakhir.</small></span><i class="fa-solid fa-chevron-right"></i></a><?php endif; ?>
         <section class="welcome-card p-4 mb-3">
             <small class="opacity-75">Selamat datang 👋</small>
             <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
@@ -134,10 +138,10 @@ $stmt_terlewat->execute([$siswa_id,$kelas_id,$siswa_id,$kelas_id]);$terlewat=$st
         </section>
 
         <section class="mb-4" aria-labelledby="menuCepat"><h2 class="h6 fw-bold mb-3" id="menuCepat">Mau belajar apa hari ini?</h2><div class="row g-2">
-            <div class="col-6 col-md-3"><a href="materi.php" class="quick-link"><span class="quick-icon bg-primary-subtle text-primary"><i class="fa-solid fa-book-open-reader"></i></span><span>Materi</span></a></div>
-            <div class="col-6 col-md-3"><a href="tugas.php" class="quick-link"><span class="quick-icon bg-warning-subtle text-warning"><i class="fa-solid fa-list-check"></i></span><span>Tugas <?php if($tugas_aktif): ?><span class="badge bg-danger rounded-pill ms-1"><?= (int)$tugas_aktif ?></span><?php endif; ?></span></a></div>
-            <div class="col-6 col-md-3"><a href="absensi.php" class="quick-link"><span class="quick-icon bg-success-subtle text-success"><i class="fa-solid fa-user-check"></i></span><span>Absensi</span></a></div>
-            <div class="col-6 col-md-3"><a href="ujian.php" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Ujian <?php if($ujian_aktif): ?><span class="badge bg-danger rounded-pill ms-1"><?= (int)$ujian_aktif ?></span><?php endif; ?></span></a></div>
+            <div class="col-6 col-md-3"><a href="materi.php" class="quick-link"><span class="quick-icon bg-primary-subtle text-primary position-relative"><i class="fa-solid fa-book-open-reader"></i><?php if($materi_baru): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $materi_baru>99?'99+':$materi_baru ?><span class="visually-hidden">materi baru</span></span><?php endif ?></span><span>Materi<?php if($materi_baru): ?> <small class="text-danger fw-bold"><?= $materi_baru ?> baru</small><?php endif ?></span></a></div>
+            <div class="col-6 col-md-3"><a href="tugas.php" class="quick-link"><span class="quick-icon bg-warning-subtle text-warning"><i class="fa-solid fa-list-check"></i></span><span>Tugas</span></a></div>
+            <div class="col-6 col-md-3"><a href="absensi.php" class="quick-link"><span class="quick-icon bg-success-subtle text-success position-relative"><i class="fa-solid fa-user-check"></i><?php if($absensi_menunggu): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $absensi_menunggu ?><span class="visually-hidden">absensi menunggu check-in</span></span><?php endif ?></span><span>Absensi<?php if($absensi_menunggu): ?> <small class="text-danger fw-bold">Check-in!</small><?php endif ?></span></a></div>
+            <div class="col-6 col-md-3"><a href="ujian.php" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Ujian</span></a></div>
         </div></section>
 
         <div class="row g-2 mb-4">

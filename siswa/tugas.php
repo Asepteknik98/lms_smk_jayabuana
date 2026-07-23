@@ -56,6 +56,8 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
     .task-instruction .instruction-copy { max-height:130px; overflow:auto; padding-top:8px; font-size:.78rem; line-height:1.5; }
     .task-deadline { font-size:.75rem; line-height:1.4; }
     .student-task-card .btn-sm { min-height:36px; font-size:.78rem; }
+    .upload-choice { border:1px solid #e4eaf2; border-radius:13px; padding:12px; background:#f8fafc; }
+    .camera-preview { max-height:260px; width:100%; object-fit:contain; border-radius:12px; background:#eef2f7; }
     @media (hover:hover) and (min-width:992px) { .student-task-card:hover { transform:translateY(-2px); box-shadow:0 .5rem 1.25rem rgba(15,23,42,.1)!important; } }
     @media (max-width:575.98px) {
         .student-task-grid { --bs-gutter-y:.7rem; }
@@ -193,10 +195,20 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="tugas_id" id="modalTugasId">
 
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Unggah File Jawaban</label>
-                        <input type="file" name="file_jawaban" class="form-control" accept=".pdf,.docx,.zip,.rar,.png,.jpg,.jpeg,.webp,.heic,.heif" required>
+                    <div class="upload-choice mb-3">
+                        <label class="form-label fw-semibold"><i class="fa-solid fa-camera text-primary me-1"></i>Ambil Foto Jawaban</label>
+                        <input type="file" name="foto_kamera" id="cameraInput" class="form-control" accept="image/*" capture="environment">
+                        <div class="form-text">Kamera belakang akan dibuka pada perangkat yang mendukung.</div>
+                    </div>
+                    <div class="text-center text-muted small mb-3"><span class="bg-white px-2">atau</span></div>
+                    <div class="upload-choice mb-3">
+                        <label class="form-label fw-semibold"><i class="fa-solid fa-folder-open text-primary me-1"></i>Pilih File dari Perangkat</label>
+                        <input type="file" name="file_jawaban" id="fileInput" class="form-control" accept=".pdf,.docx,.zip,.rar,.png,.jpg,.jpeg,.webp,.heic,.heif">
                         <div class="form-text">PDF, DOCX, ZIP/RAR, JPG/JPEG, PNG, WEBP, atau HEIC · maksimal 10 MB.</div>
+                    </div>
+                    <div id="cameraPreviewWrap" class="d-none mb-3"><div class="d-flex justify-content-between align-items-center mb-2"><small class="fw-semibold text-success"><i class="fa-solid fa-circle-check me-1"></i>Foto siap dikirim</small><button type="button" class="btn btn-sm btn-link text-danger p-0" id="removeCameraPhoto">Hapus foto</button></div><img id="cameraPreview" class="camera-preview" alt="Preview foto jawaban"></div>
+                    <div id="selectedFileInfo" class="alert alert-info py-2 small d-none mb-3"></div>
+                    <div>
                         <div class="progress mt-3 d-none" id="uploadProgress" style="height:8px"><div class="progress-bar" style="width:0%"></div></div>
                     </div>
 
@@ -220,6 +232,7 @@ $(document).ready(function() {
 
     $('#formKirimTugas').on('submit', function(e) {
         e.preventDefault();
+        if(!$('#cameraInput')[0].files.length&&!$('#fileInput')[0].files.length){Swal.fire('Pilih Jawaban','Ambil foto dengan kamera atau pilih file jawaban terlebih dahulu.','warning');return}
         let formData = new FormData(this);
 
         const button=$('#submitTaskButton'),progress=$('#uploadProgress'),bar=progress.find('.progress-bar');button.prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-1"></span>Mengunggah...');progress.removeClass('d-none');
@@ -242,11 +255,17 @@ $(document).ready(function() {
             complete:function(){button.prop('disabled',false).html('Kirim Tugas');progress.addClass('d-none');bar.css('width','0%')}
         });
     });
+    $('#cameraInput').on('change',function(){const file=this.files[0];if(!file)return;$('#fileInput').val('');$('#selectedFileInfo').addClass('d-none');const reader=new FileReader();reader.onload=e=>{$('#cameraPreview').attr('src',e.target.result);$('#cameraPreviewWrap').removeClass('d-none')};reader.readAsDataURL(file)});
+    $('#fileInput').on('change',function(){const file=this.files[0];if(!file)return;$('#cameraInput').val('');$('#cameraPreviewWrap').addClass('d-none');URL.revokeObjectURL($('#cameraPreview').attr('src'));$('#cameraPreview').removeAttr('src');$('#selectedFileInfo').removeClass('d-none').html('<i class="fa-solid fa-paperclip me-1"></i>'+escapeHtml(file.name)+' · '+formatBytes(file.size))});
+    $('#removeCameraPhoto').on('click',function(){$('#cameraInput').val('');$('#cameraPreviewWrap').addClass('d-none');$('#cameraPreview').removeAttr('src')});
 });
 
 function openSubmitModal(tugasId, judul) {
+    $('#formKirimTugas')[0].reset();$('#cameraPreviewWrap,#selectedFileInfo,#uploadProgress').addClass('d-none');$('#cameraPreview').removeAttr('src');
     $('#modalTugasId').val(tugasId);
     $('#modalTugasTitle').text('Kirim Jawaban: ' + judul);
     submitModal.show();
 }
+function escapeHtml(value){return $('<div>').text(value).html()}
+function formatBytes(bytes){return bytes<1048576?Math.max(1,Math.round(bytes/1024))+' KB':(bytes/1048576).toFixed(1)+' MB'}
 </script>
