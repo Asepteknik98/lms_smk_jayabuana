@@ -1,0 +1,9 @@
+Options -Indexes
+AddType application/manifest+json .webmanifest
+
+<Files "sw.js">
+  <IfModule mod_headers.c>
+    Header set Cache-Control "no-cache"
+    Header set Service-Worker-Allowed "/lms/"
+  </IfModule>
+</Files>

@@ -124,6 +124,7 @@ Proyek ini tidak memerlukan Composer atau Node.js untuk menjalankan fitur utaman
    database/2026_07_23_komponen_penilaian.sql
    database/2026_07_23_penyempurnaan_rekap_nilai.sql
    database/2026_07_23_notifikasi_materi_siswa.sql
+   database/2026_07_24_metadata_pengumpulan_tugas.sql
    ```
 
 6. Periksa konfigurasi pada `config/database.php`:

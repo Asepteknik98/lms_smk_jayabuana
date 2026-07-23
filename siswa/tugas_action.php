@@ -87,8 +87,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if (move_uploaded_file($fileTmpPath, $uploadDir . $newFileName)) {
         try {
-            $stmt_ins = $db->prepare("INSERT INTO pengumpulan_tugas (tugas_id, siswa_id, file_tugas, catatan) VALUES (?, ?, ?, NULL)");
-            $stmt_ins->execute([$tugas_id, $siswa_id, $newFileName]);
+            $namaAsli=mb_substr(basename($fileName),0,255);
+            $stmt_ins = $db->prepare("INSERT INTO pengumpulan_tugas (tugas_id, siswa_id, file_tugas, nama_file_asli, ukuran_file, catatan) VALUES (?, ?, ?, ?, ?, NULL)");
+            $stmt_ins->execute([$tugas_id, $siswa_id, $newFileName, $namaAsli, $fileSize]);
             catat_log($_SESSION['user_id'], "Mengirimkan jawaban tugas ID: $tugas_id");
             echo json_encode(['status' => 'success', 'message' => 'Tugas berhasil dikumpulkan. Jawaban tidak dapat diubah atau dikirim ulang.']);
         } catch (PDOException $e) {

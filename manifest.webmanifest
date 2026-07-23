@@ -1,0 +1,26 @@
+{
+  "name": "LMS SMKS Jaya Buana",
+  "short_name": "LMS Jaya Buana",
+  "description": "Sistem pembelajaran digital SMKS Jaya Buana",
+  "start_url": "/lms/",
+  "scope": "/lms/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f5f7fb",
+  "theme_color": "#1769e0",
+  "lang": "id",
+  "icons": [
+    {
+      "src": "/lms/assets/img/pwa-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/lms/assets/img/pwa-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -102,6 +102,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="icon" type="image/png" href="assets/img/jb-mobile.png">
+    <link rel="manifest" href="manifest.webmanifest">
+    <link rel="apple-touch-icon" href="assets/img/pwa-icon-192.png">
+    <meta name="theme-color" content="#1769e0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
     <style>
         :root{--navy:#0b1f3a;--blue:#1769e0;--cyan:#37b8f1;--ink:#162033;--muted:#718096}
         *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;min-height:100vh;min-height:100dvh;background:#eef3f9;font-family:Inter,"Segoe UI",sans-serif;color:var(--ink)}
@@ -197,6 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 const password=document.getElementById('password'),toggle=document.getElementById('passwordToggle');
 toggle.addEventListener('click',()=>{const visible=password.type==='text';password.type=visible?'password':'text';toggle.setAttribute('aria-pressed',String(!visible));toggle.setAttribute('aria-label',visible?'Tampilkan kata sandi':'Sembunyikan kata sandi');toggle.innerHTML=`<i class="fa-regular ${visible?'fa-eye':'fa-eye-slash'}"></i>`;password.focus()});
 document.getElementById('loginForm').addEventListener('submit',function(){const button=document.getElementById('loginButton');button.disabled=true;button.innerHTML='<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Memverifikasi akun...'});
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/lms/sw.js',{scope:'/lms/'}).catch(()=>{}))}
 </script>
 </body>
 </html>

@@ -17,7 +17,7 @@ $kelas_id = $siswa['kelas_id'] ?? 0;
 // Ambil Daftar Tugas Berdasarkan Kelas Siswa
 $stmt_t = $db->prepare("
     SELECT t.*, m.nama_mapel, g.nama_lengkap as nama_guru, pt.id pengumpulan_id, pt.nilai,
-           pt.catatan_guru, pt.file_tugas as jawaban_file
+           pt.catatan_guru, pt.file_tugas as jawaban_file,pt.nama_file_asli,pt.ukuran_file,pt.dikumpulkan_pada
     FROM tugas t
     JOIN pengajaran p ON t.pengajaran_id = p.id
     JOIN mapel m ON p.mapel_id = m.id
@@ -135,6 +135,13 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                             <button class="btn btn-success btn-sm w-100" disabled>
                                 <i class="fa-solid fa-circle-check me-1"></i> Tugas Sudah Dikumpulkan
                             </button>
+                            <?php $ukuran_aktual=$t['ukuran_file'];if(!$ukuran_aktual&&$t['jawaban_file']){$path_jawaban=__DIR__.'/../assets/upload/jawaban/'.basename($t['jawaban_file']);$ukuran_aktual=is_file($path_jawaban)?filesize($path_jawaban):null;} ?>
+                            <div class="border rounded bg-light p-2 mt-2 small">
+                                <div class="fw-semibold mb-1"><i class="fa-solid fa-receipt text-success me-1"></i>Bukti Pengumpulan</div>
+                                <div class="text-truncate" title="<?= sanitize($t['nama_file_asli']?:$t['jawaban_file']) ?>"><i class="fa-solid fa-paperclip text-muted me-1"></i><?= sanitize($t['nama_file_asli']?:$t['jawaban_file']) ?></div>
+                                <div class="text-muted mt-1"><?= $ukuran_aktual?($ukuran_aktual<1048576?number_format($ukuran_aktual/1024,0).' KB':number_format($ukuran_aktual/1048576,2).' MB'):'Ukuran tidak tersedia' ?> · <?= $t['dikumpulkan_pada']?date('d/m/Y H:i',strtotime($t['dikumpulkan_pada'])):'-' ?></div>
+                                <span class="badge <?= $t['nilai']===null?'bg-warning text-dark':'bg-success' ?> mt-2"><?= $t['nilai']===null?'Menunggu Penilaian':'Sudah Dinilai' ?></span>
+                            </div>
                         <?php elseif(!$is_expired): ?>
                             <button class="btn btn-outline-primary btn-sm w-100" onclick='openSubmitModal(<?= (int)$t['id'] ?>, <?= json_encode($t['judul'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>
                                 <i class="fa-solid fa-paper-plane me-1"></i> Kirim Jawaban

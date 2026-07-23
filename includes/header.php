@@ -30,6 +30,12 @@ $needs_datatables = preg_match('~/(admin/(users|monitoring|pengajaran)|guru/mate
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title><?= htmlspecialchars($_SESSION['role_nama'] ?? 'Pengguna', ENT_QUOTES, 'UTF-8') ?> - LMS SMK Jaya Buana</title>
     <link rel="icon" type="image/png" href="../assets/img/jb-mobile.png">
+    <?php if((int)($_SESSION['role_id']??0)===3): ?><link rel="manifest" href="../manifest.webmanifest">
+    <link rel="apple-touch-icon" href="../assets/img/pwa-icon-192.png">
+    <meta name="theme-color" content="#1769e0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="LMS Jaya Buana"><?php endif ?>
     <!-- Bootstrap 5 CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome 6 -->

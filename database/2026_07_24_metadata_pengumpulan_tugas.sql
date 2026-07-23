@@ -1,0 +1,3 @@
+ALTER TABLE pengumpulan_tugas
+  ADD COLUMN IF NOT EXISTS nama_file_asli VARCHAR(255) DEFAULT NULL AFTER file_tugas,
+  ADD COLUMN IF NOT EXISTS ukuran_file INT UNSIGNED DEFAULT NULL AFTER nama_file_asli;

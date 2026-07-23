@@ -15,6 +15,9 @@ $stmt_siswa->execute([$_SESSION['user_id']]);
 $siswa = $stmt_siswa->fetch();
 $siswa_id = (int)($siswa['id'] ?? 0);
 $kelas_id = (int)($siswa['kelas_id'] ?? 0);
+$filter_pengajaran=(int)($_GET['pengajaran_id']??0);
+$stmt_mapel=$db->prepare('SELECT p.id,m.nama_mapel,g.nama_lengkap nama_guru FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN guru g ON g.id=p.guru_id WHERE p.kelas_id=? ORDER BY m.nama_mapel');
+$stmt_mapel->execute([$kelas_id]);$daftar_mapel=$stmt_mapel->fetchAll();
 
 $success = $_SESSION['flash_success'] ?? '';
 $error = $_SESSION['flash_error'] ?? '';
@@ -119,7 +122,7 @@ $stmt_aktif = $db->prepare(
 $stmt_aktif->execute([$siswa_id, $kelas_id]);
 $sesi_aktif = $stmt_aktif->fetchAll();
 
-$stmt_riwayat = $db->prepare(
+$sql_riwayat =
     "SELECT sa.pertemuan_ke, sa.tanggal, p.semester, p.tahun_ajaran,
             m.nama_mapel, g.nama_lengkap AS nama_guru,
             da.status, da.waktu_checkin, da.keterangan
@@ -128,10 +131,10 @@ $stmt_riwayat = $db->prepare(
      JOIN pengajaran p ON p.id = sa.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
      JOIN guru g ON g.id = p.guru_id
-     WHERE da.siswa_id = ?
-     ORDER BY sa.tanggal DESC, COALESCE(da.waktu_checkin,sa.waktu_buka) DESC, sa.pertemuan_ke DESC"
-);
-$stmt_riwayat->execute([$siswa_id]);
+     WHERE da.siswa_id = ?".($filter_pengajaran>0?' AND p.id=?':'')."
+     ORDER BY sa.tanggal DESC, COALESCE(da.waktu_checkin,sa.waktu_buka) DESC, sa.pertemuan_ke DESC";
+$stmt_riwayat = $db->prepare($sql_riwayat);
+$stmt_riwayat->execute($filter_pengajaran>0?[$siswa_id,$filter_pengajaran]:[$siswa_id]);
 $riwayat = $stmt_riwayat->fetchAll();
 $riwayat_per_halaman=5;$total_halaman_riwayat=max(1,(int)ceil(count($riwayat)/$riwayat_per_halaman));
 ?>
@@ -227,7 +230,7 @@ $riwayat_per_halaman=5;$total_halaman_riwayat=max(1,(int)ceil(count($riwayat)/$r
             <?php endif; ?>
 
             <div class="card attendance-card"><div class="card-body p-3 p-md-4">
-                <h6 class="fw-bold mb-3">Riwayat Kehadiran</h6>
+                <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3"><h6 class="fw-bold mb-0">Riwayat Kehadiran</h6><form method="get" class="d-flex gap-1 flex-grow-1 flex-md-grow-0"><select class="form-select form-select-sm" name="pengajaran_id" aria-label="Filter mata pelajaran"><option value="0">Semua Mata Pelajaran</option><?php foreach($daftar_mapel as $mapel): ?><option value="<?= (int)$mapel['id'] ?>" <?= $filter_pengajaran===(int)$mapel['id']?'selected':'' ?>><?= sanitize($mapel['nama_mapel'].' — '.$mapel['nama_guru']) ?></option><?php endforeach ?></select><button class="btn btn-sm btn-primary"><i class="fa-solid fa-filter"></i><span class="visually-hidden">Terapkan filter</span></button></form></div>
                 <div class="table-responsive d-none d-md-block">
                     <table class="table table-hover align-middle">
                         <thead class="table-light"><tr><th>Tanggal</th><th>Pembelajaran</th><th>Pertemuan</th><th>Status</th><th>Check-in/Keterangan</th></tr></thead>
