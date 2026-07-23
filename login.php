@@ -103,172 +103,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link rel="icon" type="image/png" href="assets/img/jb.png">
     <style>
-        html, body {
-            min-height: 100%;
-        }
-
-        body {
-            background: linear-gradient(rgba(15, 23, 42, 0.65), rgba(15, 23, 42, 0.65)), 
-                        url('assets/img/fotojb.jpeg') no-repeat center center fixed;
-            background-size: cover;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            min-height: 100dvh;
-            margin: 0;
-            padding: clamp(16px, 4vw, 32px);
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-        }
-
-        .card-login {
-            background: rgba(255, 255, 255, 0.88);
-            backdrop-filter: blur(16px);
-            -webkit-backdrop-filter: blur(16px);
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            border-radius: 20px;
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.35);
-            width: 100%;
-            max-width: 380px;
-            overflow: hidden;
-        }
-
-        .logo-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin-bottom: 8px;
-        }
-
-        .logo-img {
-            width: clamp(76px, 20vw, 96px);
-            height: clamp(76px, 20vw, 96px);
-            object-fit: contain;
-            filter: drop-shadow(0px 2px 4px rgba(0, 0, 0, 0.2));
-        }
-
-        .login-title {
-            font-size: clamp(1.05rem, 3.5vw, 1.25rem);
-        }
-
-        .btn-primary-custom {
-            background: #0d6efd;
-            border: none;
-            padding: 10px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-
-        .btn-primary-custom:hover {
-            background: #0b5ed7;
-            transform: translateY(-2px);
-            box-shadow: 0 5px 15px rgba(13, 110, 253, 0.4);
-        }
-
-        .input-group-text {
-            background-color: rgba(255, 255, 255, 0.9);
-            border-right: none;
-        }
-
-        .form-control {
-            background-color: rgba(255, 255, 255, 0.9);
-            border-left: none;
-        }
-
-        .form-control:focus {
-            background-color: #ffffff;
-            box-shadow: none;
-        }
-
-        .input-group-text,
-        .form-control {
-            min-height: 42px;
-        }
-
-        .password-help {
-            color: #64748b;
-            font-size: 0.79rem;
-            line-height: 1.45;
-        }
-
-        @media (max-width: 575.98px) {
-            body {
-                background-attachment: scroll;
-                padding: 12px;
-            }
-
-            .card-login {
-                max-width: 360px;
-                padding: 1.25rem !important;
-                border-radius: 14px;
-            }
-
-            .logo-img {
-                width: 76px;
-                height: 76px;
-            }
-
-            .card-login .text-center.mb-4 {
-                margin-bottom: 1rem !important;
-            }
-
-            .card-login .form-label {
-                margin-bottom: 0.35rem;
-                font-size: 0.88rem;
-            }
-
-            .input-group-text,
-            .form-control {
-                min-height: 46px;
-            }
-
-            .form-control {
-                font-size: 16px;
-            }
-
-            .btn-primary-custom {
-                min-height: 46px;
-            }
-        }
-
-        @media (max-height: 700px) {
-            body {
-                align-items: flex-start;
-            }
-
-            .logo-img {
-                width: 72px;
-                height: 72px;
-            }
-        }
-
-        @media (max-width: 359.98px) {
-            body {
-                padding: 8px;
-            }
-
-            .card-login {
-                padding: 1rem !important;
-            }
-
-            .logo-img {
-                width: 64px;
-                height: 64px;
-            }
-        }
+        :root{--navy:#0b1f3a;--blue:#1769e0;--cyan:#37b8f1;--ink:#162033;--muted:#718096}
+        *{box-sizing:border-box}html,body{min-height:100%}body{margin:0;min-height:100vh;min-height:100dvh;background:#eef3f9;font-family:Inter,"Segoe UI",sans-serif;color:var(--ink)}
+        .login-shell{min-height:100vh;min-height:100dvh;display:grid;grid-template-columns:minmax(0,1.18fr) minmax(430px,.82fr)}
+        .school-visual{position:relative;isolation:isolate;display:flex;align-items:flex-end;overflow:hidden;padding:clamp(32px,5vw,72px);background:url("assets/img/fotojb.jpeg") center/cover no-repeat;color:#fff}
+        .school-visual::before{content:"";position:absolute;inset:0;z-index:-2;background:linear-gradient(180deg,rgba(5,18,38,.12) 10%,rgba(5,20,44,.35) 48%,rgba(5,19,41,.94) 100%)}
+        .school-visual::after{content:"";position:absolute;z-index:-1;width:440px;height:440px;border:1px solid rgba(255,255,255,.13);border-radius:50%;left:-180px;bottom:-220px;box-shadow:0 0 0 70px rgba(255,255,255,.025),0 0 0 140px rgba(255,255,255,.018)}
+        .visual-content{max-width:650px}.visual-badge{display:inline-flex;align-items:center;gap:9px;padding:8px 13px;border:1px solid rgba(255,255,255,.22);border-radius:999px;background:rgba(9,30,62,.38);backdrop-filter:blur(8px);font-size:.78rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase}
+        .visual-title{margin:22px 0 14px;font-size:clamp(2.15rem,4vw,4.2rem);font-weight:800;line-height:1.06;letter-spacing:-.04em}.visual-title span{color:#7dd3fc}.visual-copy{max-width:570px;margin:0;color:rgba(255,255,255,.78);font-size:clamp(.95rem,1.3vw,1.08rem);line-height:1.75}
+        .visual-points{display:flex;flex-wrap:wrap;gap:18px 28px;margin-top:30px}.visual-point{display:flex;align-items:center;gap:9px;color:rgba(255,255,255,.9);font-size:.87rem;font-weight:650}.visual-point i{display:grid;place-items:center;width:28px;height:28px;border-radius:9px;background:rgba(56,189,248,.18);color:#7dd3fc}
+        .login-panel{position:relative;display:flex;align-items:center;justify-content:center;padding:clamp(28px,5vw,72px);background:#fff}.login-panel::before{content:"";position:absolute;top:0;right:0;width:190px;height:190px;background:radial-gradient(circle at top right,rgba(55,184,241,.13),transparent 68%)}
+        .login-card{position:relative;width:100%;max-width:430px}.brand-row{display:flex;align-items:center;gap:14px;margin-bottom:44px}.logo-wrap{width:66px;height:66px;display:grid;place-items:center;border:1px solid #e7edf5;border-radius:19px;background:#fff;box-shadow:0 10px 30px rgba(17,50,93,.1)}.logo-img{width:53px;height:53px;object-fit:contain}.brand-name{font-size:.92rem;font-weight:800;line-height:1.25;letter-spacing:.02em}.brand-subtitle{margin-top:3px;color:var(--muted);font-size:.75rem}
+        .eyebrow{margin-bottom:8px;color:var(--blue);font-size:.76rem;font-weight:800;letter-spacing:.12em;text-transform:uppercase}.login-title{margin:0;font-size:clamp(1.8rem,3vw,2.25rem);font-weight:800;letter-spacing:-.035em}.login-lead{margin:10px 0 32px;color:var(--muted);font-size:.94rem}
+        .form-label{margin-bottom:8px;color:#2c3a50;font-size:.83rem;font-weight:750}.field-wrap{position:relative}.field-icon{position:absolute;z-index:2;left:17px;top:50%;transform:translateY(-50%);color:#8b9bb1}.login-input{height:54px;padding:0 48px;border:1.5px solid #dfe7f1;border-radius:14px;background:#f8fafc;font-size:.94rem;transition:.2s}.login-input::placeholder{color:#a4afbe}.login-input:focus{border-color:#54a5ef;background:#fff;box-shadow:0 0 0 4px rgba(23,105,224,.1)}.password-toggle{position:absolute;z-index:3;right:8px;top:50%;transform:translateY(-50%);width:38px;height:38px;border:0;border-radius:10px;background:transparent;color:#8795a8}.password-toggle:hover{background:#edf4fc;color:var(--blue)}
+        .btn-login{height:54px;border:0;border-radius:14px;background:linear-gradient(135deg,#1769e0,#0754bd);box-shadow:0 12px 24px rgba(23,105,224,.24);font-weight:750;transition:.2s}.btn-login:hover,.btn-login:focus{background:linear-gradient(135deg,#0f61d5,#064aa8);transform:translateY(-1px);box-shadow:0 15px 28px rgba(23,105,224,.3)}.btn-login:disabled{transform:none}
+        .password-help{margin:18px 0 0;color:#7b899c;font-size:.78rem;line-height:1.55;text-align:center}.login-footer{display:flex;justify-content:space-between;gap:12px;margin-top:42px;padding-top:20px;border-top:1px solid #edf1f6;color:#8b97a7;font-size:.72rem}
+        @media(max-width:991.98px){.login-shell{display:block;position:relative;padding:24px;background:linear-gradient(rgba(5,19,41,.65),rgba(5,19,41,.78)),url("assets/img/fotojb.jpeg") center/cover fixed}.school-visual{display:none}.login-panel{min-height:calc(100vh - 48px);min-height:calc(100dvh - 48px);padding:34px;border-radius:26px;background:rgba(255,255,255,.96);box-shadow:0 28px 70px rgba(0,0,0,.28);backdrop-filter:blur(14px)}.brand-row{margin-bottom:34px}}
+        @media(max-width:575.98px){.login-shell{padding:0;background:#fff}.login-panel{min-height:100vh;min-height:100dvh;padding:24px 20px;border-radius:0;align-items:flex-start}.login-card{padding-top:12px}.brand-row{margin-bottom:30px}.logo-wrap{width:58px;height:58px;border-radius:17px}.logo-img{width:47px;height:47px}.login-title{font-size:1.75rem}.login-lead{margin-bottom:27px}.login-input,.btn-login{height:52px}.login-input{font-size:16px}.login-footer{margin-top:32px;flex-direction:column;text-align:center;gap:5px}}
+        @media(max-height:680px) and (min-width:992px){.brand-row{margin-bottom:24px}.login-lead{margin-bottom:20px}.login-footer{margin-top:24px}.school-visual{padding-top:30px;padding-bottom:30px}}
+        @media(prefers-reduced-motion:reduce){*{scroll-behavior:auto!important;transition:none!important}}
     </style>
 </head>
 <body>
 
-<main class="card card-login p-4">
-    <div class="logo-container">
-        <img src="assets/img/jb.png" alt="Logo SMK Jaya Buana" class="logo-img">
-    </div>
-
-    <div class="text-center mb-4">
-        <h1 class="login-title fw-bold text-dark mb-1">LMS SMKS JAYA BUANA</h1>
-        <p class="text-muted small fw-semibold">Silakan masuk menggunakan akun Anda</p>
-    </div>
+<main class="login-shell">
+    <section class="school-visual" aria-label="Lingkungan SMKS Jaya Buana">
+        <div class="visual-content">
+            <span class="visual-badge"><i class="fa-solid fa-graduation-cap"></i> Learning Management System</span>
+            <h2 class="visual-title">Memberikan Kepastian<br><span>di Masa Depan.</span></h2>
+            <div class="visual-points">
+                <span class="visual-point"><i class="fa-solid fa-book-open"></i> Materi Terpadu</span>
+                <span class="visual-point"><i class="fa-solid fa-chart-line"></i> Progres Terukur</span>
+                <span class="visual-point"><i class="fa-solid fa-shield-halved"></i> Akses Aman</span>
+            </div>
+        </div>
+    </section>
+    <section class="login-panel">
+      <div class="login-card">
+        <div class="brand-row">
+            <span class="logo-wrap"><img src="assets/img/jb.png" alt="Logo SMKS Jaya Buana" class="logo-img"></span>
+            <div><div class="brand-name">SMKS JAYA BUANA</div><div class="brand-subtitle">MUDA, MANDIRI, MAJU</div></div>
+        </div>
+        <div class="eyebrow">Selamat Datang</div>
+        <h1 class="login-title">Masuk ke akun Anda</h1>
+        <p class="login-lead">Gunakan akun sekolah untuk melanjutkan ke LMS.</p>
 
     <?php if (!empty($error)): ?>
         <script>
@@ -281,39 +159,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         </script>
     <?php endif; ?>
 
-    <form action="login.php" method="POST">
-        <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?? '' ?>">
+    <form action="login.php" method="POST" id="loginForm">
+        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
         
         <div class="mb-3">
-            <label class="form-label fw-semibold text-dark">Username / NIS</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-user text-primary"></i></span>
-                <input type="text" name="username" class="form-control" required placeholder="Masukkan Username" autocomplete="off" value="<?= htmlspecialchars($_POST['username'] ?? '') ?>">
+            <label class="form-label" for="username">Username / NIS</label>
+            <div class="field-wrap">
+                <i class="fa-regular fa-user field-icon" aria-hidden="true"></i>
+                <input id="username" type="text" name="username" class="form-control login-input" required placeholder="Masukkan username atau NIS" autocomplete="username" autofocus value="<?= htmlspecialchars($_POST['username'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
             </div>
         </div>
 
         <div class="mb-4">
-            <label class="form-label fw-semibold text-dark">Password</label>
-            <div class="input-group">
-                <span class="input-group-text"><i class="fa-solid fa-lock text-primary"></i></span>
-                <input type="password" name="password" class="form-control" required placeholder="Masukkan Password">
+            <label class="form-label" for="password">Kata Sandi</label>
+            <div class="field-wrap">
+                <i class="fa-solid fa-lock field-icon" aria-hidden="true"></i>
+                <input id="password" type="password" name="password" class="form-control login-input" required placeholder="Masukkan kata sandi" autocomplete="current-password">
+                <button class="password-toggle" type="button" id="passwordToggle" aria-label="Tampilkan kata sandi" aria-pressed="false"><i class="fa-regular fa-eye"></i></button>
             </div>
         </div>
 
-        <button type="submit" class="btn btn-primary btn-primary-custom w-100 rounded-3">
-            <i class="fa-solid fa-right-to-bracket me-2"></i> Masuk Sekarang
+        <button type="submit" class="btn btn-primary btn-login w-100" id="loginButton">
+            <span class="button-label"><i class="fa-solid fa-arrow-right-to-bracket me-2"></i>Masuk ke LMS</span>
         </button>
 
         <p class="password-help text-center mb-0 mt-3">
             <i class="fa-solid fa-circle-info me-1" aria-hidden="true"></i>
-            Jika lupa kata sandi, hubungi wali kelas atau admin sekolah.
+            Lupa kata sandi? Hubungi wali kelas atau administrator sekolah.
         </p>
     </form>
 
-    <div class="text-center mt-4">
-        <small class="text-dark fw-semibold">&copy; 2026 SMKS Jaya Buana</small>
-    </div>
+        <footer class="login-footer"><span>&copy; 2026 SMKS Jaya Buana</span><span>Sistem Pembelajaran Digital</span></footer>
+      </div>
+    </section>
 </main>
-
+<script>
+const password=document.getElementById('password'),toggle=document.getElementById('passwordToggle');
+toggle.addEventListener('click',()=>{const visible=password.type==='text';password.type=visible?'password':'text';toggle.setAttribute('aria-pressed',String(!visible));toggle.setAttribute('aria-label',visible?'Tampilkan kata sandi':'Sembunyikan kata sandi');toggle.innerHTML=`<i class="fa-regular ${visible?'fa-eye':'fa-eye-slash'}"></i>`;password.focus()});
+document.getElementById('loginForm').addEventListener('submit',function(){const button=document.getElementById('loginButton');button.disabled=true;button.innerHTML='<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Memverifikasi akun...'});
+</script>
 </body>
 </html>
