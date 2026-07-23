@@ -1,3 +1,33 @@
+<style>
+    .app-global-footer {
+        margin-top: auto;
+        padding: 18px 20px;
+        border-top: 1px solid #e5e7eb;
+        background: #fff;
+        color: #64748b;
+        font-size: .82rem;
+        text-align: center;
+        letter-spacing: .01em;
+    }
+    #page-content-wrapper {
+        display: flex;
+        flex-direction: column;
+    }
+    #page-content-wrapper > .app-global-footer {
+        width: 100%;
+    }
+</style>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const page = document.getElementById('page-content-wrapper');
+    if (page && !page.querySelector('.app-global-footer')) {
+        const footer = document.createElement('footer');
+        footer.className = 'app-global-footer';
+        footer.innerHTML = '&copy; Copyright SMKS JAYA BUANA 2026 <strong>V.2.1</strong>';
+        page.appendChild(footer);
+    }
+});
+</script>
 </div> <!-- End #wrapper -->
 
 <!-- jQuery, Bootstrap, DataTables, Chart.js & SweetAlert2 JS -->

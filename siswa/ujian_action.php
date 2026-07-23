@@ -81,6 +81,36 @@ if ($action === 'finish_ujian') {
 
     $ujian_id = $sesi['ujian_id'];
 
+    $stmt_belum = $db->prepare(
+        "SELECT COUNT(*)
+         FROM soal_ujian su
+         LEFT JOIN jawaban_siswa js ON js.soal_id = su.id AND js.sesi_ujian_id = ?
+         WHERE su.ujian_id = ?
+           AND ((su.tipe_soal = 'PG' AND js.jawaban_pg IS NULL)
+             OR (su.tipe_soal = 'ESAI' AND (js.jawaban_esai IS NULL OR TRIM(js.jawaban_esai) = '')))"
+    );
+    $stmt_belum->execute([$sesi_id, $ujian_id]);
+    $jumlah_belum = (int)$stmt_belum->fetchColumn();
+
+    $stmt_batas = $db->prepare(
+        "SELECT u.durasi_menit,
+                TIMESTAMPDIFF(SECOND, su.waktu_mulai, NOW()) AS detik_berjalan
+         FROM sesi_ujian su
+         JOIN ujian u ON u.id = su.ujian_id
+         WHERE su.id = ?"
+    );
+    $stmt_batas->execute([$sesi_id]);
+    $batas = $stmt_batas->fetch();
+    $waktu_benar_habis = $batas && (int)$batas['detik_berjalan'] >= max(0, ((int)$batas['durasi_menit'] * 60) - 2);
+
+    if ($jumlah_belum > 0 && !$waktu_benar_habis) {
+        echo json_encode([
+            'status' => 'error',
+            'message' => "$jumlah_belum soal belum dijawab. Semua soal wajib dijawab sebelum ujian dikirim."
+        ]);
+        exit();
+    }
+
     // Update status sesi menjadi Selesai
     $stmt_fin = $db->prepare("UPDATE sesi_ujian SET status = 'Selesai', waktu_selesai = NOW() WHERE id = ?");
     $stmt_fin->execute([$sesi_id]);

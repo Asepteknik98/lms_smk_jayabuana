@@ -1,155 +1,29 @@
 <?php
-require_once __DIR__ . '/../includes/header.php';
-require_once __DIR__ . '/../config/database.php';
-
-check_access([2]);
-
-$db = Database::getInstance();
-
-// Dapatkan ID Guru
-$stmt_g = $db->prepare("SELECT id FROM guru WHERE user_id = ?");
-$stmt_g->execute([$_SESSION['user_id']]);
-$guru = $stmt_g->fetch();
-$guru_id = $guru['id'] ?? 0;
-
-// Daftar pengajaran
-$stmt_p = $db->prepare("
-    SELECT p.id as pengajaran_id, m.nama_mapel, k.nama_kelas 
-    FROM pengajaran p
-    JOIN mapel m ON p.mapel_id = m.id
-    JOIN kelas k ON p.kelas_id = k.id
-    WHERE p.guru_id = ?
-");
-$stmt_p->execute([$guru_id]);
-$pengajaran_list = $stmt_p->fetchAll();
-
-$selected_pengajaran = intval($_GET['pengajaran_id'] ?? ($pengajaran_list[0]['pengajaran_id'] ?? 0));
-
-$rekap_data = [];
-if ($selected_pengajaran > 0) {
-    $stmt_r = $db->prepare("
-        SELECT 
-            s.nisn,
-            s.nama_lengkap,
-            COALESCE((SELECT AVG(pt.nilai)
-                      FROM pengumpulan_tugas pt
-                      JOIN tugas t ON t.id = pt.tugas_id
-                      WHERE t.pengajaran_id = p.id AND pt.siswa_id = s.id), 0) AS avg_tugas,
-            COALESCE((SELECT AVG(nu.nilai_total)
-                      FROM nilai_ujian nu
-                      JOIN ujian u ON u.id = nu.ujian_id
-                      WHERE u.pengajaran_id = p.id AND nu.siswa_id = s.id), 0) AS avg_ujian,
-            COALESCE((SELECT AVG(CASE da.status
-                                    WHEN 'Hadir' THEN 100
-                                    WHEN 'Terlambat' THEN 100
-                                    WHEN 'Sakit' THEN 100
-                                    WHEN 'Izin' THEN 100
-                                    ELSE 0
-                                END)
-                      FROM detail_absensi da
-                      JOIN sesi_absensi sa ON sa.id = da.sesi_absensi_id
-                      WHERE sa.pengajaran_id = p.id
-                        AND sa.status = 'Ditutup'
-                        AND da.siswa_id = s.id), 0) AS avg_absensi
-        FROM siswa s
-        JOIN pengajaran p ON p.kelas_id = s.kelas_id
-        WHERE p.id = ? AND p.guru_id = ?
-        ORDER BY s.nama_lengkap ASC
-    ");
-    $stmt_r->execute([$selected_pengajaran, $guru_id]);
-    $rekap_data = $stmt_r->fetchAll();
-
-    foreach ($rekap_data as &$nilai) {
-        $nilai['nilai_akhir'] = ((float)$nilai['avg_tugas'] * 0.20)
-            + ((float)$nilai['avg_ujian'] * 0.15)
-            + ((float)$nilai['avg_absensi'] * 0.40);
-    }
-    unset($nilai);
-}
+require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../config/database.php';check_access([2]);$db=Database::getInstance();
+$stmt=$db->prepare('SELECT id FROM guru WHERE user_id=?');$stmt->execute([$_SESSION['user_id']]);$guru_id=(int)$stmt->fetchColumn();
+$stmt=$db->prepare('SELECT p.id pengajaran_id,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_ajaran FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? ORDER BY k.nama_kelas,m.nama_mapel');$stmt->execute([$guru_id]);$pengajaran_list=$stmt->fetchAll();
+$selected=(int)($_GET['pengajaran_id']??($pengajaran_list[0]['pengajaran_id']??0));$info=null;$komponen=[];$siswa=[];$nilai=[];$totalBobot=0;
+if($selected){$stmt=$db->prepare('SELECT p.id,p.kelas_id,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_ajaran FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.id=? AND p.guru_id=?');$stmt->execute([$selected,$guru_id]);$info=$stmt->fetch();if(!$info){http_response_code(403);exit('Pengajaran bukan milik Anda.');}
+$stmt=$db->prepare('SELECT id,nama_komponen,bobot FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$selected]);$komponen=$stmt->fetchAll();$totalBobot=array_sum(array_column($komponen,'bobot'));
+$stmt=$db->prepare("SELECT s.id,s.nisn,s.nama_lengkap,
+ COALESCE((SELECT AVG(nu.nilai_total) FROM nilai_ujian nu JOIN ujian u ON u.id=nu.ujian_id WHERE nu.siswa_id=s.id AND u.pengajaran_id=? AND u.jenis_ujian='Kuis'),0) nilai_ulangan,
+ COALESCE((SELECT AVG(pt.nilai) FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id WHERE pt.siswa_id=s.id AND t.pengajaran_id=? AND pt.nilai IS NOT NULL),0) nilai_tugas,
+ COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Terlambat','Sakit','Izin') THEN 100 ELSE 0 END) FROM detail_absensi da JOIN sesi_absensi sa ON sa.id=da.sesi_absensi_id WHERE da.siswa_id=s.id AND sa.pengajaran_id=? AND sa.status='Ditutup'),0) nilai_kehadiran
+ FROM siswa s WHERE s.kelas_id=? ORDER BY s.nama_lengkap");
+$stmt->execute([$selected,$selected,$selected,$info['kelas_id']]);$siswa=$stmt->fetchAll();
+$stmt=$db->prepare('SELECT nk.siswa_id,nk.komponen_id,nk.nilai FROM nilai_komponen nk JOIN komponen_penilaian kp ON kp.id=nk.komponen_id WHERE kp.pengajaran_id=?');$stmt->execute([$selected]);foreach($stmt->fetchAll() as $n)$nilai[$n['siswa_id']][$n['komponen_id']]=$n['nilai'];}
+$siap=abs($totalBobot-100)<.001;
 ?>
-
-<?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
-
-<div id="page-content-wrapper">
-    <nav class="navbar navbar-expand-lg navbar-light top-navbar px-4 py-3">
-        <h5 class="mb-0 fw-bold">Rekapitulasi Nilai Siswa</h5>
-    </nav>
-
-    <div class="container-fluid p-4">
-        <div class="card border-0 shadow-sm p-4 mb-4">
-            <form method="GET" action="rekap_nilai.php" class="row g-3 align-items-center">
-                <div class="col-md-6">
-                    <label class="form-label fw-semibold">Pilih Mata Pelajaran & Kelas</label>
-                    <select name="pengajaran_id" class="form-select" onchange="this.form.submit()">
-                        <?php foreach($pengajaran_list as $p): ?>
-                            <option value="<?= $p['pengajaran_id'] ?>" <?= ($p['pengajaran_id'] == $selected_pengajaran) ? 'selected' : '' ?>>
-                                <?= sanitize($p['nama_mapel']) ?> - <?= sanitize($p['nama_kelas']) ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
-            </form>
-        </div>
-
-        <?php if ($selected_pengajaran > 0): ?>
-        <div class="card border-0 shadow-sm p-4">
-            <div class="alert alert-info small">
-                Nilai LMS maksimal <strong>75</strong>: Tugas 20% + Ujian 15% + Absensi 40%.
-                Sisa 25% disiapkan untuk nilai UTS/UAS di luar modul Guru ini.
-            </div>
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h6 class="fw-bold m-0"><i class="fa-solid fa-calculator me-2 text-primary"></i> Data Nilai Terkalkulasi</h6>
-                <div class="d-flex flex-wrap gap-2">
-                    <a href="rekap_action.php?action=export_excel&pengajaran_id=<?= $selected_pengajaran ?>" class="btn btn-success btn-sm me-2">
-                        <i class="fa-solid fa-file-excel me-1"></i> Unduh Excel
-                    </a>
-                    <a href="rekap_action.php?action=export_pdf&pengajaran_id=<?= $selected_pengajaran ?>" class="btn btn-danger btn-sm">
-                        <i class="fa-solid fa-file-pdf me-1"></i> Unduh PDF
-                    </a>
-                </div>
-            </div>
-
-            <div class="table-responsive">
-                <table id="tableRekap" class="table table-striped table-hover align-middle w-100">
-                    <thead class="table-light">
-                        <tr>
-                            <th>No</th>
-                            <th>NISN</th>
-                            <th>Nama Siswa</th>
-                            <th>Rata-Rata Tugas (20%)</th>
-                            <th>Rata-Rata Ujian (15%)</th>
-                            <th>Absensi (40%)</th>
-                            <th>Nilai LMS (Maks. 75)</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <?php foreach($rekap_data as $idx => $r): ?>
-                        <tr>
-                            <td><?= $idx + 1 ?></td>
-                            <td><?= sanitize($r['nisn']) ?></td>
-                            <td class="fw-semibold"><?= sanitize($r['nama_lengkap']) ?></td>
-                            <td><?= number_format($r['avg_tugas'], 2) ?></td>
-                            <td><?= number_format($r['avg_ujian'], 2) ?></td>
-                            <td><?= number_format($r['avg_absensi'], 2) ?></td>
-                            <td>
-                                <span class="badge bg-primary fs-6">
-                                    <?= number_format($r['nilai_akhir'], 2) ?>
-                                </span>
-                            </td>
-                        </tr>
-                        <?php endforeach; ?>
-                    </tbody>
-                </table>
-            </div>
-        </div>
-        <?php endif; ?>
-    </div>
-</div>
-
-<?php require_once __DIR__ . '/../includes/footer.php'; ?>
-
-<script>
-$(document).ready(function() {
-    $('#tableRekap').DataTable();
-});
-</script>
+<?php require_once __DIR__.'/../includes/sidebar.php'; ?>
+<style>.grade-page{background:#f5f7fb;min-width:0}.grade-card{border:0;border-radius:18px;box-shadow:0 6px 22px rgba(15,23,42,.06)}.weight-bar{height:7px}.component-table td,.component-table th{padding:.85rem}.score-input{width:82px;min-width:72px}.sticky-name{position:sticky;left:0;background:#fff;z-index:2}.grade-table thead .sticky-name{background:#f8f9fa}.component-actions{white-space:nowrap}</style>
+<div id="page-content-wrapper" class="grade-page"><nav class="navbar top-navbar px-3 px-md-4 py-3"><div><h5 class="fw-bold mb-0"><i class="fa-solid fa-chart-column text-primary me-2"></i>Rekap Nilai</h5><small class="text-muted">Komponen dan bobot penilaian per kelas</small></div></nav><main class="container-fluid p-3 p-md-4">
+<?php if(!empty($_SESSION['flash_success'])): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($_SESSION['flash_success']); unset($_SESSION['flash_success']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?><?php if(!empty($_SESSION['flash_error'])): ?><div class="alert alert-danger alert-dismissible fade show"><?= sanitize($_SESSION['flash_error']); unset($_SESSION['flash_error']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
+<section class="card grade-card mb-3"><div class="card-body p-3 p-md-4"><form method="get" class="row g-2 align-items-end"><div class="col-md-9"><label class="form-label fw-semibold">Mata Pelajaran & Kelas</label><select name="pengajaran_id" class="form-select" onchange="this.form.submit()"><?php foreach($pengajaran_list as $p): ?><option value="<?= (int)$p['pengajaran_id'] ?>" <?= $selected===(int)$p['pengajaran_id']?'selected':'' ?>><?= sanitize($p['nama_mapel'].' — '.$p['nama_kelas'].' ('.$p['semester'].' / '.$p['tahun_ajaran'].')') ?></option><?php endforeach ?></select></div></form></div></section>
+<?php if($info): ?><section class="card grade-card mb-3"><div class="card-body p-3 p-md-4"><div class="d-flex justify-content-between align-items-start gap-2 mb-3"><div><h6 class="fw-bold mb-1">Komponen Penilaian</h6><small class="text-muted">Total bobot wajib 100% untuk menginput nilai</small></div><button class="btn btn-sm btn-primary" data-bs-toggle="modal" data-bs-target="#componentModal" onclick="newComponent()"><i class="fa-solid fa-plus me-1"></i>Tambah Komponen</button></div>
+<div class="table-responsive"><table class="table component-table align-middle"><thead class="table-light"><tr><th>Nama Komponen</th><th class="text-center">Bobot (%)</th><th class="text-end">Aksi</th></tr></thead><tbody><?php foreach($komponen as $k): ?><tr><td class="fw-semibold"><?= sanitize($k['nama_komponen']) ?></td><td class="text-center fw-bold text-primary"><?= number_format($k['bobot'],2) ?>%</td><td class="text-end component-actions"><button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#componentModal" onclick='editComponent(<?= json_encode($k,JSON_HEX_APOS|JSON_HEX_QUOT) ?>)'><i class="fa-solid fa-pen"></i></button> <form method="post" action="rekap_nilai_action.php" class="d-inline" onsubmit="return confirm('Hapus komponen dan seluruh nilai di dalamnya?')"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="pengajaran_id" value="<?= $selected ?>"><input type="hidden" name="id" value="<?= (int)$k['id'] ?>"><button class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-trash"></i></button></form></td></tr><?php endforeach ?><?php if(!$komponen): ?><tr><td colspan="3" class="text-center text-muted py-4">Belum ada komponen penilaian.</td></tr><?php endif ?></tbody></table></div>
+<div class="d-flex justify-content-between fw-bold"><span>Total Bobot</span><span class="<?= $siap?'text-success':'text-danger' ?>"><?= number_format($totalBobot,2) ?>% / 100%</span></div><div class="progress weight-bar mt-2"><div class="progress-bar <?= $siap?'bg-success':'bg-warning' ?>" style="width:<?= min(100,$totalBobot) ?>%"></div></div></div></section>
+<section class="card grade-card"><div class="card-body p-3 p-md-4"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h6 class="fw-bold mb-1">Nilai Siswa</h6><small class="<?= $siap?'text-success':'text-danger' ?>"><?= $siap?'Bobot lengkap, nilai dapat disimpan dan diunduh.':'Lengkapi bobot menjadi tepat 100% terlebih dahulu.' ?></small></div><div class="d-flex gap-2"><a class="btn btn-sm btn-success" href="rekap_action.php?action=export_excel&amp;pengajaran_id=<?= $selected ?>"><i class="fa-solid fa-file-excel me-1"></i>Excel Berformula</a><a class="btn btn-sm btn-danger" href="rekap_action.php?action=export_pdf&amp;pengajaran_id=<?= $selected ?>"><i class="fa-solid fa-file-pdf me-1"></i>PDF</a></div></div>
+<form method="post" action="rekap_nilai_action.php"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="save_scores"><input type="hidden" name="pengajaran_id" value="<?= $selected ?>"><div class="table-responsive"><table class="table grade-table align-middle"><thead class="table-light"><tr><th>No</th><th>NISN</th><th class="sticky-name">Nama Siswa</th><?php foreach($komponen as $k): ?><th class="text-center"><?= sanitize($k['nama_komponen']) ?><br><small class="text-primary"><?= number_format($k['bobot'],2) ?>%</small><?php if(in_array($k['nama_komponen'],['Ulangan Harian','Tugas Harian','Kehadiran'],true)): ?><br><small class="text-success"><i class="fa-solid fa-link"></i> Otomatis</small><?php else: ?><br><small class="text-warning">Manual</small><?php endif ?></th><?php endforeach ?><th>Nilai Akhir</th></tr></thead><tbody><?php foreach($siswa as $i=>$s): $akhir=0; ?><tr><td><?= $i+1 ?></td><td><?= sanitize($s['nisn']) ?></td><td class="sticky-name fw-semibold"><?= sanitize($s['nama_lengkap']) ?></td><?php foreach($komponen as $k): $autoMap=['Ulangan Harian'=>'nilai_ulangan','Tugas Harian'=>'nilai_tugas','Kehadiran'=>'nilai_kehadiran'];$isAuto=isset($autoMap[$k['nama_komponen']]);$v=$isAuto?(float)$s[$autoMap[$k['nama_komponen']]]:(float)($nilai[$s['id']][$k['id']]??0);$akhir+=$v*(float)$k['bobot']/100; ?><td><input class="form-control form-control-sm score-input mx-auto <?= $isAuto?'bg-success-subtle':'' ?>" type="number" min="0" max="100" step="0.01" <?= $isAuto?'readonly':'name="nilai['.(int)$s['id'].']['.(int)$k['id'].']"' ?> value="<?= number_format($v,2,'.','') ?>"></td><?php endforeach ?><td><span class="badge bg-primary fs-6"><?= number_format($akhir,2) ?></span></td></tr><?php endforeach ?></tbody></table></div><div class="d-flex flex-wrap align-items-center gap-2"><button class="btn btn-primary" type="submit"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Nilai Manual</button><small class="text-muted">Ulangan, tugas, dan kehadiran diperbarui otomatis dari sistem.</small></div></form></div></section><?php endif ?></main></div>
+<div class="modal fade" id="componentModal" tabindex="-1"><div class="modal-dialog"><form method="post" action="rekap_nilai_action.php" class="modal-content"><div class="modal-header"><h5 class="modal-title" id="componentTitle">Tambah Komponen</h5><button class="btn-close" type="button" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="pengajaran_id" value="<?= $selected ?>"><input type="hidden" name="action" id="componentAction" value="add"><input type="hidden" name="id" id="componentId"><div class="mb-3"><label class="form-label">Nama Komponen</label><select class="form-select" name="nama_komponen" id="componentName" required><option value="">Pilih komponen</option><option value="Ulangan Harian">Ulangan Harian</option><option value="Tugas Harian">Tugas Harian</option><option value="Kehadiran">Kehadiran</option><option value="UTS">UTS</option><option value="UAS">UAS</option></select><div class="form-text">Setiap nama komponen hanya dapat ditambahkan satu kali.</div></div><div><label class="form-label">Bobot (%)</label><input class="form-control" type="number" name="bobot" id="componentWeight" min="0.01" max="100" step="0.01" placeholder="Contoh: 20" required><div class="form-text">Bobot dapat ditentukan guru, dengan total seluruh komponen tepat 100%.</div></div></div><div class="modal-footer"><button class="btn btn-secondary" type="button" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" type="submit">Simpan</button></div></form></div></div>
+<script>function componentFields(){return{title:document.getElementById('componentTitle'),action:document.getElementById('componentAction'),id:document.getElementById('componentId'),name:document.getElementById('componentName'),weight:document.getElementById('componentWeight')}}function newComponent(){const f=componentFields();f.title.textContent='Tambah Komponen';f.action.value='add';f.id.value='';f.name.value='';f.weight.value=''}function editComponent(k){const f=componentFields();f.title.textContent='Edit Komponen';f.action.value='update';f.id.value=k.id;f.name.value=k.nama_komponen;f.weight.value=k.bobot}</script>
+<?php require_once __DIR__.'/../includes/footer.php'; ?>

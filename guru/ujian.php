@@ -44,11 +44,13 @@ $ujian_list = $stmt_u->fetchAll();
     </nav>
 
     <div class="container-fluid p-4">
-        <div class="d-flex justify-content-between mb-3">
+        <?php if(!empty($_SESSION['flash_success'])): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($_SESSION['flash_success']);unset($_SESSION['flash_success']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
+        <?php if(!empty($_SESSION['flash_error'])): ?><div class="alert alert-danger alert-dismissible fade show"><?= sanitize($_SESSION['flash_error']);unset($_SESSION['flash_error']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
+        <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
             <h6 class="fw-bold my-auto"><i class="fa-solid fa-list-check me-2 text-primary"></i> Daftar Jadwal Ujian</h6>
-            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateUjian">
+            <div class="d-flex flex-wrap gap-2"><a class="btn btn-success btn-sm" href="ujian_excel.php?action=template"><i class="fa-solid fa-file-excel me-1"></i> Unduh Template Soal</a><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateUjian">
                 <i class="fa-solid fa-plus me-1"></i> Buat Ujian Baru
-            </button>
+            </button></div>
         </div>
 
         <div class="card border-0 shadow-sm p-4">
@@ -82,9 +84,9 @@ $ujian_list = $stmt_u->fetchAll();
                             </td>
                             <td><span class="badge bg-info text-dark"><?= $u['total_soal'] ?> Soal</span></td>
                             <td>
-                                <button class="btn btn-sm btn-outline-primary" onclick="openAddSoalModal(<?= $u['id'] ?>, '<?= sanitize($u['nama_ujian']) ?>')">
+                                <div class="d-flex flex-wrap gap-1"><button class="btn btn-sm btn-outline-primary" onclick='openAddSoalModal(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'>
                                     <i class="fa-solid fa-folder-plus me-1"></i> Kelola Soal
-                                </button>
+                                </button><button class="btn btn-sm btn-outline-success" onclick='openImportModal(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-file-arrow-up me-1"></i>Upload Excel</button><a class="btn btn-sm btn-outline-dark" href="ujian_hasil.php?ujian_id=<?= (int)$u['id'] ?>"><i class="fa-solid fa-chart-column me-1"></i>Hasil & Jawaban</a></div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
@@ -94,6 +96,8 @@ $ujian_list = $stmt_u->fetchAll();
         </div>
     </div>
 </div>
+
+<div class="modal fade" id="modalImportExcel" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form class="modal-content" method="post" action="ujian_excel.php?action=import" enctype="multipart/form-data"><div class="modal-header"><div><h5 class="modal-title fw-bold">Upload Soal Excel</h5><small class="text-muted" id="importUjianName"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="ujian_id" id="importUjianId"><div class="alert alert-info small"><i class="fa-solid fa-circle-info me-1"></i>Gunakan template resmi. Sistem akan membaca pertanyaan, pilihan, kunci jawaban, dan bobot dari setiap baris.</div><label class="form-label fw-semibold">File Excel (.xls)</label><input class="form-control" type="file" name="file_excel" accept=".xls,application/vnd.ms-excel" required><div class="form-text">Maksimal 2 MB. Hapus baris contoh sebelum mengunggah.</div></div><div class="modal-footer"><a href="ujian_excel.php?action=template" class="btn btn-outline-success"><i class="fa-solid fa-download me-1"></i>Template</a><button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload me-1"></i>Impor Soal</button></div></form></div></div>
 
 <!-- Modal Buat Ujian -->
 <div class="modal fade" id="modalCreateUjian" tabindex="-1">
@@ -217,9 +221,11 @@ $ujian_list = $stmt_u->fetchAll();
 
 <script>
 let modalSoal;
+let modalImport;
 
 $(document).ready(function() {
     modalSoal = new bootstrap.Modal(document.getElementById('modalAddSoal'));
+    modalImport = new bootstrap.Modal(document.getElementById('modalImportExcel'));
 
     $('#formCreateUjian').on('submit', function(e) {
         e.preventDefault();
@@ -248,6 +254,12 @@ function openAddSoalModal(id, nama) {
     $('#modalUjianId').val(id);
     $('#titleSoalModal').text('Kelola Soal: ' + nama);
     modalSoal.show();
+}
+
+function openImportModal(id, nama) {
+    document.getElementById('importUjianId').value = id;
+    document.getElementById('importUjianName').textContent = nama;
+    modalImport.show();
 }
 
 function toggleTipeSoal(val) {
