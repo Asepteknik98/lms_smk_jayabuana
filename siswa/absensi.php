@@ -4,6 +4,7 @@ require_once __DIR__ . '/../config/database.php';
 
 check_access([3]);
 $db = Database::getInstance();
+proses_penutupan_absensi_otomatis($db);
 
 $stmt_siswa = $db->prepare(
     'SELECT s.id, s.kelas_id, s.nama_lengkap, k.nama_kelas

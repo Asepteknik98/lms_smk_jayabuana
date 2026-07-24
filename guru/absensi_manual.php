@@ -9,6 +9,7 @@ $db = Database::getInstance();
 $stmt = $db->prepare('SELECT id FROM guru WHERE user_id=?');
 $stmt->execute([$_SESSION['user_id']]);
 $guru_id = (int)($stmt->fetchColumn() ?: 0);
+proses_penutupan_absensi_otomatis($db);
 
 $success = $_SESSION['absensi_manual_success'] ?? '';
 $error = $_SESSION['absensi_manual_error'] ?? '';

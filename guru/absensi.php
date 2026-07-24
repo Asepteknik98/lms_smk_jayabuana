@@ -8,6 +8,7 @@ $db = Database::getInstance();
 $stmt_guru = $db->prepare('SELECT id FROM guru WHERE user_id = ?');
 $stmt_guru->execute([$_SESSION['user_id']]);
 $guru_id = (int)($stmt_guru->fetchColumn() ?: 0);
+proses_penutupan_absensi_otomatis($db);
 
 $success = $_SESSION['flash_success'] ?? '';
 $error = $_SESSION['flash_error'] ?? '';
@@ -50,6 +51,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         try {
+            $db->beginTransaction();
+            $jumlah_ditutup = proses_penutupan_absensi_otomatis($db, $pengajaran_id, true);
             $stmt = $db->prepare(
                 "INSERT INTO sesi_absensi
                     (pengajaran_id, pertemuan_ke, tanggal, waktu_buka, waktu_tutup, status)
@@ -62,9 +65,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $waktu_buka->format('Y-m-d H:i:s'),
                 $waktu_tutup->format('Y-m-d H:i:s'),
             ]);
+            $db->commit();
             catat_log($_SESSION['user_id'], "Membuka absensi pertemuan $pertemuan_ke");
-            $_SESSION['flash_success'] = "Sesi absensi pertemuan ke-$pertemuan_ke berhasil dibuka.";
-        } catch (PDOException $e) {
+            $_SESSION['flash_success'] = "Sesi absensi pertemuan ke-$pertemuan_ke berhasil dibuka."
+                . ($jumlah_ditutup ? " $jumlah_ditutup sesi sebelumnya otomatis ditutup." : '');
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
             error_log('Gagal membuka sesi absensi: ' . $e->getMessage());
             $_SESSION['flash_error'] = $e->getCode() === '23000'
                 ? 'Absensi untuk pertemuan tersebut sudah tersedia.'
@@ -76,39 +82,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'tutup') {
         $sesi_id = (int)($_POST['sesi_id'] ?? 0);
         try {
-            $db->beginTransaction();
             $stmt_sesi = $db->prepare(
-                "SELECT sa.id, sa.pertemuan_ke, p.kelas_id
+                "SELECT sa.id, sa.pertemuan_ke
                  FROM sesi_absensi sa
                  JOIN pengajaran p ON p.id = sa.pengajaran_id
-                 WHERE sa.id = ? AND p.guru_id = ? AND sa.status = 'Dibuka'
-                 FOR UPDATE"
+                 WHERE sa.id = ? AND p.guru_id = ? AND sa.status = 'Dibuka'"
             );
             $stmt_sesi->execute([$sesi_id, $guru_id]);
             $sesi = $stmt_sesi->fetch();
             if (!$sesi) {
                 throw new RuntimeException('Sesi tidak ditemukan, bukan milik Anda, atau sudah ditutup.');
             }
-
-            $stmt_alpa = $db->prepare(
-                "INSERT INTO detail_absensi (sesi_absensi_id, siswa_id, status, keterangan)
-                 SELECT ?, s.id, 'Alpa', 'Tidak melakukan check-in sampai sesi ditutup'
-                 FROM siswa s
-                 WHERE s.kelas_id = ?
-                 ON DUPLICATE KEY UPDATE sesi_absensi_id = VALUES(sesi_absensi_id)"
-            );
-            $stmt_alpa->execute([$sesi_id, $sesi['kelas_id']]);
-
-            $stmt_tutup = $db->prepare("UPDATE sesi_absensi SET status = 'Ditutup' WHERE id = ?");
-            $stmt_tutup->execute([$sesi_id]);
-            $db->commit();
+            if (!tutup_sesi_absensi($db, $sesi_id, $guru_id)) {
+                throw new RuntimeException('Sesi sudah ditutup.');
+            }
 
             catat_log($_SESSION['user_id'], "Menutup absensi pertemuan {$sesi['pertemuan_ke']}");
             $_SESSION['flash_success'] = 'Sesi ditutup. Siswa yang belum check-in otomatis tercatat Alpa.';
         } catch (Throwable $e) {
-            if ($db->inTransaction()) {
-                $db->rollBack();
-            }
             error_log('Gagal menutup sesi absensi: ' . $e->getMessage());
             $_SESSION['flash_error'] = $e instanceof RuntimeException ? $e->getMessage() : 'Sesi absensi gagal ditutup.';
         }

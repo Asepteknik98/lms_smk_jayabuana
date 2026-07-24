@@ -7,7 +7,23 @@ $db = Database::getInstance();
 $stmt_guru = $db->prepare('SELECT id FROM guru WHERE user_id = ?');
 $stmt_guru->execute([$_SESSION['user_id']]);
 $guru_id = (int)($stmt_guru->fetchColumn() ?: 0);
+proses_penutupan_absensi_otomatis($db);
 
+$stmt_kelas = $db->prepare(
+    'SELECT DISTINCT k.id,k.nama_kelas
+     FROM pengajaran p
+     JOIN kelas k ON k.id=p.kelas_id
+     WHERE p.guru_id=?
+     ORDER BY k.nama_kelas'
+);
+$stmt_kelas->execute([$guru_id]);
+$kelas_list = $stmt_kelas->fetchAll();
+$kelas_id = (int)($_GET['kelas_id'] ?? 0);
+if ($kelas_id > 0 && !array_filter($kelas_list, static fn($kelas) => (int)$kelas['id'] === $kelas_id)) {
+    $kelas_id = 0;
+}
+
+$filter_kelas_sql = $kelas_id > 0 ? ' AND p.kelas_id = ?' : '';
 $stmt_sesi = $db->prepare(
     "SELECT sa.*, m.nama_mapel, k.nama_kelas,
             SUM(da.status = 'Hadir') AS jumlah_tercatat,
@@ -20,11 +36,13 @@ $stmt_sesi = $db->prepare(
      JOIN mapel m ON m.id = p.mapel_id
      JOIN kelas k ON k.id = p.kelas_id
      LEFT JOIN detail_absensi da ON da.sesi_absensi_id = sa.id
-     WHERE p.guru_id = ?
+     WHERE p.guru_id = ? $filter_kelas_sql
      GROUP BY sa.id
      ORDER BY sa.tanggal DESC, sa.pertemuan_ke DESC"
 );
-$stmt_sesi->execute([$guru_id]);
+$parameter_sesi = [$guru_id];
+if ($kelas_id > 0) $parameter_sesi[] = $kelas_id;
+$stmt_sesi->execute($parameter_sesi);
 $seluruh_sesi = $stmt_sesi->fetchAll();
 $sesi_per_halaman = 5;
 $total_sesi = count($seluruh_sesi);
@@ -34,12 +52,14 @@ $total_checkin = array_sum(array_map(fn($sesi) => (int)$sesi['jumlah_tercatat'],
 $total_halaman = max(1, (int)ceil($total_sesi / $sesi_per_halaman));
 $halaman = max(1, min((int)($_GET['page'] ?? 1), $total_halaman));
 $sesi_list = array_slice($seluruh_sesi, ($halaman - 1) * $sesi_per_halaman, $sesi_per_halaman);
+$query_filter = $kelas_id > 0 ? '&amp;kelas_id=' . $kelas_id : '';
 ?>
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 <style>
     .history-page { background:#f5f7fb; min-width:0; }
     .history-content { max-width:1100px; margin:0 auto; }
     .history-panel { border:0; border-radius:18px; box-shadow:0 6px 22px rgba(15,23,42,.06); }
+    .history-filter { border:0; border-radius:16px; box-shadow:0 5px 18px rgba(15,23,42,.05); }
     .history-summary { display:grid; grid-template-columns:repeat(4,1fr); gap:10px; }
     .history-summary-card { border:0; border-radius:15px; box-shadow:0 5px 18px rgba(15,23,42,.05); }
     .history-summary-card .summary-icon { width:38px; height:38px; flex:0 0 38px; display:grid; place-items:center; border-radius:11px; }
@@ -63,6 +83,7 @@ $sesi_list = array_slice($seluruh_sesi, ($halaman - 1) * $sesi_per_halaman, $ses
 <div id="page-content-wrapper" class="history-page">
     <nav class="navbar top-navbar px-3 px-md-4 py-3"><div class="d-flex justify-content-between align-items-center gap-2 w-100"><div><h5 class="fw-bold mb-0"><i class="fa-solid fa-clock-rotate-left text-primary me-2"></i>Riwayat Absensi</h5><small class="text-muted">Pantau seluruh sesi yang pernah dibuat</small></div><div class="d-flex gap-2"><a href="rekap_absensi.php" class="btn btn-sm btn-outline-success flex-shrink-0"><i class="fa-solid fa-chart-column me-1"></i><span class="d-none d-sm-inline">Rekap Kelas</span></a><a href="absensi.php" class="btn btn-sm btn-primary flex-shrink-0"><i class="fa-solid fa-plus me-1"></i><span class="d-none d-sm-inline">Buka Absensi</span></a></div></div></nav>
     <main class="container-fluid history-content p-3 p-md-4">
+        <section class="card history-filter mb-3"><div class="card-body p-3"><form method="get" class="row g-2 align-items-end"><div class="col-md-9"><label class="form-label fw-semibold">Filter Kelas</label><select class="form-select" name="kelas_id" onchange="this.form.submit()"><option value="0">Semua Kelas</option><?php foreach($kelas_list as $kelas): ?><option value="<?= (int)$kelas['id'] ?>" <?= $kelas_id===(int)$kelas['id']?'selected':'' ?>><?= sanitize($kelas['nama_kelas']) ?></option><?php endforeach ?></select></div><div class="col-md-3"><a href="riwayat_absensi.php" class="btn btn-outline-secondary w-100"><i class="fa-solid fa-rotate-left me-1"></i>Reset Filter</a></div></form></div></section>
         <section class="history-summary mb-3">
             <div class="card history-summary-card"><div class="card-body p-3 d-flex align-items-center gap-2"><span class="summary-icon bg-primary-subtle text-primary"><i class="fa-solid fa-calendar-days"></i></span><div><strong class="d-block"><?= $total_sesi ?></strong><small class="text-muted">Total Sesi</small></div></div></div>
             <div class="card history-summary-card"><div class="card-body p-3 d-flex align-items-center gap-2"><span class="summary-icon bg-success-subtle text-success"><i class="fa-solid fa-door-open"></i></span><div><strong class="d-block"><?= $total_sesi_dibuka ?></strong><small class="text-muted">Sedang Dibuka</small></div></div></div>
@@ -75,7 +96,7 @@ $sesi_list = array_slice($seluruh_sesi, ($halaman - 1) * $sesi_per_halaman, $ses
             <div class="table-responsive d-none d-md-block"><table class="table history-table table-hover align-middle mb-0"><thead class="table-light"><tr><th>Pembelajaran</th><th>Jadwal</th><th>Status</th><th>Ringkasan</th><th>Aksi</th></tr></thead><tbody><?php foreach($sesi_list as $sesi): ?><tr><td><strong><?= sanitize($sesi['nama_mapel']) ?></strong><br><small class="text-muted"><?= sanitize($sesi['nama_kelas']) ?> &middot; Pertemuan <?= (int)$sesi['pertemuan_ke'] ?></small></td><td><?= date('d/m/Y',strtotime($sesi['tanggal'])) ?><br><small class="text-muted"><?= date('H:i',strtotime($sesi['waktu_buka'])) ?>–<?= date('H:i',strtotime($sesi['waktu_tutup'])) ?></small></td><td><span class="badge <?= $sesi['status']==='Dibuka'?'bg-success':'bg-secondary' ?>"><?= sanitize($sesi['status']) ?></span></td><td><div class="attendance-chips"><span class="text-success">Hadir <?= (int)$sesi['jumlah_hadir'] ?></span><span class="text-secondary">Sakit <?= (int)$sesi['jumlah_sakit'] ?></span><span class="text-primary">Izin <?= (int)$sesi['jumlah_izin'] ?></span><span class="text-danger">Alpa <?= (int)$sesi['jumlah_alpa'] ?></span></div></td><td><?php if($sesi['status']==='Dibuka'): ?><form method="post" action="absensi.php" onsubmit="return confirm('Tutup sesi? Siswa yang belum check-in akan menjadi Alpa.');"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="tutup"><input type="hidden" name="sesi_id" value="<?= (int)$sesi['id'] ?>"><button class="btn btn-sm btn-danger"><i class="fa-solid fa-lock me-1"></i>Tutup</button></form><?php else: ?><small class="text-muted"><i class="fa-solid fa-check me-1"></i>Selesai</small><?php endif; ?></td></tr><?php endforeach; ?></tbody></table></div>
             <div class="d-md-none"><?php foreach($sesi_list as $sesi): ?><article class="session-mobile-card <?= $sesi['status']==='Dibuka'?'session-open':'' ?>"><div class="d-flex justify-content-between align-items-start gap-2 mb-2"><span class="badge bg-primary">Pertemuan <?= (int)$sesi['pertemuan_ke'] ?></span><span class="badge <?= $sesi['status']==='Dibuka'?'bg-success':'bg-secondary' ?>"><?= sanitize($sesi['status']) ?></span></div><h6 class="fw-bold mb-1"><?= sanitize($sesi['nama_mapel']) ?></h6><p class="small text-muted mb-3"><i class="fa-solid fa-school me-1"></i><?= sanitize($sesi['nama_kelas']) ?> &middot; <?= date('d/m/Y',strtotime($sesi['tanggal'])) ?><br><i class="fa-regular fa-clock me-1"></i><?= date('H:i',strtotime($sesi['waktu_buka'])) ?>–<?= date('H:i',strtotime($sesi['waktu_tutup'])) ?></p><div class="session-stats"><div><strong class="text-success"><?= (int)$sesi['jumlah_hadir'] ?></strong><small>Hadir</small></div><div><strong class="text-secondary"><?= (int)$sesi['jumlah_sakit'] ?></strong><small>Sakit</small></div><div><strong class="text-primary"><?= (int)$sesi['jumlah_izin'] ?></strong><small>Izin</small></div><div><strong class="text-danger"><?= (int)$sesi['jumlah_alpa'] ?></strong><small>Alpa</small></div></div><?php if($sesi['status']==='Dibuka'): ?><form method="post" action="absensi.php" class="mt-3" onsubmit="return confirm('Tutup sesi? Siswa yang belum check-in akan menjadi Alpa.');"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="tutup"><input type="hidden" name="sesi_id" value="<?= (int)$sesi['id'] ?>"><button class="btn btn-sm btn-danger w-100"><i class="fa-solid fa-lock me-1"></i>Tutup Sesi</button></form><?php endif; ?></article><?php endforeach; ?></div>
             <?php endif; ?>
-            <?php if($total_sesi>0): ?><nav class="history-pagination mt-3 pt-3 border-top" aria-label="Navigasi riwayat absensi"><div class="d-flex d-md-none justify-content-between align-items-center"><a class="btn btn-sm btn-outline-primary <?= $halaman<=1?'disabled':'' ?>" href="?page=<?= max(1,$halaman-1) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a><small class="text-muted"><?= $halaman ?> / <?= $total_halaman ?></small><a class="btn btn-sm btn-outline-primary <?= $halaman>=$total_halaman?'disabled':'' ?>" href="?page=<?= min($total_halaman,$halaman+1) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a></div><ul class="pagination pagination-sm justify-content-center d-none d-md-flex mb-0"><li class="page-item <?= $halaman<=1?'disabled':'' ?>"><a class="page-link" href="?page=<?= max(1,$halaman-1) ?>">&laquo;</a></li><?php for($i=1;$i<=$total_halaman;$i++): ?><li class="page-item <?= $i===$halaman?'active':'' ?>"><a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a></li><?php endfor; ?><li class="page-item <?= $halaman>=$total_halaman?'disabled':'' ?>"><a class="page-link" href="?page=<?= min($total_halaman,$halaman+1) ?>">&raquo;</a></li></ul></nav><?php endif; ?>
+            <?php if($total_sesi>0): ?><nav class="history-pagination mt-3 pt-3 border-top" aria-label="Navigasi riwayat absensi"><div class="d-flex d-md-none justify-content-between align-items-center"><a class="btn btn-sm btn-outline-primary <?= $halaman<=1?'disabled':'' ?>" href="?page=<?= max(1,$halaman-1) ?><?= $query_filter ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a><small class="text-muted"><?= $halaman ?> / <?= $total_halaman ?></small><a class="btn btn-sm btn-outline-primary <?= $halaman>=$total_halaman?'disabled':'' ?>" href="?page=<?= min($total_halaman,$halaman+1) ?><?= $query_filter ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a></div><ul class="pagination pagination-sm justify-content-center d-none d-md-flex mb-0"><li class="page-item <?= $halaman<=1?'disabled':'' ?>"><a class="page-link" href="?page=<?= max(1,$halaman-1) ?><?= $query_filter ?>">&laquo;</a></li><?php for($i=1;$i<=$total_halaman;$i++): ?><li class="page-item <?= $i===$halaman?'active':'' ?>"><a class="page-link" href="?page=<?= $i ?><?= $query_filter ?>"><?= $i ?></a></li><?php endfor; ?><li class="page-item <?= $halaman>=$total_halaman?'disabled':'' ?>"><a class="page-link" href="?page=<?= min($total_halaman,$halaman+1) ?><?= $query_filter ?>">&raquo;</a></li></ul></nav><?php endif; ?>
         </div></section>
     </main>
 </div>

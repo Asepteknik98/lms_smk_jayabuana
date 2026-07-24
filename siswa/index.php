@@ -8,6 +8,7 @@ require_once __DIR__ . '/../config/auth.php';
 check_access([3]);
 
 $db = Database::getInstance();
+proses_penutupan_absensi_otomatis($db);
 $user_id = $_SESSION['user_id'];
 
 // 1. Ambil Data Detail Siswa & Kelas
