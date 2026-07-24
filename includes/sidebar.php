@@ -206,10 +206,10 @@ if ($role_id === 3 && class_exists('Database')) {
             <i class="fa-solid fa-gauge me-2"></i> Dashboard Siswa
         </a>
         <div class="px-4 pt-3 pb-1 text-uppercase small fw-bold text-secondary" style="letter-spacing:.08em;">Mata Pelajaran</div>
-        <a href="#sidebarMapelSiswa" class="list-group-item list-group-item-action d-flex align-items-center <?= $current_page === 'materi.php' ? 'active' : '' ?>" data-bs-toggle="collapse" role="button" aria-expanded="<?= $current_page === 'materi.php' ? 'true' : 'false' ?>" aria-controls="sidebarMapelSiswa">
+        <a href="#sidebarMapelSiswa" class="list-group-item list-group-item-action d-flex align-items-center <?= in_array($current_page, ['materi.php','materi_review.php'], true) ? 'active' : '' ?>" data-bs-toggle="collapse" role="button" aria-expanded="<?= in_array($current_page, ['materi.php','materi_review.php'], true) ? 'true' : 'false' ?>" aria-controls="sidebarMapelSiswa">
             <i class="fa-solid fa-book-open-reader me-2"></i><span class="flex-grow-1">Semua Materi</span><i class="fa-solid fa-chevron-down small"></i>
         </a>
-        <div class="collapse <?= $current_page === 'materi.php' ? 'show' : '' ?>" id="sidebarMapelSiswa">
+        <div class="collapse <?= in_array($current_page, ['materi.php','materi_review.php'], true) ? 'show' : '' ?>" id="sidebarMapelSiswa">
             <a href="materi.php" class="list-group-item list-group-item-action <?= ($current_page === 'materi.php' && empty($_GET['pengajaran_id'])) ? 'active' : '' ?>" style="padding-left:2.25rem;font-size:.86rem;">
                 <i class="fa-solid fa-layer-group me-2"></i>Tampilkan Semua
             </a>

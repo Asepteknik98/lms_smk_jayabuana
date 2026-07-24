@@ -29,8 +29,8 @@ $stmt_t = $db->prepare("
 $stmt_t->execute([$siswa_id, $kelas_id]);
 $tugas_list = $stmt_t->fetchAll();
 $daftar_mapel=[];foreach($tugas_list as $item)$daftar_mapel[$item['nama_mapel']]=$item['nama_mapel'];ksort($daftar_mapel);
-$filter_status=$_GET['status']??'semua';$filter_mapel=trim($_GET['mapel']??'');if(!in_array($filter_status,['semua','aktif','selesai','terlambat'],true))$filter_status='semua';
-$tugas_list=array_values(array_filter($tugas_list,static function($item)use($filter_status,$filter_mapel){$submitted=!empty($item['jawaban_file']);$expired=strtotime($item['deadline'])<time();$statusOk=$filter_status==='semua'||($filter_status==='selesai'&&$submitted)||($filter_status==='aktif'&&!$submitted&&!$expired)||($filter_status==='terlambat'&&!$submitted&&$expired);return $statusOk&&($filter_mapel===''||$item['nama_mapel']===$filter_mapel);}));
+$filter_status=$_GET['status']??'semua';$filter_mapel=trim($_GET['mapel']??'');$filter_pengajaran=(int)($_GET['pengajaran_id']??0);$filter_pertemuan=(int)($_GET['pertemuan']??0);if(!in_array($filter_status,['semua','aktif','selesai','terlambat'],true))$filter_status='semua';
+$tugas_list=array_values(array_filter($tugas_list,static function($item)use($filter_status,$filter_mapel,$filter_pengajaran,$filter_pertemuan){$submitted=!empty($item['jawaban_file']);$expired=strtotime($item['deadline'])<time();$statusOk=$filter_status==='semua'||($filter_status==='selesai'&&$submitted)||($filter_status==='aktif'&&!$submitted&&!$expired)||($filter_status==='terlambat'&&!$submitted&&$expired);return $statusOk&&($filter_mapel===''||$item['nama_mapel']===$filter_mapel)&&(!$filter_pengajaran||(int)$item['pengajaran_id']===$filter_pengajaran)&&(!$filter_pertemuan||(int)$item['pertemuan_ke']===$filter_pertemuan);}));
 
 // Batasi jumlah kartu agar halaman tetap ringkas meskipun tugas sangat banyak.
 $tugas_per_halaman = 3;
@@ -89,7 +89,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                 $is_expired   = strtotime(date('Y-m-d H:i:s')) > strtotime($t['deadline']);
             ?>
             <div class="col-12 col-md-6 col-xl-4">
-                <article class="card student-task-card border-0 shadow-sm h-100">
+                <article class="card student-task-card border-0 shadow-sm h-100" id="tugas-<?= (int)$t['id'] ?>">
                 <div class="card-body p-3 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start mb-2">
                         <span class="badge bg-info text-dark"><?= sanitize($t['nama_mapel']) ?></span>
@@ -172,16 +172,16 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
         <?php if ($total_tugas > 0): ?>
             <nav class="mt-4" aria-label="Navigasi halaman tugas">
                 <div class="d-flex d-md-none justify-content-between align-items-center gap-2">
-                    <a class="btn btn-sm btn-outline-primary <?= $halaman <= 1 ? 'disabled' : '' ?>" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>max(1,$halaman-1)]) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a>
+                    <a class="btn btn-sm btn-outline-primary <?= $halaman <= 1 ? 'disabled' : '' ?>" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'pengajaran_id'=>$filter_pengajaran,'pertemuan'=>$filter_pertemuan,'page'=>max(1,$halaman-1)]) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a>
                     <small class="text-muted">Halaman <?= $halaman ?> / <?= $total_halaman ?></small>
-                    <a class="btn btn-sm btn-outline-primary <?= $halaman >= $total_halaman ? 'disabled' : '' ?>" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>min($total_halaman,$halaman+1)]) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a>
+                    <a class="btn btn-sm btn-outline-primary <?= $halaman >= $total_halaman ? 'disabled' : '' ?>" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'pengajaran_id'=>$filter_pengajaran,'pertemuan'=>$filter_pertemuan,'page'=>min($total_halaman,$halaman+1)]) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a>
                 </div>
                 <ul class="pagination pagination-sm justify-content-center d-none d-md-flex mb-0">
-                    <li class="page-item <?= $halaman <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>max(1,$halaman-1)]) ?>" aria-label="Sebelumnya">&laquo;</a></li>
+                    <li class="page-item <?= $halaman <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'pengajaran_id'=>$filter_pengajaran,'pertemuan'=>$filter_pertemuan,'page'=>max(1,$halaman-1)]) ?>" aria-label="Sebelumnya">&laquo;</a></li>
                     <?php for ($nomor = 1; $nomor <= $total_halaman; $nomor++): ?>
-                        <li class="page-item <?= $nomor === $halaman ? 'active' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>$nomor]) ?>"><?= $nomor ?></a></li>
+                        <li class="page-item <?= $nomor === $halaman ? 'active' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'pengajaran_id'=>$filter_pengajaran,'pertemuan'=>$filter_pertemuan,'page'=>$nomor]) ?>"><?= $nomor ?></a></li>
                     <?php endfor; ?>
-                    <li class="page-item <?= $halaman >= $total_halaman ? 'disabled' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'page'=>min($total_halaman,$halaman+1)]) ?>" aria-label="Berikutnya">&raquo;</a></li>
+                    <li class="page-item <?= $halaman >= $total_halaman ? 'disabled' : '' ?>"><a class="page-link" href="?<?= http_build_query(['status'=>$filter_status,'mapel'=>$filter_mapel,'pengajaran_id'=>$filter_pengajaran,'pertemuan'=>$filter_pertemuan,'page'=>min($total_halaman,$halaman+1)]) ?>" aria-label="Berikutnya">&raquo;</a></li>
                 </ul>
                 <p class="text-center text-muted small mt-2 mb-0">Menampilkan maksimal <?= $tugas_per_halaman ?> dari <?= $total_tugas ?> tugas</p>
             </nav>

@@ -44,6 +44,20 @@ function simpan_file_materi(array $file): ?string
     return $nama;
 }
 
+function validasi_video_youtube(string $url): ?string
+{
+    if ($url === '') return null;
+    if (!filter_var($url, FILTER_VALIDATE_URL)) {
+        throw new RuntimeException('Link video YouTube tidak valid.');
+    }
+    $host = strtolower((string)parse_url($url, PHP_URL_HOST));
+    $host = preg_replace('/^www\./', '', $host);
+    if (!in_array($host, ['youtube.com', 'm.youtube.com', 'youtu.be'], true)) {
+        throw new RuntimeException('Link video harus berasal dari YouTube.');
+    }
+    return mb_substr($url, 0, 500);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     http_response_code(405);
     respons_materi('error', 'Metode permintaan tidak diizinkan.');
@@ -64,6 +78,7 @@ try {
         $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
         $judul = trim($_POST['judul'] ?? '');
         $deskripsi = trim($_POST['deskripsi'] ?? '');
+        $video_url = validasi_video_youtube(trim($_POST['video_url'] ?? ''));
         if ($pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || mb_strlen($judul) > 200) {
             throw new RuntimeException('Pertemuan 1–20 dan judul maksimal 200 karakter wajib diisi.');
         }
@@ -74,8 +89,8 @@ try {
         $file_baru = simpan_file_materi($_FILES['file_materi'] ?? []);
         if ($action === 'create_materi') {
             try {
-                $stmt = $db->prepare('INSERT INTO materi (pengajaran_id,pertemuan_ke,judul,deskripsi,file_path) VALUES (?,?,?,?,?)');
-                $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $file_baru]);
+                $stmt = $db->prepare('INSERT INTO materi (pengajaran_id,pertemuan_ke,judul,deskripsi,video_url,file_path) VALUES (?,?,?,?,?,?)');
+                $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $video_url, $file_baru]);
             } catch (Throwable $e) {
                 if ($file_baru) @unlink(__DIR__ . '/../assets/upload/materi/' . $file_baru);
                 throw $e;
@@ -93,8 +108,8 @@ try {
         }
         try {
             $file_simpan = $file_baru ?: $lama['file_path'];
-            $stmt = $db->prepare('UPDATE materi SET pengajaran_id=?,pertemuan_ke=?,judul=?,deskripsi=?,file_path=? WHERE id=?');
-            $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $file_simpan, $materi_id]);
+            $stmt = $db->prepare('UPDATE materi SET pengajaran_id=?,pertemuan_ke=?,judul=?,deskripsi=?,video_url=?,file_path=? WHERE id=?');
+            $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $video_url, $file_simpan, $materi_id]);
         } catch (Throwable $e) {
             if ($file_baru) @unlink(__DIR__ . '/../assets/upload/materi/' . $file_baru);
             throw $e;

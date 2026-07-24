@@ -31,6 +31,15 @@ if ($jenis === 'materi') {
 $file = $stmt->fetchColumn();
 if (!$file) { http_response_code(404); exit('File tidak ditemukan.'); }
 
+if ($jenis === 'materi') {
+    $stmt_dibaca = $db->prepare(
+        'INSERT INTO materi_siswa_dibaca (materi_id, siswa_id, dibaca_pada)
+         VALUES (?, ?, NOW())
+         ON DUPLICATE KEY UPDATE dibaca_pada = VALUES(dibaca_pada)'
+    );
+    $stmt_dibaca->execute([$id, (int)$siswa['id']]);
+}
+
 $folder = realpath(__DIR__ . '/../assets/upload/' . $folder_nama);
 $path = $folder ? realpath($folder . DIRECTORY_SEPARATOR . basename($file)) : false;
 if (!$folder || !$path || !is_file($path) || strpos($path, $folder . DIRECTORY_SEPARATOR) !== 0) {

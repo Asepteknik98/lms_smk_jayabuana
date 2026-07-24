@@ -139,6 +139,7 @@ CREATE TABLE `materi` (
   `pertemuan_ke` tinyint(3) UNSIGNED NOT NULL DEFAULT 1,
   `judul` varchar(200) NOT NULL,
   `deskripsi` text DEFAULT NULL,
+  `video_url` varchar(500) DEFAULT NULL,
   `file_path` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
