@@ -19,6 +19,9 @@ $stmt = $db->prepare(
             (SELECT COUNT(*) FROM tugas t
              WHERE t.pengajaran_id=p.id AND t.pertemuan_ke=ap.pertemuan_ke) AS jumlah_tugas,
             EXISTS(SELECT 1 FROM materi mat
+                   JOIN materi_siswa_dibaca msb ON msb.materi_id=mat.id AND msb.siswa_id=?
+                   WHERE mat.pengajaran_id=p.id AND mat.pertemuan_ke=ap.pertemuan_ke) AS sudah_review,
+            EXISTS(SELECT 1 FROM materi mat
                    JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=?
                    WHERE mat.pengajaran_id=p.id AND mat.pertemuan_ke=ap.pertemuan_ke) AS sudah_unduh
      FROM pengajaran p
@@ -28,7 +31,7 @@ $stmt = $db->prepare(
      WHERE p.kelas_id=?
      ORDER BY p.tahun_ajaran DESC,p.semester,m.nama_mapel,ap.pertemuan_ke"
 );
-$stmt->execute([(int)($siswa['id'] ?? 0),(int)($siswa['kelas_id'] ?? 0)]);
+$stmt->execute([(int)($siswa['id'] ?? 0),(int)($siswa['id'] ?? 0),(int)($siswa['kelas_id'] ?? 0)]);
 $baris = $stmt->fetchAll();
 
 $mapel = [];
@@ -86,12 +89,12 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <?php endfor ?>
 </select>
 <div class="row g-2" id="statusPertemuan<?= $pengajaran_id ?>" aria-live="polite">
-<?php for ($nomor=1;$nomor<=20;$nomor++): $item=$pelajaran['pertemuan'][$nomor]??null;$terbuka=($item['status']??'Dikunci')==='Dibuka';$tugas_terkunci=$terbuka&&!empty($item['ada_file_materi'])&&empty($item['sudah_unduh']); ?>
+<?php for ($nomor=1;$nomor<=20;$nomor++): $item=$pelajaran['pertemuan'][$nomor]??null;$terbuka=($item['status']??'Dikunci')==='Dibuka';$tugas_terkunci=$terbuka&&!empty($item['ada_materi'])&&(empty($item['sudah_review'])||(!empty($item['ada_file_materi'])&&empty($item['sudah_unduh']))); ?>
 <div class="col-12 meeting-status-panel" data-pengajaran-id="<?= $pengajaran_id ?>" data-pertemuan="<?= $nomor ?>" <?= $nomor!==$pertemuan_awal?'hidden':'' ?>><article class="meeting-status-card <?= $terbuka?'is-open':'' ?>">
 <div class="d-flex align-items-start gap-2"><span class="meeting-status-icon"><i class="fa-solid <?= $terbuka?'fa-lock-open':'fa-lock' ?>"></i></span><div class="flex-grow-1"><div class="d-flex justify-content-between gap-2"><strong>Pertemuan <?= $nomor ?></strong><span class="badge <?= $terbuka?'bg-success':'bg-secondary' ?>"><?= $terbuka?'Terbuka':'Terkunci' ?></span></div>
-<?php if($terbuka): ?><small class="text-muted d-block mt-1"><?= !empty($item['ada_materi'])?'Materi tersedia':'Belum ada materi' ?> &middot; <?= (int)($item['jumlah_tugas']??0) ?> tugas</small><?php if($tugas_terkunci):?><small class="text-warning-emphasis d-block mt-1"><i class="fa-solid fa-circle-info me-1"></i>Unduh materi untuk membuka tugas</small><?php elseif(!empty($item['ada_file_materi'])):?><small class="text-success d-block mt-1"><i class="fa-solid fa-circle-check me-1"></i>Materi sudah diunduh</small><?php endif;else: ?><small class="text-muted d-block mt-1">Menunggu dibuka oleh guru</small><?php endif ?>
+<?php if($terbuka): ?><small class="text-muted d-block mt-1"><?= !empty($item['ada_materi'])?'Materi tersedia':'Belum ada materi' ?><?= !$tugas_terkunci?' &middot; '.(int)($item['jumlah_tugas']??0).' tugas':'' ?></small><?php if($tugas_terkunci):?><small class="text-warning-emphasis d-block mt-1"><i class="fa-solid fa-circle-info me-1"></i><?=empty($item['sudah_review'])?'Review materi':'Unduh materi'?> untuk membuka tugas</small><?php elseif(!empty($item['ada_materi'])):?><small class="text-success d-block mt-1"><i class="fa-solid fa-circle-check me-1"></i>Persyaratan materi selesai</small><?php endif;else: ?><small class="text-muted d-block mt-1">Menunggu dibuka oleh guru</small><?php endif ?>
 </div></div>
-<?php if($terbuka): ?><div class="d-flex gap-2 mt-3 meeting-actions"><a class="btn btn-sm btn-primary flex-fill" href="materi.php?pengajaran_id=<?= $pengajaran_id ?>&amp;pertemuan=<?= $nomor ?>"><i class="fa-solid fa-book-open me-1"></i><?= $tugas_terkunci?'Unduh Materi':'Buka Materi' ?></a><?php if($tugas_terkunci):?><button class="btn btn-sm btn-light border text-muted flex-fill" disabled><i class="fa-solid fa-lock me-1"></i>Tugas Terkunci</button><?php else:?><a class="btn btn-sm btn-outline-warning text-dark flex-fill" href="tugas.php?pengajaran_id=<?= $pengajaran_id ?>&amp;pertemuan=<?= $nomor ?>"><i class="fa-solid fa-list-check me-1"></i>Lihat Tugas</a><?php endif?></div><?php else: ?><button class="btn btn-sm btn-light border text-muted w-100 mt-3" disabled><i class="fa-solid fa-lock me-1"></i>Belum dapat diakses</button><?php endif ?>
+<?php if($terbuka): ?><div class="d-flex gap-2 mt-3 meeting-actions"><a class="btn btn-sm btn-primary flex-fill" href="materi.php?pengajaran_id=<?= $pengajaran_id ?>&amp;pertemuan=<?= $nomor ?>"><i class="fa-solid fa-book-open me-1"></i><?= $tugas_terkunci?(empty($item['sudah_review'])?'Review Materi':'Unduh Materi'):'Buka Materi' ?></a><?php if($tugas_terkunci):?><button class="btn btn-sm btn-light border text-muted flex-fill" disabled><i class="fa-solid fa-lock me-1"></i>Tugas Terkunci</button><?php else:?><a class="btn btn-sm btn-outline-warning text-dark flex-fill" href="tugas.php?pengajaran_id=<?= $pengajaran_id ?>&amp;pertemuan=<?= $nomor ?>"><i class="fa-solid fa-list-check me-1"></i>Lihat Tugas</a><?php endif?></div><?php else: ?><button class="btn btn-sm btn-light border text-muted w-100 mt-3" disabled><i class="fa-solid fa-lock me-1"></i>Belum dapat diakses</button><?php endif ?>
 </article></div>
 <?php endfor ?>
 </div></div></section>

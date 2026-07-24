@@ -29,15 +29,28 @@ $stmt_t = $db->prepare("
     AND (NOT EXISTS(
         SELECT 1 FROM materi mat
         WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
-          AND mat.file_path IS NOT NULL
-    ) OR EXISTS(
-        SELECT 1 FROM materi mat
-        JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=?
-        WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+    ) OR (
+        EXISTS(
+            SELECT 1 FROM materi mat
+            JOIN materi_siswa_dibaca msb ON msb.materi_id=mat.id AND msb.siswa_id=?
+            WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+        )
+        AND (
+            NOT EXISTS(
+                SELECT 1 FROM materi mat
+                WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+                  AND mat.file_path IS NOT NULL
+            )
+            OR EXISTS(
+                SELECT 1 FROM materi mat
+                JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=?
+                WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+            )
+        )
     ))
     ORDER BY (t.deadline < NOW()) ASC, t.deadline ASC
 ");
-$stmt_t->execute([$siswa_id, $kelas_id, $siswa_id]);
+$stmt_t->execute([$siswa_id, $kelas_id, $siswa_id, $siswa_id]);
 $tugas_list = $stmt_t->fetchAll();
 $daftar_mapel=[];foreach($tugas_list as $item)$daftar_mapel[$item['nama_mapel']]=$item['nama_mapel'];ksort($daftar_mapel);
 $filter_status=$_GET['status']??'semua';$filter_mapel=trim($_GET['mapel']??'');$filter_pengajaran=(int)($_GET['pengajaran_id']??0);$filter_pertemuan=(int)($_GET['pertemuan']??0);if(!in_array($filter_status,['semua','aktif','selesai','terlambat'],true))$filter_status='semua';

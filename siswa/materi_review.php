@@ -42,6 +42,7 @@ if (!$materi) {
 }
 
 $tugas_terkait = [];
+$materi_siap_tugas = false;
 $materi_sebelumnya = $materi_berikutnya = null;
 if ($materi && $siswa) {
     $db->prepare(
@@ -50,16 +51,25 @@ if ($materi && $siswa) {
          ON DUPLICATE KEY UPDATE dibaca_pada = VALUES(dibaca_pada)'
     )->execute([$materi_id, (int)$siswa['id']]);
 
-    $stmt_tugas = $db->prepare(
-        'SELECT t.id, t.judul, t.deskripsi, t.deadline, t.file_lampiran,
-                pt.id AS pengumpulan_id, pt.nilai
-         FROM tugas t
-         LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id = t.id AND pt.siswa_id = ?
-         WHERE t.pengajaran_id = ? AND t.pertemuan_ke = ?
-         ORDER BY t.deadline ASC'
-    );
-    $stmt_tugas->execute([(int)$siswa['id'], (int)$materi['pengajaran_id'], (int)$materi['pertemuan_ke']]);
-    $tugas_terkait = $stmt_tugas->fetchAll();
+    $materi_siap_tugas = empty($materi['file_path']);
+    if (!$materi_siap_tugas) {
+        $stmt_unduh = $db->prepare('SELECT COUNT(*) FROM materi_siswa_diunduh WHERE materi_id=? AND siswa_id=?');
+        $stmt_unduh->execute([$materi_id, (int)$siswa['id']]);
+        $materi_siap_tugas = (bool)$stmt_unduh->fetchColumn();
+    }
+
+    if ($materi_siap_tugas) {
+        $stmt_tugas = $db->prepare(
+            'SELECT t.id, t.judul, t.deskripsi, t.deadline, t.file_lampiran,
+                    pt.id AS pengumpulan_id, pt.nilai
+             FROM tugas t
+             LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id = t.id AND pt.siswa_id = ?
+             WHERE t.pengajaran_id = ? AND t.pertemuan_ke = ?
+             ORDER BY t.deadline ASC'
+        );
+        $stmt_tugas->execute([(int)$siswa['id'], (int)$materi['pengajaran_id'], (int)$materi['pertemuan_ke']]);
+        $tugas_terkait = $stmt_tugas->fetchAll();
+    }
 
     $stmt_sebelumnya = $db->prepare(
         'SELECT mat.id, mat.judul FROM materi mat
@@ -119,7 +129,7 @@ if ($materi && $siswa) {
                         <div class="review-file p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
                             <div><strong class="d-block"><i class="fa-solid fa-file-lines text-primary me-2"></i>Lampiran materi</strong><small class="text-muted">Buka untuk membaca atau mengunduh berkas dari guru.</small></div>
                             <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-primary"><i class="fa-solid fa-up-right-from-square me-1"></i>Buka Lampiran</a>
-                            <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=download" class="btn btn-success"><i class="fa-solid fa-download me-1"></i>Unduh Materi</a>
+                            <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=download" target="_blank" rel="noopener" class="btn btn-success" onclick="setTimeout(function(){location.reload()},1200)"><i class="fa-solid fa-download me-1"></i>Unduh Materi</a>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -128,7 +138,9 @@ if ($materi && $siswa) {
             <section class="card review-card mb-3">
                 <div class="card-body p-4">
                     <div class="d-flex justify-content-between align-items-center mb-3"><h2 class="h6 fw-bold mb-0"><i class="fa-solid fa-list-check text-warning me-2"></i>Tugas Pertemuan Ini</h2><span class="badge bg-light text-dark border"><?= count($tugas_terkait) ?> tugas</span></div>
-                    <?php if (!$tugas_terkait): ?>
+                    <?php if (!$materi_siap_tugas): ?>
+                        <div class="alert alert-warning mb-0"><i class="fa-solid fa-lock me-2"></i>Unduh lampiran materi terlebih dahulu. Daftar tugas akan terbuka otomatis setelah unduhan tercatat.</div>
+                    <?php elseif (!$tugas_terkait): ?>
                         <div class="text-center py-3 text-muted"><i class="fa-solid fa-circle-check text-success fa-2x mb-2"></i><p class="small mb-0">Belum ada tugas untuk pertemuan ini.</p></div>
                     <?php else: foreach ($tugas_terkait as $tugas):
                         $sudah = !empty($tugas['pengumpulan_id']);

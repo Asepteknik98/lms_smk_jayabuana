@@ -57,6 +57,9 @@ if ($pertemuan_filter >= 1 && $pertemuan_filter <= 20) {
 $stmt_materi = $db->prepare(
     'SELECT mat.id, mat.pertemuan_ke, mat.judul, mat.deskripsi, mat.video_url, mat.file_path, mat.created_at,
             CASE WHEN md.materi_id IS NULL THEN 1 ELSE 0 END AS is_baru,
+            CASE WHEN md.materi_id IS NULL THEN 0 ELSE 1 END AS sudah_direview,
+            CASE WHEN mu.materi_id IS NULL THEN 0 ELSE 1 END AS sudah_diunduh,
+            COALESCE(ap.status, \'Dikunci\') AS status_akses,
             (SELECT COUNT(*) FROM tugas t
              WHERE t.pengajaran_id = mat.pengajaran_id
                AND t.pertemuan_ke = mat.pertemuan_ke) AS jumlah_tugas,
@@ -66,9 +69,10 @@ $stmt_materi = $db->prepare(
      JOIN pengajaran p ON p.id = mat.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
      JOIN guru g ON g.id = p.guru_id
-     JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id
-                            AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status=\'Dibuka\'
+     LEFT JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id
+                                 AND ap.pertemuan_ke=mat.pertemuan_ke
      LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id='.(int)($siswa['id']??0).'
+     LEFT JOIN materi_siswa_diunduh mu ON mu.materi_id=mat.id AND mu.siswa_id='.(int)($siswa['id']??0).'
      WHERE p.kelas_id = ?' . $filter_pengajaran . $filter_pertemuan . '
      ORDER BY mat.created_at DESC, mat.id DESC'
 );
@@ -78,7 +82,7 @@ $materi_groups=[];foreach($materi_list as $materi){$key=(int)$materi['pengajaran
 ?>
 
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
-<style>.material-accordion>.accordion-item{border:0;border-radius:17px!important;box-shadow:0 6px 20px rgba(15,23,42,.06);overflow:hidden}.material-accordion>.accordion-item>.accordion-header .accordion-button{padding:18px 20px;background:#fff}.material-accordion>.accordion-item>.accordion-header .accordion-button:not(.collapsed){color:#175fc0;background:#f5f9ff;box-shadow:none}.subject-icon{width:43px;height:43px;display:grid;place-items:center;border-radius:13px;background:#eaf3ff;color:#1769e0;flex:0 0 43px}.meeting-accordion{display:grid;gap:10px}.meeting-item{border:1px solid #e2e8f0!important;border-radius:13px!important;overflow:hidden;background:#fff}.meeting-button{padding:13px 15px!important;background:#f8fafc!important;color:#334155!important;box-shadow:none!important}.meeting-button:not(.collapsed){background:#eef6ff!important;color:#175fc0!important}.meeting-number{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#dbeafe;color:#1769e0;flex:0 0 34px}.meeting-body{padding:0 15px 4px!important}.material-row{padding:16px 0;border-bottom:1px solid #edf1f5}.material-row:last-child{border-bottom:0}.material-title{overflow-wrap:anywhere}.material-description{max-height:100px;overflow:auto}.material-video{max-width:760px;border-radius:14px;overflow:hidden;background:#000}.material-video iframe{display:block;width:100%;aspect-ratio:16/9;border:0}@media(max-width:575.98px){.material-accordion>.accordion-item>.accordion-header .accordion-button{padding:14px}.material-accordion>.accordion-item>.accordion-collapse>.accordion-body{padding:10px}.meeting-button{padding:11px!important}.meeting-body{padding:0 12px 3px!important}.material-row .btn{min-height:44px}.subject-icon{width:39px;height:39px;flex-basis:39px}.subject-copy{min-width:0}.subject-copy strong,.subject-copy small{overflow-wrap:anywhere}}</style>
+<style>.material-accordion>.accordion-item{border:0;border-radius:17px!important;box-shadow:0 6px 20px rgba(15,23,42,.06);overflow:hidden}.material-accordion>.accordion-item>.accordion-header .accordion-button{padding:18px 20px;background:#fff}.material-accordion>.accordion-item>.accordion-header .accordion-button:not(.collapsed){color:#175fc0;background:#f5f9ff;box-shadow:none}.subject-icon{width:43px;height:43px;display:grid;place-items:center;border-radius:13px;background:#eaf3ff;color:#1769e0;flex:0 0 43px}.meeting-accordion{display:grid;gap:10px}.meeting-item{border:1px solid #e2e8f0!important;border-radius:13px!important;overflow:hidden;background:#fff}.meeting-button{padding:13px 15px!important;background:#f8fafc!important;color:#334155!important;box-shadow:none!important}.meeting-button:not(.collapsed){background:#eef6ff!important;color:#175fc0!important}.meeting-number{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#dbeafe;color:#1769e0;flex:0 0 34px}.meeting-body{padding:0 15px 4px!important}.material-row{padding:16px 0;border-bottom:1px solid #edf1f5}.material-row:last-child{border-bottom:0}.material-row.is-locked{opacity:.84}.material-lock-notice{border:1px dashed #cbd5e1;border-radius:12px;background:#f8fafc;color:#64748b}.material-title{overflow-wrap:anywhere}.material-description{max-height:100px;overflow:auto}.material-video{max-width:760px;border-radius:14px;overflow:hidden;background:#000}.material-video iframe{display:block;width:100%;aspect-ratio:16/9;border:0}@media(max-width:575.98px){.material-accordion>.accordion-item>.accordion-header .accordion-button{padding:14px}.material-accordion>.accordion-item>.accordion-collapse>.accordion-body{padding:10px}.meeting-button{padding:11px!important}.meeting-body{padding:0 12px 3px!important}.material-row .btn{min-height:44px}.subject-icon{width:39px;height:39px;flex-basis:39px}.subject-copy{min-width:0}.subject-copy strong,.subject-copy small{overflow-wrap:anywhere}}</style>
 
 <div id="page-content-wrapper">
     <nav class="navbar navbar-expand-lg navbar-light top-navbar px-3 px-md-4 py-3">
@@ -145,7 +149,10 @@ $materi_groups=[];foreach($materi_list as $materi){$key=(int)$materi['pengajaran
                         <section class="accordion-item meeting-item">
                             <h3 class="accordion-header"><button class="accordion-button meeting-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $meetingCollapseId ?>" aria-expanded="false"><span class="meeting-number me-2"><i class="fa-solid fa-layer-group"></i></span><span class="flex-grow-1"><strong class="d-block">Pertemuan <?= $meetingNumber ?></strong><small class="text-muted"><?= count($meetingMaterials) ?> materi</small></span><?php if($meetingNew): ?><span class="badge bg-danger me-2"><?= $meetingNew ?> baru</span><?php endif; ?></button></h3>
                             <div id="<?= $meetingCollapseId ?>" class="accordion-collapse collapse" data-bs-parent="#meetingGroup<?= (int)$groupIndex ?>"><div class="accordion-body meeting-body">
-                        <?php foreach($meetingMaterials as $materi): $youtubeId=youtube_video_id($materi['video_url']??null); ?><article class="material-row"><div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><span><?php if($materi['is_baru']): ?><span class="badge bg-danger">Baru</span><?php endif ?></span><small class="text-muted"><i class="fa-regular fa-clock me-1"></i><?= date('d/m/Y H:i',strtotime($materi['created_at'])) ?></small></div><h4 class="h6 fw-bold material-title mb-2"><?= sanitize($materi['judul']) ?></h4><?php if($materi['deskripsi']): ?><div class="material-description text-secondary small mb-3"><?= nl2br(sanitize($materi['deskripsi'])) ?></div><?php endif ?>
+                        <?php foreach($meetingMaterials as $materi): $aksesDibuka=$materi['status_akses']==='Dibuka'; $youtubeId=$aksesDibuka?youtube_video_id($materi['video_url']??null):null; $siapTugas=$aksesDibuka&&!empty($materi['sudah_direview'])&&(!$materi['file_path']||!empty($materi['sudah_diunduh'])); ?><article class="material-row <?= $aksesDibuka?'':'is-locked' ?>"><div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><span><?php if($materi['is_baru']): ?><span class="badge bg-danger">Baru</span><?php endif ?> <span class="badge <?= $aksesDibuka?'bg-success':'bg-secondary' ?>"><i class="fa-solid <?= $aksesDibuka?'fa-lock-open':'fa-lock' ?> me-1"></i><?= $aksesDibuka?'Dibuka':'Terkunci' ?></span></span><small class="text-muted"><i class="fa-regular fa-clock me-1"></i><?= date('d/m/Y H:i',strtotime($materi['created_at'])) ?></small></div><h4 class="h6 fw-bold material-title mb-2"><?= sanitize($materi['judul']) ?></h4><?php if($aksesDibuka&&$materi['deskripsi']): ?><div class="material-description text-secondary small mb-3"><?= nl2br(sanitize($materi['deskripsi'])) ?></div><?php endif ?>
+                            <?php if (!$aksesDibuka): ?>
+                                <div class="material-lock-notice p-3 small"><i class="fa-solid fa-lock me-2"></i>Guru belum membuka akses materi ini.</div>
+                            <?php else: ?>
                             <?php if($youtubeId): ?><div class="material-video mb-3"><iframe src="https://www.youtube-nocookie.com/embed/<?= sanitize($youtubeId) ?>" title="Video: <?= sanitize($materi['judul']) ?>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><?php endif; ?>
                             <div class="d-flex flex-wrap gap-2">
                                 <?php if ($materi['file_path']): ?>
@@ -155,8 +162,13 @@ $materi_groups=[];foreach($materi_list as $materi){$key=(int)$materi['pengajaran
                                     <button type="button" class="btn btn-light border btn-sm text-muted" disabled title="Materi tidak memiliki lampiran"><i class="fa-solid fa-folder-open me-1"></i>Buka Materi</button>
                                 <?php endif; ?>
                                 <a href="materi_review.php?id=<?= (int)$materi['id'] ?>" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-book-open-reader me-1"></i>Review Materi</a>
-                                <a href="tugas.php?pengajaran_id=<?= (int)$materi['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$materi['pertemuan_ke'] ?>" class="btn btn-outline-warning text-dark btn-sm"><i class="fa-solid fa-list-check me-1"></i>Tugas<?php if ((int)$materi['jumlah_tugas'] > 0): ?> <span class="badge bg-warning text-dark ms-1"><?= (int)$materi['jumlah_tugas'] ?></span><?php endif; ?></a>
+                                <?php if ($siapTugas): ?>
+                                    <a href="tugas.php?pengajaran_id=<?= (int)$materi['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$materi['pertemuan_ke'] ?>" class="btn btn-outline-warning text-dark btn-sm"><i class="fa-solid fa-list-check me-1"></i>Tugas<?php if ((int)$materi['jumlah_tugas'] > 0): ?> <span class="badge bg-warning text-dark ms-1"><?= (int)$materi['jumlah_tugas'] ?></span><?php endif; ?></a>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-light border btn-sm text-muted" disabled><i class="fa-solid fa-lock me-1"></i><?= empty($materi['sudah_direview']) ? 'Review Dahulu' : 'Unduh Dahulu' ?></button>
+                                <?php endif; ?>
                             </div>
+                            <?php endif; ?>
                         </article><?php endforeach ?>
                             </div></div>
                         </section>
