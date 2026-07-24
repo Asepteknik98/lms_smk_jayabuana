@@ -40,6 +40,9 @@ Aplikasi dibangun menggunakan PHP native, MariaDB/MySQL, Bootstrap 5, dan JavaSc
 
 - Dashboard kegiatan pembelajaran.
 - Membuat, memperbarui, dan membagikan materi.
+- Menambahkan video YouTube dan lampiran pada materi.
+- Membuka atau mengunci akses pembelajaran per pertemuan.
+- Mewajibkan siswa mengunduh materi sebelum tugas dapat diakses.
 - Membuat tugas beserta lampiran dan tenggat waktu.
 - Melihat, mengunduh, dan mem-preview jawaban siswa.
 - Memberikan nilai serta catatan pada tugas.
@@ -61,10 +64,14 @@ Aplikasi dibangun menggunakan PHP native, MariaDB/MySQL, Bootstrap 5, dan JavaSc
 
 - Dashboard pembelajaran dan pengingat kegiatan.
 - Mengakses serta mengunduh materi.
+- Menonton video pembelajaran YouTube langsung dari halaman materi.
+- Melihat status pertemuan yang terbuka atau masih terkunci.
 - Melihat tugas, mengunggah jawaban, dan membaca catatan guru.
+- Mengakses tugas setelah mengunduh materi apabila aturan wajib unduh diaktifkan.
 - Melakukan check-in pada sesi absensi yang aktif.
 - Mengikuti kuis/ujian berbasis komputer.
 - Peringatan tugas atau kuis yang belum dikerjakan.
+- Memasang LMS sebagai aplikasi web (PWA) pada perangkat yang mendukung.
 
 ## Alur Rekap Nilai
 
@@ -125,6 +132,9 @@ Proyek ini tidak memerlukan Composer atau Node.js untuk menjalankan fitur utaman
    database/2026_07_23_penyempurnaan_rekap_nilai.sql
    database/2026_07_23_notifikasi_materi_siswa.sql
    database/2026_07_24_metadata_pengumpulan_tugas.sql
+   database/2026_07_24_hak_akses_pertemuan.sql
+   database/2026_07_24_video_youtube_materi.sql
+   database/2026_07_24_wajib_unduh_materi.sql
    ```
 
 6. Periksa konfigurasi pada `config/database.php`:
@@ -168,16 +178,18 @@ Hal yang perlu diperiksa saat deployment:
 
 ```text
 lms/
-├── admin/       # Modul administrator
-├── guru/        # Modul pembelajaran dan penilaian guru
-├── siswa/       # Modul pembelajaran siswa
-├── assets/      # CSS, JavaScript, gambar, dan berkas unggahan
-├── config/      # Koneksi database, sesi, autentikasi, dan helper
-├── database/    # Dump database serta migrasi
-├── includes/    # Header, sidebar, dan footer bersama
-├── index.php    # Pengarah halaman berdasarkan peran
-├── login.php    # Autentikasi pengguna
-└── logout.php   # Pengakhiran sesi
+├── admin/                # Modul administrator
+├── guru/                 # Modul pembelajaran dan penilaian guru
+├── siswa/                # Modul pembelajaran siswa
+├── assets/               # CSS, JavaScript, gambar, dan berkas unggahan
+├── config/               # Koneksi database, sesi, autentikasi, dan helper
+├── database/             # Dump database serta migrasi
+├── includes/             # Header, sidebar, dan footer bersama
+├── index.php             # Pengarah halaman berdasarkan peran
+├── login.php             # Autentikasi pengguna
+├── logout.php            # Pengakhiran sesi
+├── manifest.webmanifest  # Metadata Progressive Web App
+└── sw.js                 # Service worker untuk aset aplikasi
 ```
 
 ## Keamanan
@@ -206,6 +218,9 @@ Tabel tambahan untuk sistem penilaian antara lain:
 - `nilai_komponen`
 - `catatan_siswa_pengajaran`
 - `riwayat_nilai`
+- `akses_pertemuan`
+- `materi_siswa_dibaca`
+- `materi_siswa_diunduh`
 
 ## Kontribusi
 
