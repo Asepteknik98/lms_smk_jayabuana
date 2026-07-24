@@ -22,6 +22,20 @@ $stmt_p = $db->prepare("SELECT COUNT(*) FROM pengajaran WHERE guru_id = ?");
 $stmt_p->execute([$guru_id]);
 $total_pengajaran = $stmt_p->fetchColumn();
 
+// Total pertemuan unik yang memiliki materi, dipisahkan per mapel dan kelas.
+$stmt_pertemuan = $db->prepare(
+    "SELECT mat.pengajaran_id,COUNT(DISTINCT mat.pertemuan_ke) total_pertemuan
+     FROM materi mat
+     JOIN pengajaran p ON p.id=mat.pengajaran_id
+     WHERE p.guru_id=?
+     GROUP BY mat.pengajaran_id"
+);
+$stmt_pertemuan->execute([$guru_id]);
+$pertemuan_per_pengajaran = [];
+foreach ($stmt_pertemuan->fetchAll() as $row) {
+    $pertemuan_per_pengajaran[(int)$row['pengajaran_id']] = (int)$row['total_pertemuan'];
+}
+
 // Total Tugas yang Pernah Dibuat
 $stmt_tugas = $db->prepare("
     SELECT COUNT(*) 
@@ -160,6 +174,8 @@ $recent_submissions = $stmt_recent_sub->fetchAll();
             <div class="col-6 col-lg-3"><a href="ujian.php" class="card teacher-stat h-100"><div class="card-body d-flex align-items-center gap-2"><span class="stat-icon bg-danger-subtle text-danger"><i class="fa-solid fa-laptop-code"></i></span><div><h3 class="fw-bold mb-0"><?= (int)$total_ujian ?></h3><small class="text-muted">Ulangan Harian</small></div></div></a></div>
             <div class="col-6 col-lg-3"><a href="#antrean-penilaian" class="card teacher-stat h-100"><div class="card-body d-flex align-items-center gap-2"><span class="stat-icon bg-warning-subtle text-warning"><i class="fa-solid fa-pen-ruler"></i></span><div><h3 class="fw-bold mb-0"><?= (int)$tugas_belum_dinilai ?></h3><small class="text-muted">Perlu Dinilai</small></div></div></a></div>
         </div>
+
+        <section class="card teacher-panel mb-4" aria-labelledby="totalPertemuanGuru"><div class="card-body p-3 p-md-4"><div class="d-flex align-items-center gap-2 mb-3"><span class="teacher-quick-icon bg-success-subtle text-success"><i class="fa-solid fa-calendar-check"></i></span><div><small class="text-success fw-semibold">REKAP PEMBELAJARAN</small><h2 class="h6 fw-bold mb-0" id="totalPertemuanGuru">Pertemuan per Mapel & Kelas</h2></div></div><?php if(!$daftar_pengajaran): ?><p class="small text-muted mb-0">Belum ada pengajaran dari admin.</p><?php else: ?><div class="row g-2"><?php foreach($daftar_pengajaran as $p): $jumlah_pertemuan=$pertemuan_per_pengajaran[(int)$p['pengajaran_id']]??0; ?><div class="col-12 col-sm-6 col-xl-4"><a href="materi.php?pengajaran_id=<?= (int)$p['pengajaran_id'] ?>" class="card teacher-stat h-100"><div class="card-body d-flex align-items-center justify-content-between gap-2"><div class="item-copy"><strong class="d-block"><?= sanitize($p['nama_mapel']) ?></strong><small class="text-muted d-block"><?= sanitize($p['nama_kelas']) ?></small></div><div class="text-end flex-shrink-0"><h3 class="fw-bold text-success mb-0"><?= $jumlah_pertemuan ?></h3><small class="text-muted">Pertemuan</small></div></div></a></div><?php endforeach ?></div><?php endif ?></div></section>
 
         <div class="row g-3">
             <div class="col-lg-7 teacher-content-primary" id="pengajaran-saya"><section class="card teacher-panel h-100"><div class="card-body p-4"><h2 class="h6 fw-bold mb-3"><i class="fa-solid fa-book-open text-primary me-2"></i>Pengajaran Saya</h2>
