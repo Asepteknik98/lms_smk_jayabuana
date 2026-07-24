@@ -180,11 +180,8 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page === 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i> Dashboard Guru
         </a>
-        <a href="materi.php" class="list-group-item list-group-item-action <?= ($current_page === 'materi.php') ? 'active' : '' ?>">
+        <a href="materi.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['materi.php', 'akses_pertemuan.php'], true) ? 'active' : '' ?>">
             <i class="fa-solid fa-book-open me-2"></i> Materi
-        </a>
-        <a href="akses_pertemuan.php" class="list-group-item list-group-item-action <?= ($current_page === 'akses_pertemuan.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-lock-open me-2"></i> Hak Akses Pertemuan
         </a>
         <a href="tugas.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['tugas.php', 'tugas_penilaian.php'], true) ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check me-2"></i> Tugas

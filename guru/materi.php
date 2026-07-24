@@ -28,15 +28,21 @@ $pengajaran_list = $stmt_p->fetchAll();
 
 // Ambil Daftar Materi yang sudah dibuat
 $stmt_m = $db->prepare("
-    SELECT mat.*, m.nama_mapel, k.nama_kelas, p.tahun_ajaran, p.semester
+    SELECT mat.*, m.nama_mapel, k.nama_kelas, p.tahun_ajaran, p.semester,
+           COALESCE(ap.status, 'Dikunci') AS status_akses
     FROM materi mat
     JOIN pengajaran p ON mat.pengajaran_id = p.id
     JOIN mapel m ON p.mapel_id = m.id
     JOIN kelas k ON p.kelas_id = k.id
+    LEFT JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id
+                                AND ap.pertemuan_ke=mat.pertemuan_ke
     WHERE p.guru_id = ? ORDER BY mat.created_at DESC, mat.id DESC
 ");
 $stmt_m->execute([$guru_id]);
 $materi_list = $stmt_m->fetchAll();
+$kelas_materi = array_values(array_unique(array_column($materi_list, 'nama_kelas')));
+natcasesort($kelas_materi);
+$kelas_materi = array_values($kelas_materi);
 ?>
 
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
@@ -53,6 +59,8 @@ $materi_list = $stmt_m->fetchAll();
     .material-mobile-item + .material-mobile-item { margin-top:10px; }
     .material-title { font-size:.92rem; line-height:1.4; overflow-wrap:anywhere; }
     .material-meta { font-size:.73rem; line-height:1.5; }
+    .access-badge { border:0; cursor:pointer; font:inherit; }
+    .access-badge:hover,.access-badge:focus { filter:brightness(.92); box-shadow:0 0 0 .2rem rgba(13,110,253,.16); }
     #tableMateri td { vertical-align:middle; }
     @media (max-width:767.98px) {
         .material-content { padding:13px!important; }
@@ -64,7 +72,7 @@ $materi_list = $stmt_m->fetchAll();
 
 <div id="page-content-wrapper" class="teacher-material-page">
     <nav class="navbar navbar-expand-lg navbar-light top-navbar px-3 px-md-4 py-3">
-        <div><h5 class="mb-0 fw-bold"><i class="fa-solid fa-book-open text-primary me-2"></i>Materi Pembelajaran</h5><small class="text-muted">Bagikan modul berdasarkan kelas dan pertemuan</small></div>
+        <div><h5 class="mb-0 fw-bold"><i class="fa-solid fa-book-open text-primary me-2"></i>Materi Pembelajaran</h5><small class="text-muted">Kelola materi dan akses siswa berdasarkan pertemuan</small></div>
     </nav>
 
     <div class="container-fluid material-content p-3 p-md-4">
@@ -133,19 +141,33 @@ $materi_list = $stmt_m->fetchAll();
             <!-- Daftar Materi yang telah diunggah -->
             <div class="col-lg-7">
                 <section class="card material-panel"><div class="card-body p-3 p-md-4">
-                    <div class="d-flex justify-content-between align-items-center mb-3"><div><h6 class="fw-bold mb-1"><i class="fa-solid fa-folder-open me-2 text-primary"></i>Materi Terunggah</h6><small class="text-muted"><?= count($materi_list) ?> materi tersedia</small></div></div>
+                    <div class="d-flex flex-wrap justify-content-between align-items-end gap-2 mb-3">
+                        <div><h6 class="fw-bold mb-1"><i class="fa-solid fa-folder-open me-2 text-primary"></i>Materi Terunggah</h6><small class="text-muted"><?= count($materi_list) ?> materi tersedia</small></div>
+                        <?php if ($materi_list): ?>
+                            <div>
+                                <label for="filterKelasMateri" class="form-label fw-semibold mb-1">Filter Kelas</label>
+                                <select id="filterKelasMateri" class="form-select form-select-sm">
+                                    <option value="">Semua Kelas</option>
+                                    <?php foreach ($kelas_materi as $nama_kelas): ?>
+                                        <option value="<?= sanitize($nama_kelas) ?>"><?= sanitize($nama_kelas) ?></option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
+                        <?php endif; ?>
+                    </div>
                     <?php if (!$materi_list): ?>
                         <div class="text-center py-5"><i class="fa-solid fa-folder-open fa-2x text-muted opacity-50 mb-2"></i><h6 class="fw-bold">Belum ada materi</h6><p class="small text-muted mb-0">Materi yang dipublikasikan akan muncul di sini.</p></div>
                     <?php else: ?>
                     <div class="table-responsive d-none d-md-block">
                         <table id="tableMateri" class="table table-hover align-middle w-100">
                             <thead class="table-light">
-                                <tr>
+                                <tr data-kelas="<?= sanitize($m['nama_kelas']) ?>">
                                     <th>Mapel & Kelas</th>
                                     <th>Semester/Pertemuan</th>
                                     <th>Judul Materi</th>
                                     <th>File</th>
                                     <th>Tanggal</th><th>Aksi</th>
+                                    <th class="d-none">Kelas Filter</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -159,7 +181,7 @@ $materi_list = $stmt_m->fetchAll();
                                         <span class="badge bg-primary"><?= sanitize($m['semester']) ?></span><br>
                                         <small><?= sanitize($m['tahun_ajaran']) ?> · Pertemuan <?= (int)$m['pertemuan_ke'] ?></small>
                                     </td>
-                                    <td><?= sanitize($m['judul']) ?><?php if($m['video_url']): ?><br><span class="badge bg-danger-subtle text-danger"><i class="fa-brands fa-youtube me-1"></i>Video</span><?php endif; ?></td>
+                                    <td><?= sanitize($m['judul']) ?><br><button type="button" class="badge access-badge <?= $m['status_akses']==='Dibuka'?'bg-success':'bg-secondary' ?>" title="Klik untuk <?= $m['status_akses']==='Dibuka'?'mengunci':'membuka' ?> akses siswa" onclick="ubahStatusAkses(<?= (int)$m['pengajaran_id'] ?>,<?= (int)$m['pertemuan_ke'] ?>,'<?= $m['status_akses']==='Dibuka'?'Dikunci':'Dibuka' ?>')"><i class="fa-solid <?= $m['status_akses']==='Dibuka'?'fa-lock-open':'fa-lock' ?> me-1"></i><?= sanitize($m['status_akses']) ?></button><?php if($m['video_url']): ?> <span class="badge bg-danger-subtle text-danger"><i class="fa-brands fa-youtube me-1"></i>Video</span><?php endif; ?></td>
                                     <td>
                                         <?php if($m['file_path']): ?>
                                             <div class="d-flex flex-wrap gap-1">
@@ -171,6 +193,7 @@ $materi_list = $stmt_m->fetchAll();
                                         <?php endif; ?>
                                     </td>
                                     <td class="small text-muted"><?= date('d/m/Y', strtotime($m['created_at'])) ?></td><td><div class="d-flex gap-1"><button type="button" class="btn btn-sm btn-outline-secondary" aria-label="Edit materi" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"],"video_url"=>$m["video_url"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen"></i></button><button type="button" class="btn btn-sm btn-outline-danger" aria-label="Hapus materi" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash"></i></button></div></td>
+                                    <td class="d-none"><?= sanitize($m['nama_kelas']) ?></td>
                                 </tr>
                                 <?php endforeach; ?>
                             </tbody>
@@ -178,8 +201,8 @@ $materi_list = $stmt_m->fetchAll();
                     </div>
                     <div class="d-md-none">
                         <?php foreach($materi_list as $m): ?>
-                            <article class="material-mobile-item">
-                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><span class="badge bg-primary">Pertemuan <?= (int)$m['pertemuan_ke'] ?></span><small class="text-muted"><?= date('d/m/Y',strtotime($m['created_at'])) ?></small></div>
+                            <article class="material-mobile-item" data-kelas="<?= sanitize($m['nama_kelas']) ?>">
+                                <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><div><span class="badge bg-primary">Pertemuan <?= (int)$m['pertemuan_ke'] ?></span> <button type="button" class="badge access-badge <?= $m['status_akses']==='Dibuka'?'bg-success':'bg-secondary' ?>" title="Klik untuk <?= $m['status_akses']==='Dibuka'?'mengunci':'membuka' ?> akses siswa" onclick="ubahStatusAkses(<?= (int)$m['pengajaran_id'] ?>,<?= (int)$m['pertemuan_ke'] ?>,'<?= $m['status_akses']==='Dibuka'?'Dikunci':'Dibuka' ?>')"><i class="fa-solid <?= $m['status_akses']==='Dibuka'?'fa-lock-open':'fa-lock' ?> me-1"></i><?= sanitize($m['status_akses']) ?></button></div><small class="text-muted"><?= date('d/m/Y',strtotime($m['created_at'])) ?></small></div>
                                 <h2 class="material-title fw-bold mb-1"><?= sanitize($m['judul']) ?></h2>
                                 <p class="material-meta text-muted mb-3"><?= sanitize($m['nama_mapel']) ?> &middot; <?= sanitize($m['nama_kelas']) ?><br><?= sanitize($m['semester']) ?> <?= sanitize($m['tahun_ajaran']) ?></p>
                                 <?php if($m['video_url']): ?><div class="small text-danger mb-2"><i class="fa-brands fa-youtube me-1"></i>Video YouTube tersedia</div><?php endif; ?><?php if($m['file_path']): ?><div class="d-flex gap-2"><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary flex-fill"><i class="fa-solid fa-eye me-1"></i>Preview</a><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=download" class="btn btn-sm btn-outline-success flex-fill"><i class="fa-solid fa-download me-1"></i>Unduh</a></div><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?><div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"],"video_url"=>$m["video_url"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash me-1"></i>Hapus</button></div>
@@ -190,6 +213,7 @@ $materi_list = $stmt_m->fetchAll();
                 </div></section>
             </div>
         </div>
+
     </div>
 </div>
 
@@ -197,7 +221,20 @@ $materi_list = $stmt_m->fetchAll();
 
 <script>
 $(document).ready(function() {
-    $('#tableMateri').DataTable({ order: [] });
+    const tabelMateri = $('#tableMateri').DataTable({
+        order: [],
+        columnDefs: [{ targets: 6, visible: false, searchable: true }]
+    });
+    $('#filterKelasMateri').on('change', function() {
+        const kelasTerpilih = this.value;
+        const pencarianKelas = kelasTerpilih
+            ? '^' + $.fn.dataTable.util.escapeRegex(kelasTerpilih) + '$'
+            : '';
+        tabelMateri.column(6).search(pencarianKelas, true, false).draw();
+        document.querySelectorAll('.material-mobile-item').forEach(function(item) {
+            item.classList.toggle('d-none', kelasTerpilih !== '' && item.dataset.kelas !== kelasTerpilih);
+        });
+    });
 
     $('#formMateri').on('submit', function(e) {
         e.preventDefault();
@@ -248,6 +285,30 @@ function hapusMateri(id,judul){
         if(!result.isConfirmed)return;
         const data=new FormData();data.append('csrf_token',<?= json_encode($_SESSION['csrf_token']) ?>);data.append('materi_id',id);
         fetch('materi_action.php?action=delete_materi',{method:'POST',body:data}).then(async function(response){const body=await response.json();if(!response.ok||body.status!=='success')throw new Error(body.message);return body;}).then(function(body){Swal.fire('Berhasil!',body.message,'success').then(()=>location.reload());}).catch(function(error){Swal.fire('Gagal!',error.message||'Materi gagal dihapus.','error');});
+    });
+}
+function kirimPengaturanAkses(action,data){
+    const formData=new FormData();
+    formData.append('csrf_token',<?= json_encode($_SESSION['csrf_token']) ?>);
+    Object.entries(data).forEach(([key,value])=>formData.append(key,value));
+    return fetch('materi_action.php?action='+action,{method:'POST',body:formData})
+        .then(async response=>{
+            const body=await response.json();
+            if(!response.ok||body.status!=='success')throw new Error(body.message||'Pengaturan akses gagal disimpan.');
+            return body;
+        });
+}
+function ubahStatusAkses(pengajaran,pertemuan,status){
+    const aksi=status==='Dibuka'?'membuka':'mengunci';
+    Swal.fire({
+        title:status==='Dibuka'?'Buka akses pertemuan?':'Kunci akses pertemuan?',
+        text:'Anda akan '+aksi+' pertemuan '+pertemuan+' untuk siswa.',
+        icon:'question',showCancelButton:true,confirmButtonText:'Ya, '+aksi,cancelButtonText:'Batal'
+    }).then(result=>{
+        if(!result.isConfirmed)return;
+        kirimPengaturanAkses('ubah_status_akses',{pengajaran_id:pengajaran,pertemuan_ke:pertemuan,status})
+            .then(body=>Swal.fire('Berhasil!',body.message,'success').then(()=>location.reload()))
+            .catch(error=>Swal.fire('Gagal!',error.message,'error'));
     });
 }
 </script>

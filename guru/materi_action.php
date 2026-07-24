@@ -72,6 +72,32 @@ $stmt->execute([$_SESSION['user_id']]);
 $guru_id = (int)($stmt->fetchColumn() ?: 0);
 
 try {
+    if ($action === 'ubah_status_akses') {
+        $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
+        $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
+        if ($pertemuan_ke < 1 || $pertemuan_ke > 20) {
+            throw new RuntimeException('Nomor pertemuan harus berada antara 1–20.');
+        }
+
+        $stmt = $db->prepare('SELECT id FROM pengajaran WHERE id=? AND guru_id=?');
+        $stmt->execute([$pengajaran_id, $guru_id]);
+        if (!$stmt->fetchColumn()) {
+            throw new RuntimeException('Pengajaran tidak valid atau bukan milik Anda.');
+        }
+
+        $status = ($_POST['status'] ?? '') === 'Dibuka' ? 'Dibuka' : 'Dikunci';
+        $stmt = $db->prepare(
+            "INSERT INTO akses_pertemuan (pengajaran_id,pertemuan_ke,status,dibuka_pada)
+             VALUES (?,?,?,CASE WHEN ?='Dibuka' THEN NOW() ELSE NULL END)
+             ON DUPLICATE KEY UPDATE
+                status=VALUES(status),
+                dibuka_pada=CASE WHEN VALUES(status)='Dibuka' THEN NOW() ELSE NULL END"
+        );
+        $stmt->execute([$pengajaran_id, $pertemuan_ke, $status, $status]);
+        catat_log($_SESSION['user_id'], "$status akses pertemuan $pertemuan_ke pada pengajaran ID $pengajaran_id");
+        respons_materi('success', "Pertemuan $pertemuan_ke berhasil " . ($status === 'Dibuka' ? 'dibuka untuk siswa.' : 'dikunci dari siswa.'));
+    }
+
     if (in_array($action, ['create_materi', 'update_materi'], true)) {
         $materi_id = (int)($_POST['materi_id'] ?? 0);
         $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
