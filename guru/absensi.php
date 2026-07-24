@@ -159,7 +159,7 @@ $akhir = (clone $awal)->modify('+30 minutes');
 </style>
 <div id="page-content-wrapper" class="teacher-attendance-page">
     <nav class="navbar navbar-expand-lg navbar-light top-navbar px-3 px-md-4 py-3">
-        <div class="d-flex justify-content-between align-items-center gap-2 w-100"><div><h5 class="mb-0 fw-bold"><i class="fa-solid fa-clipboard-user text-primary me-2"></i>Absensi Online</h5><small class="text-muted">Buka sesi check-in untuk siswa</small></div><a href="riwayat_absensi.php" class="btn btn-sm btn-outline-primary flex-shrink-0"><i class="fa-solid fa-clock-rotate-left me-1"></i><span class="d-none d-sm-inline">Riwayat</span></a></div>
+        <div class="d-flex justify-content-between align-items-center gap-2 w-100"><div><h5 class="mb-0 fw-bold"><i class="fa-solid fa-wifi text-primary me-2"></i>Absensi Online</h5><small class="text-muted">Buka sesi check-in mandiri untuk siswa</small></div><a href="riwayat_absensi.php" class="btn btn-sm btn-outline-primary flex-shrink-0"><i class="fa-solid fa-clock-rotate-left me-1"></i><span class="d-none d-sm-inline">Riwayat</span></a></div>
     </nav>
     <div class="container-fluid attendance-form-content p-3 p-md-4">
         <?php if ($success): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($success) ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>

@@ -183,11 +183,17 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="materi.php" class="list-group-item list-group-item-action <?= ($current_page === 'materi.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-book-open me-2"></i> Materi
         </a>
+        <a href="akses_pertemuan.php" class="list-group-item list-group-item-action <?= ($current_page === 'akses_pertemuan.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-lock-open me-2"></i> Hak Akses Pertemuan
+        </a>
         <a href="tugas.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['tugas.php', 'tugas_penilaian.php'], true) ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check me-2"></i> Tugas
         </a>
         <a href="absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-clipboard-user me-2"></i> Absensi
+            <i class="fa-solid fa-wifi me-2"></i> Absensi Online
+        </a>
+        <a href="absensi_manual.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi_manual.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-user-check me-2"></i> Absensi Manual
         </a>
         <a href="riwayat_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'riwayat_absensi.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Absensi
@@ -219,6 +225,9 @@ if ($role_id === 3 && class_exists('Database')) {
             </a>
             <?php endforeach; ?>
         </div>
+        <a href="akses_pertemuan.php" class="list-group-item list-group-item-action <?= ($current_page === 'akses_pertemuan.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-door-open me-2"></i> Status Pertemuan
+        </a>
         <a href="absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-user-check me-2"></i> Absensi Saya
         </a>

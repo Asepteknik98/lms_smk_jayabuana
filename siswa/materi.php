@@ -29,6 +29,7 @@ $siswa = $stmt_siswa->fetch();
 
 $kelas_id = (int)($siswa['kelas_id'] ?? 0);
 $pengajaran_id = (int)($_GET['pengajaran_id'] ?? 0);
+$pertemuan_filter = (int)($_GET['pertemuan'] ?? 0);
 
 $stmt_pengajaran = $db->prepare(
     'SELECT p.id, p.tahun_ajaran, p.semester, m.nama_mapel, g.nama_lengkap AS nama_guru
@@ -47,6 +48,11 @@ if ($pengajaran_id > 0) {
     $filter_pengajaran = ' AND p.id = ?';
     $parameter[] = $pengajaran_id;
 }
+$filter_pertemuan = '';
+if ($pertemuan_filter >= 1 && $pertemuan_filter <= 20) {
+    $filter_pertemuan = ' AND mat.pertemuan_ke = ?';
+    $parameter[] = $pertemuan_filter;
+}
 
 $stmt_materi = $db->prepare(
     'SELECT mat.id, mat.pertemuan_ke, mat.judul, mat.deskripsi, mat.video_url, mat.file_path, mat.created_at,
@@ -60,8 +66,10 @@ $stmt_materi = $db->prepare(
      JOIN pengajaran p ON p.id = mat.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
      JOIN guru g ON g.id = p.guru_id
+     JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id
+                            AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status=\'Dibuka\'
      LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id='.(int)($siswa['id']??0).'
-     WHERE p.kelas_id = ?' . $filter_pengajaran . '
+     WHERE p.kelas_id = ?' . $filter_pengajaran . $filter_pertemuan . '
      ORDER BY mat.created_at DESC, mat.id DESC'
 );
 $stmt_materi->execute($parameter);
@@ -142,6 +150,7 @@ $materi_groups=[];foreach($materi_list as $materi){$key=(int)$materi['pengajaran
                             <div class="d-flex flex-wrap gap-2">
                                 <?php if ($materi['file_path']): ?>
                                     <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-primary btn-sm"><i class="fa-solid fa-folder-open me-1"></i>Buka Materi</a>
+                                    <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=download" class="btn btn-success btn-sm"><i class="fa-solid fa-download me-1"></i>Unduh Materi</a>
                                 <?php else: ?>
                                     <button type="button" class="btn btn-light border btn-sm text-muted" disabled title="Materi tidak memiliki lampiran"><i class="fa-solid fa-folder-open me-1"></i>Buka Materi</button>
                                 <?php endif; ?>

@@ -14,12 +14,12 @@ $siswa = $stmt->fetch();
 if (!$siswa) { http_response_code(403); exit('Data siswa tidak ditemukan.'); }
 
 if ($jenis === 'materi') {
-    $stmt = $db->prepare('SELECT mat.file_path FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id WHERE mat.id=? AND p.kelas_id=?');
+    $stmt = $db->prepare("SELECT mat.file_path FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status='Dibuka' WHERE mat.id=? AND p.kelas_id=?");
     $stmt->execute([$id, $siswa['kelas_id']]);
     $folder_nama = 'materi';
 } elseif ($jenis === 'tugas') {
-    $stmt = $db->prepare('SELECT t.file_lampiran FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id WHERE t.id=? AND p.kelas_id=?');
-    $stmt->execute([$id, $siswa['kelas_id']]);
+    $stmt = $db->prepare("SELECT t.file_lampiran FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka' WHERE t.id=? AND p.kelas_id=? AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke AND mat.file_path IS NOT NULL) OR EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke))");
+    $stmt->execute([$id, $siswa['kelas_id'], $siswa['id']]);
     $folder_nama = 'tugas';
 } elseif ($jenis === 'jawaban') {
     $stmt = $db->prepare('SELECT file_tugas FROM pengumpulan_tugas WHERE id=? AND siswa_id=?');
@@ -38,6 +38,13 @@ if ($jenis === 'materi') {
          ON DUPLICATE KEY UPDATE dibaca_pada = VALUES(dibaca_pada)'
     );
     $stmt_dibaca->execute([$id, (int)$siswa['id']]);
+    if ($mode === 'download') {
+        $db->prepare(
+            'INSERT INTO materi_siswa_diunduh (materi_id,siswa_id,diunduh_pada)
+             VALUES (?,?,NOW())
+             ON DUPLICATE KEY UPDATE diunduh_pada=VALUES(diunduh_pada)'
+        )->execute([$id, (int)$siswa['id']]);
+    }
 }
 
 $folder = realpath(__DIR__ . '/../assets/upload/' . $folder_nama);

@@ -33,7 +33,7 @@ $stmt_m = $db->prepare("
     JOIN pengajaran p ON mat.pengajaran_id = p.id
     JOIN mapel m ON p.mapel_id = m.id
     JOIN kelas k ON p.kelas_id = k.id
-    WHERE p.guru_id = ? ORDER BY p.tahun_ajaran DESC, p.semester, mat.pertemuan_ke ASC
+    WHERE p.guru_id = ? ORDER BY mat.created_at DESC, mat.id DESC
 ");
 $stmt_m->execute([$guru_id]);
 $materi_list = $stmt_m->fetchAll();
@@ -120,8 +120,8 @@ $materi_list = $stmt_m->fetchAll();
 
                         <div class="mb-3">
                             <label class="form-label fw-semibold">File Modul</label>
-                            <input type="file" name="file_materi" class="form-control" accept=".pdf,.docx,.pptx,.zip">
-                            <small class="text-muted">PDF, DOCX, PPTX, atau ZIP · maksimal 10 MB.</small>
+                            <input type="file" name="file_materi" id="fileMateri" class="form-control" accept=".pdf,.docx,.pptx,.zip" required>
+                            <small class="text-muted">Wajib untuk materi baru · PDF, DOCX, PPTX, atau ZIP · maksimal 10 MB.</small>
                         </div>
 
                         <button type="submit" class="btn btn-primary publish-button w-100" id="tombolMateri"><i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi</button>
@@ -162,9 +162,10 @@ $materi_list = $stmt_m->fetchAll();
                                     <td><?= sanitize($m['judul']) ?><?php if($m['video_url']): ?><br><span class="badge bg-danger-subtle text-danger"><i class="fa-brands fa-youtube me-1"></i>Video</span><?php endif; ?></td>
                                     <td>
                                         <?php if($m['file_path']): ?>
-                                            <a href="materi_file.php?id=<?= (int)$m['id'] ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary">
-                                                <i class="fa-solid fa-download me-1"></i>Unduh
-                                            </a>
+                                            <div class="d-flex flex-wrap gap-1">
+                                                <a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-eye me-1"></i>Preview</a>
+                                                <a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=download" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-download me-1"></i>Unduh</a>
+                                            </div>
                                         <?php else: ?>
                                             <span class="text-muted small">Tanpa File</span>
                                         <?php endif; ?>
@@ -181,7 +182,7 @@ $materi_list = $stmt_m->fetchAll();
                                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><span class="badge bg-primary">Pertemuan <?= (int)$m['pertemuan_ke'] ?></span><small class="text-muted"><?= date('d/m/Y',strtotime($m['created_at'])) ?></small></div>
                                 <h2 class="material-title fw-bold mb-1"><?= sanitize($m['judul']) ?></h2>
                                 <p class="material-meta text-muted mb-3"><?= sanitize($m['nama_mapel']) ?> &middot; <?= sanitize($m['nama_kelas']) ?><br><?= sanitize($m['semester']) ?> <?= sanitize($m['tahun_ajaran']) ?></p>
-                                <?php if($m['video_url']): ?><div class="small text-danger mb-2"><i class="fa-brands fa-youtube me-1"></i>Video YouTube tersedia</div><?php endif; ?><?php if($m['file_path']): ?><a href="materi_file.php?id=<?= (int)$m['id'] ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary w-100"><i class="fa-solid fa-download me-1"></i>Buka / Unduh Modul</a><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?><div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"],"video_url"=>$m["video_url"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash me-1"></i>Hapus</button></div>
+                                <?php if($m['video_url']): ?><div class="small text-danger mb-2"><i class="fa-brands fa-youtube me-1"></i>Video YouTube tersedia</div><?php endif; ?><?php if($m['file_path']): ?><div class="d-flex gap-2"><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary flex-fill"><i class="fa-solid fa-eye me-1"></i>Preview</a><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=download" class="btn btn-sm btn-outline-success flex-fill"><i class="fa-solid fa-download me-1"></i>Unduh</a></div><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?><div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"],"video_url"=>$m["video_url"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash me-1"></i>Hapus</button></div>
                             </article>
                         <?php endforeach; ?>
                     </div>
@@ -196,7 +197,7 @@ $materi_list = $stmt_m->fetchAll();
 
 <script>
 $(document).ready(function() {
-    $('#tableMateri').DataTable();
+    $('#tableMateri').DataTable({ order: [] });
 
     $('#formMateri').on('submit', function(e) {
         e.preventDefault();
@@ -227,6 +228,7 @@ function editMateri(data){
     document.getElementById('judulMateri').value=data.judul;
     document.getElementById('deskripsiMateri').value=data.deskripsi||'';
     document.getElementById('videoUrlMateri').value=data.video_url||'';
+    document.getElementById('fileMateri').required=false;
     document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-pen me-2 text-primary"></i>Edit Materi';
     document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-floppy-disk me-2"></i>Simpan Perubahan';
     document.getElementById('batalEditMateri').classList.remove('d-none');
@@ -236,6 +238,7 @@ function resetFormMateri(){
     document.getElementById('formMateri').reset();
     document.getElementById('materiId').value='';
     document.getElementById('aksiMateri').value='create_materi';
+    document.getElementById('fileMateri').required=true;
     document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru';
     document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi';
     document.getElementById('batalEditMateri').classList.add('d-none');

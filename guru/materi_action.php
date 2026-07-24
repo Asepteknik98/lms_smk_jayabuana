@@ -88,6 +88,9 @@ try {
 
         $file_baru = simpan_file_materi($_FILES['file_materi'] ?? []);
         if ($action === 'create_materi') {
+            if (!$file_baru) {
+                throw new RuntimeException('File modul wajib diunggah agar siswa dapat mengunduh materi sebelum membuka tugas.');
+            }
             try {
                 $stmt = $db->prepare('INSERT INTO materi (pengajaran_id,pertemuan_ke,judul,deskripsi,video_url,file_path) VALUES (?,?,?,?,?,?)');
                 $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $video_url, $file_baru]);

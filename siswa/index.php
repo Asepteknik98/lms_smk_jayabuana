@@ -24,7 +24,7 @@ $siswa_id = $siswa['id'] ?? 0;
 $kelas_id = $siswa['kelas_id'] ?? 0;
 
 // Materi yang belum pernah dibuka siswa.
-$stmt_materi_baru=$db->prepare("SELECT COUNT(*) FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id=? WHERE p.kelas_id=? AND md.materi_id IS NULL");
+$stmt_materi_baru=$db->prepare("SELECT COUNT(*) FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status='Dibuka' LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id=? WHERE p.kelas_id=? AND md.materi_id IS NULL");
 $stmt_materi_baru->execute([$siswa_id,$kelas_id]);$materi_baru=(int)$stmt_materi_baru->fetchColumn();
 
 // Sesi absensi yang sedang berlangsung dan belum di-check-in siswa.
@@ -37,11 +37,22 @@ $stmt_tugas = $db->prepare("
     SELECT COUNT(*) 
     FROM tugas t
     JOIN pengajaran p ON t.pengajaran_id = p.id
+    JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id
+                           AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka'
     WHERE p.kelas_id = ? 
     AND t.deadline >= NOW()
     AND t.id NOT IN (SELECT tugas_id FROM pengumpulan_tugas WHERE siswa_id = ?)
+    AND (NOT EXISTS(
+        SELECT 1 FROM materi mat
+        WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+          AND mat.file_path IS NOT NULL
+    ) OR EXISTS(
+        SELECT 1 FROM materi mat JOIN materi_siswa_diunduh msu
+        ON msu.materi_id=mat.id AND msu.siswa_id=?
+        WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+    ))
 ");
-$stmt_tugas->execute([$kelas_id, $siswa_id]);
+$stmt_tugas->execute([$kelas_id, $siswa_id, $siswa_id]);
 $tugas_aktif = $stmt_tugas->fetchColumn();
 
 // Total Ujian/Kuis Mendatang
@@ -76,12 +87,23 @@ $stmt_tugas_dekat = $db->prepare("
     FROM tugas t
     JOIN pengajaran p ON p.id = t.pengajaran_id
     JOIN mapel m ON m.id = p.mapel_id
+    JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id
+                           AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka'
     LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id = t.id AND pt.siswa_id = ?
     WHERE p.kelas_id = ? AND t.deadline >= NOW() AND pt.id IS NULL
+    AND (NOT EXISTS(
+        SELECT 1 FROM materi mat
+        WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+          AND mat.file_path IS NOT NULL
+    ) OR EXISTS(
+        SELECT 1 FROM materi mat JOIN materi_siswa_diunduh msu
+        ON msu.materi_id=mat.id AND msu.siswa_id=?
+        WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke
+    ))
     ORDER BY t.deadline ASC
     LIMIT 3
 ");
-$stmt_tugas_dekat->execute([$siswa_id, $kelas_id]);
+$stmt_tugas_dekat->execute([$siswa_id, $kelas_id, $siswa_id]);
 $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
 ?>
 

@@ -30,6 +30,8 @@ $stmt_materi = $db->prepare(
      JOIN pengajaran p ON p.id = mat.pengajaran_id
      JOIN mapel m ON m.id = p.mapel_id
      JOIN guru g ON g.id = p.guru_id
+     JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id
+                            AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status=\'Dibuka\'
      WHERE mat.id = ? AND p.kelas_id = ?'
 );
 $stmt_materi->execute([$materi_id, (int)($siswa['kelas_id'] ?? 0)]);
@@ -60,17 +62,19 @@ if ($materi && $siswa) {
     $tugas_terkait = $stmt_tugas->fetchAll();
 
     $stmt_sebelumnya = $db->prepare(
-        'SELECT id, judul FROM materi
-         WHERE pengajaran_id = ? AND (pertemuan_ke < ? OR (pertemuan_ke = ? AND id < ?))
-         ORDER BY pertemuan_ke DESC, id DESC LIMIT 1'
+        'SELECT mat.id, mat.judul FROM materi mat
+         JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status=\'Dibuka\'
+         WHERE mat.pengajaran_id = ? AND (mat.pertemuan_ke < ? OR (mat.pertemuan_ke = ? AND mat.id < ?))
+         ORDER BY mat.pertemuan_ke DESC, mat.id DESC LIMIT 1'
     );
     $stmt_sebelumnya->execute([$materi['pengajaran_id'], $materi['pertemuan_ke'], $materi['pertemuan_ke'], $materi_id]);
     $materi_sebelumnya = $stmt_sebelumnya->fetch();
 
     $stmt_berikutnya = $db->prepare(
-        'SELECT id, judul FROM materi
-         WHERE pengajaran_id = ? AND (pertemuan_ke > ? OR (pertemuan_ke = ? AND id > ?))
-         ORDER BY pertemuan_ke ASC, id ASC LIMIT 1'
+        'SELECT mat.id, mat.judul FROM materi mat
+         JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status=\'Dibuka\'
+         WHERE mat.pengajaran_id = ? AND (mat.pertemuan_ke > ? OR (mat.pertemuan_ke = ? AND mat.id > ?))
+         ORDER BY mat.pertemuan_ke ASC, mat.id ASC LIMIT 1'
     );
     $stmt_berikutnya->execute([$materi['pengajaran_id'], $materi['pertemuan_ke'], $materi['pertemuan_ke'], $materi_id]);
     $materi_berikutnya = $stmt_berikutnya->fetch();
@@ -115,6 +119,7 @@ if ($materi && $siswa) {
                         <div class="review-file p-3 d-flex flex-wrap justify-content-between align-items-center gap-3">
                             <div><strong class="d-block"><i class="fa-solid fa-file-lines text-primary me-2"></i>Lampiran materi</strong><small class="text-muted">Buka untuk membaca atau mengunduh berkas dari guru.</small></div>
                             <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-primary"><i class="fa-solid fa-up-right-from-square me-1"></i>Buka Lampiran</a>
+                            <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=download" class="btn btn-success"><i class="fa-solid fa-download me-1"></i>Unduh Materi</a>
                         </div>
                     <?php endif; ?>
                 </div>
