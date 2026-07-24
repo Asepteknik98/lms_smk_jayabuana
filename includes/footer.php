@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
     if (page && !page.querySelector('.app-global-footer')) {
         const footer = document.createElement('footer');
         footer.className = 'app-global-footer';
-        footer.innerHTML = '&copy; Copyright SMKS JAYA BUANA 2026 <strong>V.2.1</strong>';
+        footer.innerHTML = '&copy; Copyright SMKS JAYA BUANA 2026 <strong>V.1.0.0</strong>';
         page.appendChild(footer);
     }
 });
