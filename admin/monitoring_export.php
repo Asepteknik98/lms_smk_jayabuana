@@ -28,7 +28,7 @@ if ($jenis === 'guru') {
     } else {
         $data = $db->query("SELECT g.nip,g.nama_lengkap,u.username,IF(u.is_active=1,'Aktif','Nonaktif') status_akun,(SELECT COUNT(*) FROM pengajaran p WHERE p.guru_id=g.id) total_pengajaran,(SELECT COUNT(*) FROM materi x JOIN pengajaran p ON p.id=x.pengajaran_id WHERE p.guru_id=g.id) total_materi,(SELECT COUNT(*) FROM tugas x JOIN pengajaran p ON p.id=x.pengajaran_id WHERE p.guru_id=g.id) total_tugas,(SELECT COUNT(*) FROM ujian x JOIN pengajaran p ON p.id=x.pengajaran_id WHERE p.guru_id=g.id) total_ujian,(SELECT COUNT(*) FROM sesi_absensi x JOIN pengajaran p ON p.id=x.pengajaran_id WHERE p.guru_id=g.id) total_absensi FROM guru g JOIN users u ON u.id=g.user_id ORDER BY g.nama_lengkap")->fetchAll();
         $judul = 'Rekap Keseluruhan Guru';
-        $headers = ['NIP','Nama Guru','Username','Status','Pengajaran','Materi','Tugas','Ujian','Sesi Absensi'];
+        $headers = ['NIP','Nama Guru','Username','Status','Pengajaran','Materi','Tugas','Ulangan Harian','Sesi Absensi'];
         foreach ($data as $r) $rows[] = [$r['nip'] ?: '-',$r['nama_lengkap'],$r['username'],$r['status_akun'],$r['total_pengajaran'],$r['total_materi'],$r['total_tugas'],$r['total_ujian'],$r['total_absensi']];
     }
 } elseif ($jenis === 'siswa') {
@@ -37,7 +37,7 @@ if ($jenis === 'guru') {
     $stmt->execute($id > 0 ? [$id] : []); $data = $stmt->fetchAll();
     if ($id > 0 && !$data) { http_response_code(404); exit('Data siswa tidak ditemukan.'); }
     $judul = $id > 0 ? 'Rekap Siswa - ' . $data[0]['nama_lengkap'] : 'Rekap Keseluruhan Siswa';
-    $headers = ['NISN','Nama Siswa','Kelas','Username','Status','Tugas','Ujian','Hadir','Sakit','Izin','Alpa'];
+    $headers = ['NISN','Nama Siswa','Kelas','Username','Status','Tugas','Ulangan Harian','Hadir','Sakit','Izin','Alpa'];
     foreach ($data as $r) $rows[] = [$r['nisn'],$r['nama_lengkap'],$r['nama_kelas'],$r['username'],$r['status_akun'],$r['tugas'],$r['ujian'],$r['hadir'],$r['sakit'],$r['izin'],$r['alpa']];
 } else {
     $where = '';

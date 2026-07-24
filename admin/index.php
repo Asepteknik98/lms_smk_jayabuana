@@ -103,7 +103,7 @@ $persentase_siap = (int)round(($pemeriksaan_siap / $total_pemeriksaan) * 100);
         <div class="card dashboard-card p-4 mb-4">
             <div class="d-flex justify-content-between align-items-center mb-3"><div><h6 class="fw-bold mb-1">Aktivitas Akademik</h6><small class="text-muted">Ringkasan konten dan proses pembelajaran</small></div><a href="monitoring.php" class="btn btn-sm btn-outline-primary">Lihat Detail</a></div>
             <div class="row g-3">
-                <?php foreach ([['Pengajaran',$statistik['pengajaran'],'fa-person-chalkboard'],['Materi',$statistik['materi'],'fa-book-open'],['Tugas',$statistik['tugas'],'fa-list-check'],['Ujian',$statistik['ujian'],'fa-file-circle-question']] as [$label,$jumlah,$icon]): ?>
+                <?php foreach ([['Pengajaran',$statistik['pengajaran'],'fa-person-chalkboard'],['Materi',$statistik['materi'],'fa-book-open'],['Tugas',$statistik['tugas'],'fa-list-check'],['Ulangan Harian',$statistik['ujian'],'fa-file-circle-question']] as [$label,$jumlah,$icon]): ?>
                     <div class="col-6 col-lg-3"><div class="mini-stat d-flex align-items-center gap-3"><span class="text-primary fs-4"><i class="fa-solid <?= $icon ?>"></i></span><div><small class="text-muted"><?= $label ?></small><h4 class="fw-bold mb-0"><?= $jumlah ?></h4></div></div></div>
                 <?php endforeach; ?>
             </div>

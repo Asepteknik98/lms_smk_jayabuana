@@ -15,7 +15,7 @@ $siswa = $stmt_s->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 
 $action = $_GET['action'] ?? '';
-if($_SERVER['REQUEST_METHOD']!=='POST'||!verify_csrf($_POST['csrf_token']??'')){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Permintaan tidak sah. Muat ulang halaman ujian.']);exit;}
+if($_SERVER['REQUEST_METHOD']!=='POST'||!verify_csrf($_POST['csrf_token']??'')){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Permintaan tidak sah. Muat ulang halaman ulangan harian.']);exit;}
 
 // ------------------- SIMPAN JAWABAN REAL-TIME / AUTO-SAVE -------------------
 if ($action === 'save_jawaban') {
@@ -32,7 +32,7 @@ if ($action === 'save_jawaban') {
     if(!in_array($tipe,['PG','ESAI'],true)||($tipe==='PG'&&!in_array(strtoupper($jawaban),['A','B','C','D','E'],true))){echo json_encode(['status'=>'error','message'=>'Jawaban tidak valid.']);exit;}
     if($tipe==='ESAI'&&mb_strlen($jawaban)>20000){echo json_encode(['status'=>'error','message'=>'Jawaban esai terlalu panjang.']);exit;}
     $stmt_akses=$db->prepare("SELECT su.id,su.ujian_id FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id JOIN soal_ujian so ON so.ujian_id=u.id AND so.id=? JOIN pengajaran p ON p.id=u.pengajaran_id JOIN siswa s ON s.id=su.siswa_id AND s.kelas_id=p.kelas_id WHERE su.id=? AND su.siswa_id=? AND su.status='Berlangsung' AND NOW() BETWEEN u.waktu_mulai AND u.waktu_selesai AND so.tipe_soal=?");
-    $stmt_akses->execute([$soal_id,$sesi_id,$siswa_id,$tipe]);if(!$stmt_akses->fetch()){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Sesi, soal, atau waktu ujian tidak valid.']);exit;}
+    $stmt_akses->execute([$soal_id,$sesi_id,$siswa_id,$tipe]);if(!$stmt_akses->fetch()){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Sesi, soal, atau waktu ulangan harian tidak valid.']);exit;}
 
     // Cek Kunci Jawaban jika PG
     $is_benar = 0;
@@ -113,12 +113,12 @@ if ($action === 'finish_ujian') {
     if ($jumlah_belum > 0 && !$waktu_benar_habis) {
         echo json_encode([
             'status' => 'error',
-            'message' => "$jumlah_belum soal belum dijawab. Semua soal wajib dijawab sebelum ujian dikirim."
+            'message' => "$jumlah_belum soal belum dijawab. Semua soal wajib dijawab sebelum ulangan harian dikirim."
         ]);
         exit();
     }
-    if($sesi['status']==='Selesai'){echo json_encode(['status'=>'success','message'=>'Ujian sudah selesai.']);exit;}
-    if(time()<strtotime($sesi['jadwal_mulai'])){echo json_encode(['status'=>'error','message'=>'Ujian belum dimulai.']);exit;}
+    if($sesi['status']==='Selesai'){echo json_encode(['status'=>'success','message'=>'Ulangan Harian sudah selesai.']);exit;}
+    if(time()<strtotime($sesi['jadwal_mulai'])){echo json_encode(['status'=>'error','message'=>'Ulangan Harian belum dimulai.']);exit;}
 
     // Update status sesi menjadi Selesai
     $db->beginTransaction();
@@ -147,8 +147,8 @@ if ($action === 'finish_ujian') {
     $stmt_n->execute([$ujian_id, $siswa_id, $nilai_pg, $nilai_pg, $nilai_pg, $nilai_pg]);
     $db->commit();
 
-    catat_log($_SESSION['user_id'], "Menyelesaikan Ujian ID: $ujian_id dengan Nilai PG: $nilai_pg");
-    echo json_encode(['status' => 'success', 'message' => 'Ujian telah selesai dikerjakan!']);
+    catat_log($_SESSION['user_id'], "Menyelesaikan Ulangan Harian ID: $ujian_id dengan Nilai PG: $nilai_pg");
+    echo json_encode(['status' => 'success', 'message' => 'Ulangan Harian telah selesai dikerjakan!']);
     exit();
 }
 http_response_code(400);echo json_encode(['status'=>'error','message'=>'Aksi tidak dikenali.']);

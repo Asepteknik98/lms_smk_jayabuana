@@ -29,7 +29,10 @@ $pengajaran_list = $stmt_p->fetchAll();
 // Ambil Daftar Materi yang sudah dibuat
 $stmt_m = $db->prepare("
     SELECT mat.*, m.nama_mapel, k.nama_kelas, p.tahun_ajaran, p.semester,
-           COALESCE(ap.status, 'Dikunci') AS status_akses
+           COALESCE(ap.status, 'Dikunci') AS status_akses,
+           (SELECT COUNT(*) FROM tugas t
+            WHERE t.pengajaran_id=mat.pengajaran_id
+              AND t.pertemuan_ke=mat.pertemuan_ke) AS jumlah_tugas
     FROM materi mat
     JOIN pengajaran p ON mat.pengajaran_id = p.id
     JOIN mapel m ON p.mapel_id = m.id
@@ -161,7 +164,7 @@ $kelas_materi = array_values($kelas_materi);
                     <div class="table-responsive d-none d-md-block">
                         <table id="tableMateri" class="table table-hover align-middle w-100">
                             <thead class="table-light">
-                                <tr data-kelas="<?= sanitize($m['nama_kelas']) ?>">
+                                <tr>
                                     <th>Mapel & Kelas</th>
                                     <th>Semester/Pertemuan</th>
                                     <th>Judul Materi</th>
@@ -172,7 +175,7 @@ $kelas_materi = array_values($kelas_materi);
                             </thead>
                             <tbody>
                                 <?php foreach($materi_list as $m): ?>
-                                <tr>
+                                <tr data-kelas="<?= sanitize($m['nama_kelas']) ?>">
                                     <td>
                                         <strong><?= sanitize($m['nama_mapel']) ?></strong><br>
                                         <small class="text-muted"><?= sanitize($m['nama_kelas']) ?></small>
@@ -181,7 +184,18 @@ $kelas_materi = array_values($kelas_materi);
                                         <span class="badge bg-primary"><?= sanitize($m['semester']) ?></span><br>
                                         <small><?= sanitize($m['tahun_ajaran']) ?> · Pertemuan <?= (int)$m['pertemuan_ke'] ?></small>
                                     </td>
-                                    <td><?= sanitize($m['judul']) ?><br><button type="button" class="badge access-badge <?= $m['status_akses']==='Dibuka'?'bg-success':'bg-secondary' ?>" title="Klik untuk <?= $m['status_akses']==='Dibuka'?'mengunci':'membuka' ?> akses siswa" onclick="ubahStatusAkses(<?= (int)$m['pengajaran_id'] ?>,<?= (int)$m['pertemuan_ke'] ?>,'<?= $m['status_akses']==='Dibuka'?'Dikunci':'Dibuka' ?>')"><i class="fa-solid <?= $m['status_akses']==='Dibuka'?'fa-lock-open':'fa-lock' ?> me-1"></i><?= sanitize($m['status_akses']) ?></button><?php if($m['video_url']): ?> <span class="badge bg-danger-subtle text-danger"><i class="fa-brands fa-youtube me-1"></i>Video</span><?php endif; ?></td>
+                                    <td>
+                                        <?= sanitize($m['judul']) ?><br>
+                                        <button type="button" class="badge access-badge <?= $m['status_akses']==='Dibuka'?'bg-success':'bg-secondary' ?>" title="Klik untuk <?= $m['status_akses']==='Dibuka'?'mengunci':'membuka' ?> akses siswa" onclick="ubahStatusAkses(<?= (int)$m['pengajaran_id'] ?>,<?= (int)$m['pertemuan_ke'] ?>,'<?= $m['status_akses']==='Dibuka'?'Dikunci':'Dibuka' ?>')"><i class="fa-solid <?= $m['status_akses']==='Dibuka'?'fa-lock-open':'fa-lock' ?> me-1"></i><?= sanitize($m['status_akses']) ?></button>
+                                        <?php if($m['video_url']): ?> <span class="badge bg-danger-subtle text-danger"><i class="fa-brands fa-youtube me-1"></i>Video</span><?php endif; ?>
+                                        <div class="mt-2">
+                                            <?php if((int)$m['jumlah_tugas'] > 0): ?>
+                                                <a href="tugas.php?pengajaran_id=<?= (int)$m['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$m['pertemuan_ke'] ?>" class="btn btn-sm btn-outline-warning text-dark"><i class="fa-solid fa-list-check me-1"></i>Kelola Tugas <span class="badge bg-warning text-dark ms-1"><?= (int)$m['jumlah_tugas'] ?></span></a>
+                                            <?php else: ?>
+                                                <a href="tugas.php?buat=1&amp;pengajaran_id=<?= (int)$m['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$m['pertemuan_ke'] ?>" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-file-circle-plus me-1"></i>Buat Tugas</a>
+                                            <?php endif; ?>
+                                        </div>
+                                    </td>
                                     <td>
                                         <?php if($m['file_path']): ?>
                                             <div class="d-flex flex-wrap gap-1">
@@ -205,7 +219,7 @@ $kelas_materi = array_values($kelas_materi);
                                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><div><span class="badge bg-primary">Pertemuan <?= (int)$m['pertemuan_ke'] ?></span> <button type="button" class="badge access-badge <?= $m['status_akses']==='Dibuka'?'bg-success':'bg-secondary' ?>" title="Klik untuk <?= $m['status_akses']==='Dibuka'?'mengunci':'membuka' ?> akses siswa" onclick="ubahStatusAkses(<?= (int)$m['pengajaran_id'] ?>,<?= (int)$m['pertemuan_ke'] ?>,'<?= $m['status_akses']==='Dibuka'?'Dikunci':'Dibuka' ?>')"><i class="fa-solid <?= $m['status_akses']==='Dibuka'?'fa-lock-open':'fa-lock' ?> me-1"></i><?= sanitize($m['status_akses']) ?></button></div><small class="text-muted"><?= date('d/m/Y',strtotime($m['created_at'])) ?></small></div>
                                 <h2 class="material-title fw-bold mb-1"><?= sanitize($m['judul']) ?></h2>
                                 <p class="material-meta text-muted mb-3"><?= sanitize($m['nama_mapel']) ?> &middot; <?= sanitize($m['nama_kelas']) ?><br><?= sanitize($m['semester']) ?> <?= sanitize($m['tahun_ajaran']) ?></p>
-                                <?php if($m['video_url']): ?><div class="small text-danger mb-2"><i class="fa-brands fa-youtube me-1"></i>Video YouTube tersedia</div><?php endif; ?><?php if($m['file_path']): ?><div class="d-flex gap-2"><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary flex-fill"><i class="fa-solid fa-eye me-1"></i>Preview</a><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=download" class="btn btn-sm btn-outline-success flex-fill"><i class="fa-solid fa-download me-1"></i>Unduh</a></div><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?><div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"],"video_url"=>$m["video_url"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash me-1"></i>Hapus</button></div>
+                                <?php if($m['video_url']): ?><div class="small text-danger mb-2"><i class="fa-brands fa-youtube me-1"></i>Video YouTube tersedia</div><?php endif; ?><?php if($m['file_path']): ?><div class="d-flex gap-2"><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-sm btn-outline-primary flex-fill"><i class="fa-solid fa-eye me-1"></i>Preview</a><a href="materi_file.php?id=<?= (int)$m['id'] ?>&amp;mode=download" class="btn btn-sm btn-outline-success flex-fill"><i class="fa-solid fa-download me-1"></i>Unduh</a></div><?php else: ?><span class="btn btn-sm btn-light disabled w-100">Materi tanpa file</span><?php endif; ?><div class="d-grid mt-2"><?php if((int)$m['jumlah_tugas'] > 0): ?><a href="tugas.php?pengajaran_id=<?= (int)$m['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$m['pertemuan_ke'] ?>" class="btn btn-sm btn-outline-warning text-dark"><i class="fa-solid fa-list-check me-1"></i>Kelola Tugas (<?= (int)$m['jumlah_tugas'] ?>)</a><?php else: ?><a href="tugas.php?buat=1&amp;pengajaran_id=<?= (int)$m['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$m['pertemuan_ke'] ?>" class="btn btn-sm btn-outline-primary"><i class="fa-solid fa-file-circle-plus me-1"></i>Buat Tugas</a><?php endif; ?></div><div class="d-flex gap-2 mt-2"><button type="button" class="btn btn-sm btn-outline-secondary flex-fill" onclick='editMateri(<?= json_encode(["id"=>(int)$m["id"],"pengajaran_id"=>(int)$m["pengajaran_id"],"pertemuan_ke"=>(int)$m["pertemuan_ke"],"judul"=>$m["judul"],"deskripsi"=>$m["deskripsi"],"video_url"=>$m["video_url"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen me-1"></i>Edit</button><button type="button" class="btn btn-sm btn-outline-danger flex-fill" onclick='hapusMateri(<?= (int)$m["id"] ?>,<?= json_encode($m["judul"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash me-1"></i>Hapus</button></div>
                             </article>
                         <?php endforeach; ?>
                     </div>

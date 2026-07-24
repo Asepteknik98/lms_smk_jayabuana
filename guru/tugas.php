@@ -138,13 +138,30 @@ $stmt = $db->prepare('SELECT p.id,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_a
 $stmt->execute([$guru_id]);
 $pengajaran = $stmt->fetchAll();
 
+$pengajaran_ids = array_map(static fn(array $item): int => (int)$item['id'], $pengajaran);
+$filter_pengajaran_id = (int)($_GET['pengajaran_id'] ?? 0);
+$filter_pertemuan = (int)($_GET['pertemuan'] ?? 0);
+if (!in_array($filter_pengajaran_id, $pengajaran_ids, true) || $filter_pertemuan < 1 || $filter_pertemuan > 20) {
+    $filter_pengajaran_id = 0;
+    $filter_pertemuan = 0;
+}
+$buka_form_tugas = ($_GET['buat'] ?? '') === '1' && $filter_pengajaran_id > 0;
+
+$filter_sql = '';
+$filter_parameter = [$guru_id];
+if ($filter_pengajaran_id > 0) {
+    $filter_sql = ' AND t.pengajaran_id=? AND t.pertemuan_ke=?';
+    $filter_parameter[] = $filter_pengajaran_id;
+    $filter_parameter[] = $filter_pertemuan;
+}
+
 $stmt = $db->prepare("SELECT t.*,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_ajaran,
     (SELECT COUNT(*) FROM siswa s WHERE s.kelas_id=p.kelas_id) total_siswa,
     (SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.tugas_id=t.id) sudah_mengumpulkan,
     (SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.tugas_id=t.id AND pt.nilai IS NULL) belum_dinilai
     FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id
-    WHERE p.guru_id=? ORDER BY t.deadline DESC");
-$stmt->execute([$guru_id]);
+    WHERE p.guru_id=?$filter_sql ORDER BY t.deadline DESC");
+$stmt->execute($filter_parameter);
 $daftar_tugas = $stmt->fetchAll();
 
 // Batasi kartu tugas per halaman agar daftar tetap ringkas.
@@ -153,6 +170,14 @@ $total_tugas_guru = count($daftar_tugas);
 $total_halaman_tugas = max(1, (int)ceil($total_tugas_guru / $tugas_per_halaman));
 $halaman_tugas = max(1, min((int)($_GET['page'] ?? 1), $total_halaman_tugas));
 $daftar_tugas = array_slice($daftar_tugas, ($halaman_tugas - 1) * $tugas_per_halaman, $tugas_per_halaman);
+$url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $filter_pertemuan): string {
+    $parameter = ['page' => $page];
+    if ($filter_pengajaran_id > 0) {
+        $parameter['pengajaran_id'] = $filter_pengajaran_id;
+        $parameter['pertemuan'] = $filter_pertemuan;
+    }
+    return '?' . http_build_query($parameter);
+};
 ?>
 <?php require_once __DIR__ . '/../includes/header.php'; ?>
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
@@ -207,13 +232,14 @@ $daftar_tugas = array_slice($daftar_tugas, ($halaman_tugas - 1) * $tugas_per_hal
 <div id="page-content-wrapper" class="teacher-task-page">
     <nav class="navbar task-page-toolbar px-2 px-md-4 py-2 py-md-3">
         <div class="d-flex justify-content-between align-items-center gap-2 w-100">
-            <div class="min-w-0"><h5 class="mb-0 fw-bold text-truncate"><i class="fa-solid fa-list-check text-primary me-2"></i>Daftar Tugas</h5><small class="text-muted d-block text-truncate"><?= $total_tugas_guru ?> tugas pada seluruh kelas yang Anda ampu</small></div>
-            <button class="btn btn-primary btn-sm create-task-button flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalTugas" onclick="tugasBaru()" aria-label="Tambah tugas baru" title="Tambah Tugas"><i class="fa-solid fa-plus me-1"></i><span>Tambah Tugas</span></button>
+            <div class="min-w-0"><h5 class="mb-0 fw-bold text-truncate"><i class="fa-solid fa-list-check text-primary me-2"></i>Daftar Tugas</h5><small class="text-muted d-block text-truncate"><?= $filter_pengajaran_id ? $total_tugas_guru.' tugas pada pertemuan '.$filter_pertemuan : $total_tugas_guru.' tugas pada seluruh kelas yang Anda ampu' ?></small></div>
+            <button class="btn btn-primary btn-sm create-task-button flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalTugas" onclick="tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>)" aria-label="Tambah tugas baru" title="Tambah Tugas"><i class="fa-solid fa-plus me-1"></i><span>Tambah Tugas</span></button>
         </div>
     </nav>
     <div class="container-fluid teacher-task-content p-3 p-md-4">
         <?php if ($pesan_sukses): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($pesan_sukses) ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
         <?php if ($pesan_error): ?><div class="alert alert-danger alert-dismissible fade show"><?= sanitize($pesan_error) ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
+        <?php if ($filter_pengajaran_id): ?><div class="alert alert-primary d-flex flex-wrap justify-content-between align-items-center gap-2"><span><i class="fa-solid fa-filter me-1"></i>Menampilkan tugas pertemuan <?= $filter_pertemuan ?> dari materi yang dipilih.</span><a href="tugas.php" class="btn btn-sm btn-light border">Tampilkan Semua</a></div><?php endif; ?>
 
         <?php if (!$pengajaran): ?>
             <div class="alert alert-info">Belum ada kelas dan mata pelajaran yang ditugaskan admin kepada Anda.</div>
@@ -236,16 +262,16 @@ $daftar_tugas = array_slice($daftar_tugas, ($halaman_tugas - 1) * $tugas_per_hal
             <?php if ($total_tugas_guru > 0): ?>
                 <nav class="mt-4" aria-label="Navigasi halaman tugas guru">
                     <div class="d-flex d-md-none justify-content-between align-items-center gap-2">
-                        <a class="btn btn-sm btn-outline-primary <?= $halaman_tugas <= 1 ? 'disabled' : '' ?>" href="?page=<?= max(1, $halaman_tugas - 1) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a>
+                        <a class="btn btn-sm btn-outline-primary <?= $halaman_tugas <= 1 ? 'disabled' : '' ?>" href="<?= sanitize($url_halaman_tugas(max(1, $halaman_tugas - 1))) ?>"><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</a>
                         <small class="text-muted"><?= $halaman_tugas ?> / <?= $total_halaman_tugas ?></small>
-                        <a class="btn btn-sm btn-outline-primary <?= $halaman_tugas >= $total_halaman_tugas ? 'disabled' : '' ?>" href="?page=<?= min($total_halaman_tugas, $halaman_tugas + 1) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a>
+                        <a class="btn btn-sm btn-outline-primary <?= $halaman_tugas >= $total_halaman_tugas ? 'disabled' : '' ?>" href="<?= sanitize($url_halaman_tugas(min($total_halaman_tugas, $halaman_tugas + 1))) ?>">Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></a>
                     </div>
                     <ul class="pagination pagination-sm justify-content-center d-none d-md-flex mb-0">
-                        <li class="page-item <?= $halaman_tugas <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= max(1, $halaman_tugas - 1) ?>" aria-label="Sebelumnya">&laquo;</a></li>
+                        <li class="page-item <?= $halaman_tugas <= 1 ? 'disabled' : '' ?>"><a class="page-link" href="<?= sanitize($url_halaman_tugas(max(1, $halaman_tugas - 1))) ?>" aria-label="Sebelumnya">&laquo;</a></li>
                         <?php for ($nomor_halaman = 1; $nomor_halaman <= $total_halaman_tugas; $nomor_halaman++): ?>
-                            <li class="page-item <?= $nomor_halaman === $halaman_tugas ? 'active' : '' ?>"><a class="page-link" href="?page=<?= $nomor_halaman ?>"><?= $nomor_halaman ?></a></li>
+                            <li class="page-item <?= $nomor_halaman === $halaman_tugas ? 'active' : '' ?>"><a class="page-link" href="<?= sanitize($url_halaman_tugas($nomor_halaman)) ?>"><?= $nomor_halaman ?></a></li>
                         <?php endfor; ?>
-                        <li class="page-item <?= $halaman_tugas >= $total_halaman_tugas ? 'disabled' : '' ?>"><a class="page-link" href="?page=<?= min($total_halaman_tugas, $halaman_tugas + 1) ?>" aria-label="Berikutnya">&raquo;</a></li>
+                        <li class="page-item <?= $halaman_tugas >= $total_halaman_tugas ? 'disabled' : '' ?>"><a class="page-link" href="<?= sanitize($url_halaman_tugas(min($total_halaman_tugas, $halaman_tugas + 1))) ?>" aria-label="Berikutnya">&raquo;</a></li>
                     </ul>
                     <p class="text-center text-muted small mt-2 mb-0">Menampilkan maksimal <?= $tugas_per_halaman ?> dari <?= $total_tugas_guru ?> tugas</p>
                 </nav>
@@ -262,6 +288,9 @@ $daftar_tugas = array_slice($daftar_tugas, ($halaman_tugas - 1) * $tugas_per_hal
     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Publikasikan Tugas</button></div></form></div></div></div>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 <script>
-function tugasBaru(){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='create';document.getElementById('idTugas').value='';document.getElementById('judulModal').textContent='Buat Tugas Baru';document.getElementById('infoEdit').classList.add('d-none')}
+function tugasBaru(pengajaranId=0,pertemuan=0){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='create';document.getElementById('idTugas').value='';document.getElementById('judulModal').textContent='Buat Tugas Baru';document.getElementById('infoEdit').classList.add('d-none');if(pengajaranId)document.getElementById('pengajaranTugas').value=String(pengajaranId);if(pertemuan)document.getElementById('pertemuanTugas').value=String(pertemuan)}
 function editTugas(d){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='update';document.getElementById('idTugas').value=d.id;document.getElementById('pengajaranTugas').value=d.pengajaran_id;document.getElementById('pertemuanTugas').value=d.pertemuan_ke;document.getElementById('namaTugas').value=d.judul;document.getElementById('deskripsiTugas').value=d.deskripsi||'';document.getElementById('deadlineTugas').value=d.deadline;document.getElementById('judulModal').textContent='Edit Tugas';document.getElementById('infoEdit').classList.remove('d-none')}
+<?php if ($buka_form_tugas): ?>
+document.addEventListener('DOMContentLoaded',function(){tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>);bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTugas')).show()});
+<?php endif; ?>
 </script>

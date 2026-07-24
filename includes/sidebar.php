@@ -199,7 +199,7 @@ if ($role_id === 3 && class_exists('Database')) {
             <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
         </a>
         <a href="ujian.php" class="list-group-item list-group-item-action <?= ($current_page === 'ujian.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-file-circle-question me-2"></i> Ujian
+            <i class="fa-solid fa-file-circle-question me-2"></i> Ulangan Harian
         </a>
         <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_nilai.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-chart-column me-2"></i> Rekap Nilai
@@ -232,7 +232,7 @@ if ($role_id === 3 && class_exists('Database')) {
             <i class="fa-solid fa-list-check me-2"></i> Tugas
         </a>
         <a href="ujian.php" class="list-group-item list-group-item-action <?= in_array($current_page,['ujian.php','ujian_kerjakan.php'],true) ? 'active' : '' ?>">
-            <i class="fa-solid fa-file-pen me-2"></i> Ujian
+            <i class="fa-solid fa-file-pen me-2"></i> Ulangan Harian
         </a>
         <?php endif; ?>
         <a href="../logout.php" class="list-group-item list-group-item-action text-danger mt-4">

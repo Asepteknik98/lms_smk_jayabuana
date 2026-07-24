@@ -35,7 +35,7 @@ if ($filter_mapel > 0 && !isset($mapel_filter_list[$filter_mapel])) {
     $filter_mapel = 0;
 }
 
-// Daftar Ujian Guru
+// Daftar Ulangan Harian Guru
 $filter_sql = '';
 $filter_params = [$guru_id];
 if ($filter_kelas > 0) {
@@ -74,7 +74,7 @@ if ($ujian_list) {
 
 <div id="page-content-wrapper">
     <nav class="navbar navbar-expand-lg navbar-light top-navbar px-4 py-3">
-        <h5 class="mb-0 fw-bold">Manajemen CBT & Kuis Online</h5>
+        <h5 class="mb-0 fw-bold">Manajemen Ulangan Harian</h5>
     </nav>
 
     <div class="container-fluid p-4">
@@ -106,9 +106,9 @@ if ($ujian_list) {
         <?php if(!empty($_SESSION['flash_success'])): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($_SESSION['flash_success']);unset($_SESSION['flash_success']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
         <?php if(!empty($_SESSION['flash_error'])): ?><div class="alert alert-danger alert-dismissible fade show"><?= sanitize($_SESSION['flash_error']);unset($_SESSION['flash_error']); ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif ?>
         <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
-            <h6 class="fw-bold my-auto"><i class="fa-solid fa-list-check me-2 text-primary"></i> Daftar Jadwal Ujian</h6>
+            <h6 class="fw-bold my-auto"><i class="fa-solid fa-list-check me-2 text-primary"></i> Daftar Jadwal Ulangan Harian</h6>
             <div class="d-flex flex-wrap gap-2"><a class="btn btn-success btn-sm" href="ujian_excel.php?action=template"><i class="fa-solid fa-file-excel me-1"></i> Unduh Template Soal</a><button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalCreateUjian" onclick="resetFormUjian()">
-                <i class="fa-solid fa-plus me-1"></i> Buat Ujian Baru
+                <i class="fa-solid fa-plus me-1"></i> Buat Ulangan Harian Baru
             </button></div>
         </div>
 
@@ -118,7 +118,7 @@ if ($ujian_list) {
                     <thead class="table-light">
                         <tr>
                             <th>Mapel / Kelas</th>
-                            <th>Nama Ujian</th>
+                            <th>Nama Ulangan Harian</th>
                             <th>Durasi</th>
                             <th>Waktu Pelaksanaan</th>
                             <th>Soal</th>
@@ -147,12 +147,12 @@ if ($ujian_list) {
                             <td>
                                 <div class="d-flex flex-wrap gap-1"><button class="btn btn-sm btn-outline-primary" onclick='openAddSoalModal(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>,<?= json_encode($soal_per_ujian[(int)$u["id"]]??[],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'>
                                     <i class="fa-solid fa-folder-plus me-1"></i> Kelola Soal
-                                </button><?php if((int)$u['total_peserta']===0): ?><button class="btn btn-sm btn-outline-success" onclick='openImportModal(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-file-arrow-up me-1"></i>Upload Excel</button><?php else: ?><button class="btn btn-sm btn-outline-secondary" disabled title="Soal dikunci karena ujian sudah memiliki peserta"><i class="fa-solid fa-lock me-1"></i>Soal Dikunci</button><?php endif ?><button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCreateUjian" onclick='editUjian(<?= json_encode(["id"=>(int)$u["id"],"pengajaran_id"=>(int)$u["pengajaran_id"],"nama_ujian"=>$u["nama_ujian"],"jenis_ujian"=>$u["jenis_ujian"],"durasi_menit"=>(int)$u["durasi_menit"],"waktu_mulai"=>date("Y-m-d\\TH:i",strtotime($u["waktu_mulai"])),"waktu_selesai"=>date("Y-m-d\\TH:i",strtotime($u["waktu_selesai"])),"acak_soal"=>(int)$u["acak_soal"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>'><i class="fa-solid fa-pen"></i></button><button class="btn btn-sm btn-outline-danger" onclick='hapusUjian(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash"></i></button><a class="btn btn-sm btn-outline-dark" href="ujian_hasil.php?ujian_id=<?= (int)$u['id'] ?>"><i class="fa-solid fa-chart-column me-1"></i>Hasil & Jawaban</a></div>
+                                </button><?php if((int)$u['total_peserta']===0): ?><button class="btn btn-sm btn-outline-success" onclick='openImportModal(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-file-arrow-up me-1"></i>Upload Excel</button><?php else: ?><button class="btn btn-sm btn-outline-secondary" disabled title="Soal dikunci karena ulangan harian sudah memiliki peserta"><i class="fa-solid fa-lock me-1"></i>Soal Dikunci</button><?php endif ?><button class="btn btn-sm btn-outline-secondary" data-bs-toggle="modal" data-bs-target="#modalCreateUjian" onclick='editUjian(<?= json_encode(["id"=>(int)$u["id"],"pengajaran_id"=>(int)$u["pengajaran_id"],"nama_ujian"=>$u["nama_ujian"],"jenis_ujian"=>$u["jenis_ujian"],"durasi_menit"=>(int)$u["durasi_menit"],"waktu_mulai"=>date("Y-m-d\\TH:i",strtotime($u["waktu_mulai"])),"waktu_selesai"=>date("Y-m-d\\TH:i",strtotime($u["waktu_selesai"])),"acak_soal"=>(int)$u["acak_soal"]],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>'><i class="fa-solid fa-pen"></i></button><button class="btn btn-sm btn-outline-danger" onclick='hapusUjian(<?= (int)$u["id"] ?>,<?= json_encode($u["nama_ujian"],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-trash"></i></button><a class="btn btn-sm btn-outline-dark" href="ujian_hasil.php?ujian_id=<?= (int)$u['id'] ?>"><i class="fa-solid fa-chart-column me-1"></i>Hasil & Jawaban</a></div>
                             </td>
                         </tr>
                         <?php endforeach; ?>
                         <?php if (!$ujian_list): ?>
-                        <tr><td colspan="7" class="text-center text-muted py-5"><i class="fa-solid fa-filter-circle-xmark fa-2x mb-2 d-block"></i>Tidak ada ujian pada filter yang dipilih.</td></tr>
+                        <tr><td colspan="7" class="text-center text-muted py-5"><i class="fa-solid fa-filter-circle-xmark fa-2x mb-2 d-block"></i>Tidak ada ulangan harian pada filter yang dipilih.</td></tr>
                         <?php endif; ?>
                     </tbody>
                 </table>
@@ -163,12 +163,12 @@ if ($ujian_list) {
 
 <div class="modal fade" id="modalImportExcel" tabindex="-1"><div class="modal-dialog modal-dialog-centered"><form class="modal-content" method="post" action="ujian_excel.php?action=import" enctype="multipart/form-data"><div class="modal-header"><div><h5 class="modal-title fw-bold">Upload Soal Excel</h5><small class="text-muted" id="importUjianName"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="ujian_id" id="importUjianId"><div class="alert alert-info small"><i class="fa-solid fa-circle-info me-1"></i>Gunakan template resmi. Sistem akan membaca pertanyaan, pilihan, kunci jawaban, dan bobot dari setiap baris.</div><label class="form-label fw-semibold">File Excel (.xls)</label><input class="form-control" type="file" name="file_excel" accept=".xls,application/vnd.ms-excel" required><div class="form-text">Maksimal 2 MB. Hapus baris contoh sebelum mengunggah.</div></div><div class="modal-footer"><a href="ujian_excel.php?action=template" class="btn btn-outline-success"><i class="fa-solid fa-download me-1"></i>Template</a><button class="btn btn-primary" type="submit"><i class="fa-solid fa-upload me-1"></i>Impor Soal</button></div></form></div></div>
 
-<!-- Modal Buat Ujian -->
+<!-- Modal Buat Ulangan Harian -->
 <div class="modal fade" id="modalCreateUjian" tabindex="-1">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="judulModalUjian">Buat Ujian Baru</h5>
+                <h5 class="modal-title fw-bold" id="judulModalUjian">Buat Ulangan Harian Baru</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formCreateUjian">
@@ -185,12 +185,12 @@ if ($ujian_list) {
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Nama Ujian</label>
-                        <input type="text" name="nama_ujian" id="editNamaUjian" class="form-control" maxlength="255" placeholder="Contoh: Kuis Harian Topologi" required>
+                        <label class="form-label fw-semibold">Nama Ulangan Harian</label>
+                        <input type="text" name="nama_ujian" id="editNamaUjian" class="form-control" maxlength="255" placeholder="Contoh: Ulangan Harian Topologi" required>
                     </div>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label fw-semibold">Jenis Ujian</label>
+                            <label class="form-label fw-semibold">Jenis Ulangan Harian</label>
                             <select name="jenis_ujian" id="editJenisUjian" class="form-select">
                                 <option value="Kuis">Kuis</option>
                                 <option value="UTS">UTS</option>
@@ -228,7 +228,7 @@ if ($ujian_list) {
     <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title fw-bold" id="titleSoalModal">Tambah Soal Ujian</h5>
+                <h5 class="modal-title fw-bold" id="titleSoalModal">Tambah Soal Ulangan Harian</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <form id="formAddSoal">
@@ -310,7 +310,7 @@ $(document).ready(function() {
             if(res.status === 'success') {
                 if(document.getElementById('aksiUjian').value==='create_ujian'){
                     bootstrap.Modal.getInstance(document.getElementById('modalCreateUjian'))?.hide();
-                    Swal.fire({title:'Ujian berhasil dibuat',text:'Apakah Anda ingin mengunggah soal Excel sekarang?',icon:'success',showCancelButton:true,confirmButtonText:'Ya, Upload Excel',cancelButtonText:'Nanti'}).then(function(result){
+                    Swal.fire({title:'Ulangan Harian berhasil dibuat',text:'Apakah Anda ingin mengunggah soal Excel sekarang?',icon:'success',showCancelButton:true,confirmButtonText:'Ya, Upload Excel',cancelButtonText:'Nanti'}).then(function(result){
                         if(result.isConfirmed)openImportModal(res.ujian_id,res.nama_ujian);
                         else location.reload();
                     });
@@ -320,7 +320,7 @@ $(document).ready(function() {
             } else {
                 Swal.fire('Gagal!', res.message, 'error');
             }
-        }, 'json').fail(function(xhr){Swal.fire('Gagal!',xhr.responseJSON?.message||'Ujian gagal diproses.','error');});
+        }, 'json').fail(function(xhr){Swal.fire('Gagal!',xhr.responseJSON?.message||'Ulangan Harian gagal diproses.','error');});
     });
 
     $('#formAddSoal').on('submit', function(e) {
@@ -353,7 +353,7 @@ function resetFormUjian(){
     document.getElementById('formCreateUjian').reset();
     document.getElementById('editUjianId').value='';
     document.getElementById('aksiUjian').value='create_ujian';
-    document.getElementById('judulModalUjian').textContent='Buat Ujian Baru';
+    document.getElementById('judulModalUjian').textContent='Buat Ulangan Harian Baru';
     document.getElementById('tombolSimpanUjian').textContent='Simpan Jadwal';
 }
 function editUjian(data){
@@ -367,7 +367,7 @@ function editUjian(data){
     document.getElementById('editMulaiUjian').value=data.waktu_mulai;
     document.getElementById('editSelesaiUjian').value=data.waktu_selesai;
     document.getElementById('acakSoal').checked=Number(data.acak_soal)===1;
-    document.getElementById('judulModalUjian').textContent='Edit Ujian';
+    document.getElementById('judulModalUjian').textContent='Edit Ulangan Harian';
     document.getElementById('tombolSimpanUjian').textContent='Simpan Perubahan';
 }
 async function kirimAksiUjian(action,fields){
@@ -379,7 +379,7 @@ async function kirimAksiUjian(action,fields){
     return body;
 }
 function hapusUjian(id,nama){
-    Swal.fire({title:'Hapus ujian?',text:nama+' beserta soal dan seluruh hasil siswa akan dihapus.',icon:'warning',showCancelButton:true,confirmButtonText:'Hapus',cancelButtonText:'Batal',confirmButtonColor:'#dc3545'}).then(async function(result){
+    Swal.fire({title:'Hapus ulangan harian?',text:nama+' beserta soal dan seluruh hasil siswa akan dihapus.',icon:'warning',showCancelButton:true,confirmButtonText:'Hapus',cancelButtonText:'Batal',confirmButtonColor:'#dc3545'}).then(async function(result){
         if(!result.isConfirmed)return;
         try{const body=await kirimAksiUjian('delete_ujian',{ujian_id:id});Swal.fire('Berhasil!',body.message,'success').then(()=>location.reload());}
         catch(error){Swal.fire('Gagal!',error.message,'error');}
@@ -391,7 +391,7 @@ function renderDaftarSoal(){
     const strong=document.createElement('strong');strong.textContent='Soal Tersimpan';
     const badge=document.createElement('span');badge.className='badge bg-primary';badge.textContent=soalAktif.length+' soal';
     title.append(strong,badge);container.appendChild(title);
-    if(!soalAktif.length){const empty=document.createElement('div');empty.className='alert alert-light small';empty.textContent='Belum ada soal pada ujian ini.';container.appendChild(empty);return;}
+    if(!soalAktif.length){const empty=document.createElement('div');empty.className='alert alert-light small';empty.textContent='Belum ada soal pada ulangan harian ini.';container.appendChild(empty);return;}
     const list=document.createElement('div');list.className='list-group mb-3';
     soalAktif.forEach(function(soal,index){
         const item=document.createElement('div');item.className='list-group-item d-flex justify-content-between align-items-start gap-2';

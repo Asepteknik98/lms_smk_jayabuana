@@ -14,21 +14,21 @@ $stmt_s->execute([$_SESSION['user_id']]);
 $siswa = $stmt_s->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 
-// Ujian hanya dapat dibuka oleh siswa pada kelas yang benar.
+// Ulangan Harian hanya dapat dibuka oleh siswa pada kelas yang benar.
 $stmt_u = $db->prepare("SELECT u.* FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id WHERE u.id=? AND p.kelas_id=?");
 $stmt_u->execute([$ujian_id,$siswa['kelas_id']??0]);
 $ujian = $stmt_u->fetch();
 
 if (!$ujian) {
-    http_response_code(404);exit("Ujian tidak ditemukan untuk kelas Anda.");
+    http_response_code(404);exit("Ulangan Harian tidak ditemukan untuk kelas Anda.");
 }
 $sekarang=time();$jadwal_mulai=strtotime($ujian['waktu_mulai']);$jadwal_selesai=strtotime($ujian['waktu_selesai']);
-if($sekarang<$jadwal_mulai){exit("Ujian belum dimulai.");}
-if($sekarang>$jadwal_selesai){exit("Jadwal ujian telah berakhir.");}
+if($sekarang<$jadwal_mulai){exit("Ulangan Harian belum dimulai.");}
+if($sekarang>$jadwal_selesai){exit("Jadwal ulangan harian telah berakhir.");}
 $stmt_count=$db->prepare('SELECT COUNT(*) FROM soal_ujian WHERE ujian_id=?');$stmt_count->execute([$ujian_id]);
-if(!(int)$stmt_count->fetchColumn()){exit('Ujian belum memiliki soal.');}
+if(!(int)$stmt_count->fetchColumn()){exit('Ulangan Harian belum memiliki soal.');}
 
-// Inisialisasi atau Dapatkan Sesi Ujian
+// Inisialisasi atau Dapatkan Sesi Ulangan Harian
 $stmt_sesi = $db->prepare("SELECT * FROM sesi_ujian WHERE ujian_id = ? AND siswa_id = ?");
 $stmt_sesi->execute([$ujian_id, $siswa_id]);
 $sesi = $stmt_sesi->fetch();
@@ -40,7 +40,7 @@ if (!$sesi) {
     $waktu_mulai = time();
 } else {
     if ($sesi['status'] === 'Selesai') {
-        die("Anda telah menyelesaikan ujian ini.");
+        die("Anda telah menyelesaikan ulangan harian ini.");
     }
     $sesi_id = $sesi['id'];
     $waktu_mulai = strtotime($sesi['waktu_mulai']);
@@ -119,7 +119,7 @@ $terjawab = count(array_filter($soal_list, static fn($soal) => $soal['jawaban_pg
         <div class="col">
             <span class="exam-eyebrow"><i class="fa-solid fa-shield-halved me-1"></i>CBT Siswa</span>
             <h1 class="exam-title fw-bold mt-1 mb-1"><?= sanitize($ujian['nama_ujian']) ?></h1>
-            <p class="exam-warning mb-0"><i class="fa-solid fa-circle-info me-1"></i>Jawaban tersimpan otomatis. Jangan menutup halaman saat ujian berlangsung.</p>
+            <p class="exam-warning mb-0"><i class="fa-solid fa-circle-info me-1"></i>Jawaban tersimpan otomatis. Jangan menutup halaman saat ulangan harian berlangsung.</p>
         </div>
         <div class="col-auto">
             <div class="exam-timer">
@@ -165,7 +165,7 @@ $terjawab = count(array_filter($soal_list, static fn($soal) => $soal['jawaban_pg
                         <?php if($idx < count($soal_list) - 1): ?>
                             <button class="btn btn-primary" onclick="showSoal(<?= $idx + 2 ?>)">Selanjutnya <i class="fa-solid fa-arrow-right ms-1"></i></button>
                         <?php else: ?>
-                            <button class="btn btn-success" onclick="confirmFinish()"><i class="fa-solid fa-circle-check me-1"></i> Selesaikan Ujian</button>
+                            <button class="btn btn-success" onclick="confirmFinish()"><i class="fa-solid fa-circle-check me-1"></i> Selesaikan Ulangan Harian</button>
                         <?php endif; ?>
                     </div>
                 </div>
@@ -254,7 +254,7 @@ updateProgress();
 let countdown = setInterval(function() {
     if (totalDetik <= 0) {
         clearInterval(countdown);
-        Swal.fire('Waktu Habis!', 'Ujian secara otomatis dikumpulkan.', 'warning').then(() => {
+        Swal.fire('Waktu Habis!', 'Ulangan Harian secara otomatis dikumpulkan.', 'warning').then(() => {
             finishUjian(true);
         });
     } else {
@@ -365,8 +365,8 @@ function confirmFinish() {
     if (belum.length) {
         const daftar = belum.slice(0, 15).join(', ') + (belum.length > 15 ? ' dan ' + (belum.length - 15) + ' lainnya' : '');
         Swal.fire({
-            title: 'Ujian Belum Lengkap!',
-            html: '<strong>' + belum.length + ' soal belum dijawab.</strong><br><span class="text-muted">Nomor: ' + daftar + '</span><br><br>Semua soal wajib dijawab sebelum ujian dapat dikirim.',
+            title: 'Ulangan Harian Belum Lengkap!',
+            html: '<strong>' + belum.length + ' soal belum dijawab.</strong><br><span class="text-muted">Nomor: ' + daftar + '</span><br><br>Semua soal wajib dijawab sebelum ulangan harian dapat dikirim.',
             icon: 'error',
             confirmButtonText: 'Jawab Soal yang Kosong',
             confirmButtonColor: '#dc2626',
@@ -375,7 +375,7 @@ function confirmFinish() {
         return;
     }
     Swal.fire({
-        title: 'Selesaikan Ujian?',
+        title: 'Selesaikan Ulangan Harian?',
         text: "Pastikan seluruh pertanyaan telah Anda jawab dengan benar.",
         icon: 'question',
         showCancelButton: true,
@@ -391,7 +391,7 @@ function finishUjian(waktuHabis = false) {
     $.post('ujian_action.php?action=finish_ujian', { sesi_id: sesiId, waktu_habis: waktuHabis ? 1 : 0, csrf_token: csrfToken }, function(res) {
         if(res.status === 'success') {
             localStorage.removeItem(pendingStorageKey);
-            Swal.fire('Ujian Selesai!', res.message, 'success').then(() => {
+            Swal.fire('Ulangan Harian Selesai!', res.message, 'success').then(() => {
                 window.location.href = 'index.php';
             });
         } else {

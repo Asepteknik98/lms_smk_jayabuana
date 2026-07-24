@@ -19,7 +19,7 @@
 
 ## Tentang Aplikasi
 
-LMS SMKS Jaya Buana adalah aplikasi berbasis web yang mendukung rangkaian kegiatan belajar mengajar, mulai dari pengelolaan data akademik, distribusi materi, tugas, absensi, ujian berbasis komputer, hingga rekap nilai siswa.
+LMS SMKS Jaya Buana adalah aplikasi berbasis web yang mendukung rangkaian kegiatan belajar mengajar, mulai dari pengelolaan data akademik, distribusi materi, tugas, absensi, ulangan harian berbasis komputer, hingga rekap nilai siswa.
 
 Aplikasi dibangun menggunakan PHP native, MariaDB/MySQL, Bootstrap 5, dan JavaScript. Antarmuka dirancang responsif agar dapat digunakan melalui komputer, tablet, maupun telepon seluler.
 
@@ -48,10 +48,10 @@ Aplikasi dibangun menggunakan PHP native, MariaDB/MySQL, Bootstrap 5, dan JavaSc
 - Memberikan nilai serta catatan pada tugas.
 - Membuka sesi absensi dan mengatur status Hadir, Sakit, Izin, atau Alpa.
 - Rekap absensi per kelas dengan ekspor Excel dan PDF.
-- Membuat kuis/ujian dan mengelola soal.
+- Membuat ulangan harian dan mengelola soal.
 - Impor soal dari template Excel.
 - Memeriksa jawaban pilihan ganda dan esai.
-- Memantau siswa yang sudah, sedang, atau belum mengerjakan ujian.
+- Memantau siswa yang sudah, sedang, atau belum mengerjakan ulangan harian.
 - Rekap nilai otomatis dari kehadiran, tugas, dan ulangan harian.
 - Pengaturan bobot komponen dan KKM per pengajaran.
 - Penanda ketuntasan dan siswa yang memerlukan remedial.
@@ -69,7 +69,7 @@ Aplikasi dibangun menggunakan PHP native, MariaDB/MySQL, Bootstrap 5, dan JavaSc
 - Melihat tugas, mengunggah jawaban, dan membaca catatan guru.
 - Mengakses tugas setelah mengunduh materi apabila aturan wajib unduh diaktifkan.
 - Melakukan check-in pada sesi absensi yang aktif.
-- Mengikuti kuis/ujian berbasis komputer.
+- Mengikuti ulangan harian berbasis komputer.
 - Peringatan tugas atau kuis yang belum dikerjakan.
 - Memasang LMS sebagai aplikasi web (PWA) pada perangkat yang mendukung.
 

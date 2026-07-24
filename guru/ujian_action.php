@@ -62,7 +62,7 @@ try {
             throw new RuntimeException('Kelas atau mata pelajaran bukan pengajaran Anda.');
         }
         if ($nama_ujian === '' || mb_strlen($nama_ujian) > 255 || !in_array($jenis_ujian, ['Kuis', 'UTS', 'UAS'], true)) {
-            throw new RuntimeException('Nama atau jenis ujian tidak valid.');
+            throw new RuntimeException('Nama atau jenis ulangan harian tidak valid.');
         }
         if ($durasi_menit < 1 || $durasi_menit > 600 || !$waktu_mulai || !$waktu_selesai || $waktu_mulai >= $waktu_selesai) {
             throw new RuntimeException('Durasi harus 1–600 menit dan waktu selesai harus setelah waktu mulai.');
@@ -72,19 +72,19 @@ try {
             $stmt->execute([$pengajaran_id, $nama_ujian, $jenis_ujian, $durasi_menit, $waktu_mulai->format('Y-m-d H:i:s'), $waktu_selesai->format('Y-m-d H:i:s'), $acak_soal]);
             $ujian_baru_id = (int)$db->lastInsertId();
             catat_log($_SESSION['user_id'], "Membuat ujian baru: $nama_ujian");
-            respons_ujian('success', 'Ujian berhasil dibuat.', ['ujian_id' => $ujian_baru_id, 'nama_ujian' => $nama_ujian]);
+            respons_ujian('success', 'Ulangan Harian berhasil dibuat.', ['ujian_id' => $ujian_baru_id, 'nama_ujian' => $nama_ujian]);
         }
         $ujian_lama = ujian_milik_guru($db, $ujian_id, (int)$_SESSION['user_id']);
         if (!$ujian_lama) {
-            throw new RuntimeException('Ujian tidak ditemukan atau bukan milik Anda.');
+            throw new RuntimeException('Ulangan Harian tidak ditemukan atau bukan milik Anda.');
         }
         if (ujian_sudah_dikerjakan($db, $ujian_id) && (int)$ujian_lama['pengajaran_id'] !== $pengajaran_id) {
-            throw new RuntimeException('Kelas ujian tidak dapat dipindahkan karena sudah memiliki peserta.');
+            throw new RuntimeException('Kelas ulangan harian tidak dapat dipindahkan karena sudah memiliki peserta.');
         }
         $stmt = $db->prepare('UPDATE ujian SET pengajaran_id=?,nama_ujian=?,jenis_ujian=?,durasi_menit=?,waktu_mulai=?,waktu_selesai=?,acak_soal=? WHERE id=?');
         $stmt->execute([$pengajaran_id, $nama_ujian, $jenis_ujian, $durasi_menit, $waktu_mulai->format('Y-m-d H:i:s'), $waktu_selesai->format('Y-m-d H:i:s'), $acak_soal, $ujian_id]);
         catat_log($_SESSION['user_id'], "Mengubah ujian: $nama_ujian");
-        respons_ujian('success', 'Ujian berhasil diperbarui.');
+        respons_ujian('success', 'Ulangan Harian berhasil diperbarui.');
     }
 
     if (in_array($action, ['add_soal', 'update_soal'], true)) {
@@ -94,10 +94,10 @@ try {
         $pertanyaan = trim($_POST['pertanyaan'] ?? '');
         $bobot = filter_var($_POST['bobot'] ?? null, FILTER_VALIDATE_INT);
         if (!ujian_milik_guru($db, $ujian_id, (int)$_SESSION['user_id'])) {
-            throw new RuntimeException('Ujian tidak ditemukan atau bukan milik Anda.');
+            throw new RuntimeException('Ulangan Harian tidak ditemukan atau bukan milik Anda.');
         }
         if (ujian_sudah_dikerjakan($db, $ujian_id)) {
-            throw new RuntimeException('Soal tidak dapat diubah karena ujian sudah memiliki peserta.');
+            throw new RuntimeException('Soal tidak dapat diubah karena ulangan harian sudah memiliki peserta.');
         }
         if (!in_array($tipe_soal, ['PG', 'ESAI'], true) || $pertanyaan === '' || $bobot === false || $bobot < 1 || $bobot > 100) {
             throw new RuntimeException('Tipe, pertanyaan, atau bobot soal tidak valid.');
@@ -126,7 +126,7 @@ try {
         $stmt = $db->prepare('SELECT id FROM soal_ujian WHERE id=? AND ujian_id=?');
         $stmt->execute([$soal_id, $ujian_id]);
         if (!$stmt->fetchColumn()) {
-            throw new RuntimeException('Soal tidak ditemukan pada ujian ini.');
+            throw new RuntimeException('Soal tidak ditemukan pada ulangan harian ini.');
         }
         $stmt = $db->prepare('UPDATE soal_ujian SET tipe_soal=?,pertanyaan=?,opsi_a=?,opsi_b=?,opsi_c=?,opsi_d=?,opsi_e=?,kunci_jawaban=?,bobot=? WHERE id=? AND ujian_id=?');
         $stmt->execute([$tipe_soal, $pertanyaan, ...$opsi, $kunci, $bobot, $soal_id, $ujian_id]);
@@ -145,7 +145,7 @@ try {
         $soal = $stmt->fetch();
         if (!$soal) throw new RuntimeException('Soal tidak ditemukan atau bukan milik Anda.');
         if (ujian_sudah_dikerjakan($db, (int)$soal['ujian_id'])) {
-            throw new RuntimeException('Soal tidak dapat dihapus karena ujian sudah memiliki peserta.');
+            throw new RuntimeException('Soal tidak dapat dihapus karena ulangan harian sudah memiliki peserta.');
         }
         $db->prepare('DELETE FROM soal_ujian WHERE id=?')->execute([$soal_id]);
         catat_log($_SESSION['user_id'], "Menghapus soal ID: $soal_id");
@@ -155,10 +155,10 @@ try {
     if ($action === 'delete_ujian') {
         $ujian_id = (int)($_POST['ujian_id'] ?? 0);
         $ujian = ujian_milik_guru($db, $ujian_id, (int)$_SESSION['user_id']);
-        if (!$ujian) throw new RuntimeException('Ujian tidak ditemukan atau bukan milik Anda.');
+        if (!$ujian) throw new RuntimeException('Ulangan Harian tidak ditemukan atau bukan milik Anda.');
         $db->prepare('DELETE FROM ujian WHERE id=?')->execute([$ujian_id]);
         catat_log($_SESSION['user_id'], 'Menghapus ujian: ' . $ujian['nama_ujian']);
-        respons_ujian('success', 'Ujian beserta soal dan hasilnya berhasil dihapus.');
+        respons_ujian('success', 'Ulangan Harian beserta soal dan hasilnya berhasil dihapus.');
     }
 
     if ($action === 'nilai_esai') {

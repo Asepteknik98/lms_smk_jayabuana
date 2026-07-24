@@ -68,7 +68,7 @@ $stmt_tugas = $db->prepare("
 $stmt_tugas->execute([$kelas_id, $siswa_id, $siswa_id, $siswa_id]);
 $tugas_aktif = $stmt_tugas->fetchColumn();
 
-// Total Ujian/Kuis Mendatang
+// Total Ulangan Harian/Kuis Mendatang
 $stmt_ujian = $db->prepare("
     SELECT COUNT(*)
     FROM ujian u
@@ -79,7 +79,7 @@ $stmt_ujian = $db->prepare("
 $stmt_ujian->execute([$siswa_id,$kelas_id]);
 $ujian_aktif = $stmt_ujian->fetchColumn();
 
-// 3. Ambil Daftar Ujian Online Mendatang / Berlangsung
+// 3. Ambil Daftar Ulangan Harian Online Mendatang / Berlangsung
 $stmt_cbt = $db->prepare("
     SELECT u.*, m.nama_mapel, g.nama_lengkap as nama_guru
     FROM ujian u
@@ -189,12 +189,12 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
             <div class="col-6 col-md-3"><a href="materi.php" class="quick-link"><span class="quick-icon bg-primary-subtle text-primary position-relative"><i class="fa-solid fa-book-open-reader"></i><?php if($materi_baru): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $materi_baru>99?'99+':$materi_baru ?><span class="visually-hidden">materi baru</span></span><?php endif ?></span><span>Materi<?php if($materi_baru): ?> <small class="text-danger fw-bold"><?= $materi_baru ?> baru</small><?php endif ?></span></a></div>
             <div class="col-6 col-md-3"><a href="tugas.php" class="quick-link"><span class="quick-icon bg-warning-subtle text-warning"><i class="fa-solid fa-list-check"></i></span><span>Tugas</span></a></div>
             <div class="col-6 col-md-3"><a href="absensi.php" class="quick-link"><span class="quick-icon bg-success-subtle text-success position-relative"><i class="fa-solid fa-user-check"></i><?php if($absensi_menunggu): ?><span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $absensi_menunggu ?><span class="visually-hidden">absensi menunggu check-in</span></span><?php endif ?></span><span>Absensi<?php if($absensi_menunggu): ?> <small class="text-danger fw-bold">Check-in!</small><?php endif ?></span></a></div>
-            <div class="col-6 col-md-3"><a href="ujian.php" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Ujian</span></a></div>
+            <div class="col-6 col-md-3"><a href="ujian.php" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Ulangan Harian</span></a></div>
         </div></section>
 
         <div class="row g-2 mb-4">
             <div class="col-6"><div class="card compact-stat h-100"><div class="card-body text-center"><h3 class="fw-bold text-warning mb-0"><?= (int)$tugas_aktif ?></h3><small class="text-muted">Tugas belum selesai</small></div></div></div>
-            <div class="col-6"><div class="card compact-stat h-100"><div class="card-body text-center"><h3 class="fw-bold text-danger mb-0"><?= (int)$ujian_aktif ?></h3><small class="text-muted">Ujian menunggu</small></div></div></div>
+            <div class="col-6"><div class="card compact-stat h-100"><div class="card-body text-center"><h3 class="fw-bold text-danger mb-0"><?= (int)$ujian_aktif ?></h3><small class="text-muted">Ulangan Harian menunggu</small></div></div></div>
         </div>
 
         <div class="row g-3">
@@ -204,8 +204,8 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
                 <?php endforeach; endif; ?>
             </div></section></div>
 
-            <div class="col-lg-6" id="jadwal-ujian"><section class="card section-card h-100"><div class="card-body p-4"><div class="d-flex justify-content-between"><h2 class="h6 fw-bold mb-2"><i class="fa-solid fa-calendar-check text-danger me-2"></i>Jadwal Ujian</h2><a href="ujian.php" class="small text-decoration-none">Lihat semua</a></div>
-                <?php if(!$daftar_ujian): ?><div class="text-center py-4"><i class="fa-solid fa-calendar-check text-success fa-2x mb-2"></i><p class="small text-muted mb-0">Belum ada kuis yang dijadwalkan.</p></div><?php else: foreach($daftar_ujian as $u): $belum_mulai=strtotime($u['waktu_mulai'])>time(); ?>
+            <div class="col-lg-6" id="jadwal-ujian"><section class="card section-card h-100"><div class="card-body p-4"><div class="d-flex justify-content-between"><h2 class="h6 fw-bold mb-2"><i class="fa-solid fa-calendar-check text-danger me-2"></i>Jadwal Ulangan Harian</h2><a href="ujian.php" class="small text-decoration-none">Lihat semua</a></div>
+                <?php if(!$daftar_ujian): ?><div class="text-center py-4"><i class="fa-solid fa-calendar-check text-success fa-2x mb-2"></i><p class="small text-muted mb-0">Belum ada ulangan harian yang dijadwalkan.</p></div><?php else: foreach($daftar_ujian as $u): $belum_mulai=strtotime($u['waktu_mulai'])>time(); ?>
                     <div class="item-row"><span class="quick-icon bg-danger-subtle text-danger flex-shrink-0"><i class="fa-solid fa-file-pen"></i></span><span class="item-copy"><strong class="d-block"><?= sanitize($u['nama_ujian']) ?></strong><small class="text-muted d-block"><?= sanitize($u['nama_mapel']) ?> · <?= (int)$u['durasi_menit'] ?> menit</small><small class="<?= $belum_mulai?'text-muted':'text-success fw-semibold' ?>"><?= $belum_mulai?'Mulai '.date('d M, H:i',strtotime($u['waktu_mulai'])):'Sedang berlangsung' ?></small></span><a href="ujian_kerjakan.php?id=<?= (int)$u['id'] ?>" class="btn btn-sm <?= $belum_mulai?'btn-light disabled':'btn-danger' ?>"><?= $belum_mulai?'Nanti':'Mulai' ?></a></div>
                 <?php endforeach; endif; ?>
             </div></section></div>

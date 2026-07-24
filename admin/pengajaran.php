@@ -135,7 +135,7 @@ $tahun_ajaran_default = $tahun_sekarang . '/' . ($tahun_sekarang + 1);
 
         <section class="teaching-hero mb-4">
             <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
-                <div><small class="text-uppercase fw-semibold opacity-75">Pengaturan Akademik</small><h3 class="fw-bold mb-1 mt-1">Atur Guru, Mapel, dan Kelas</h3><p class="mb-0 opacity-75">Setiap penugasan menentukan materi, tugas, ujian, serta absensi yang dapat dikelola Guru.</p></div>
+                <div><small class="text-uppercase fw-semibold opacity-75">Pengaturan Akademik</small><h3 class="fw-bold mb-1 mt-1">Atur Guru, Mapel, dan Kelas</h3><p class="mb-0 opacity-75">Setiap penugasan menentukan materi, tugas, ulangan harian, serta absensi yang dapat dikelola Guru.</p></div>
                 <div class="bg-white bg-opacity-10 rounded-4 px-4 py-3 text-center"><div class="fs-3 fw-bold"><?= count($pengajaran_list) ?></div><small class="opacity-75">Pengajaran Aktif</small></div>
             </div>
         </section>
@@ -225,7 +225,7 @@ $tahun_ajaran_default = $tahun_sekarang . '/' . ($tahun_sekarang + 1);
                                     <td><?= sanitize($item['nama_kelas']) ?></td>
                                     <td><span class="period-badge <?= $item['semester']==='Ganjil'?'bg-warning-subtle text-warning-emphasis':'bg-info-subtle text-info-emphasis' ?>"><?= sanitize($item['semester']) ?></span><br><small class="text-muted"><?= sanitize($item['tahun_ajaran']) ?></small></td>
                                     <td>
-                                        <form method="post" action="pengajaran.php" onsubmit="return confirm('Hapus pengajaran ini? Modul, tugas, dan ujian terkait juga dapat terhapus.');">
+                                        <form method="post" action="pengajaran.php" onsubmit="return confirm('Hapus pengajaran ini? Modul, tugas, dan ulangan harian terkait juga dapat terhapus.');">
                                             <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
                                             <input type="hidden" name="action" value="hapus">
                                             <input type="hidden" name="pengajaran_id" value="<?= (int)$item['id'] ?>">

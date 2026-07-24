@@ -57,7 +57,7 @@ $aktivitas_pembelajaran = $db->query(
      JOIN mapel m ON m.id = p.mapel_id
      JOIN kelas k ON k.id = p.kelas_id
      UNION ALL
-     SELECT 'Ujian', uj.nama_ujian, uj.created_at, g.nama_lengkap, m.nama_mapel, k.nama_kelas
+     SELECT 'Ulangan Harian', uj.nama_ujian, uj.created_at, g.nama_lengkap, m.nama_mapel, k.nama_kelas
      FROM ujian uj
      JOIN pengajaran p ON p.id = uj.pengajaran_id
      JOIN guru g ON g.id = p.guru_id
@@ -174,7 +174,7 @@ if ($siswa_id > 0) {
                 ['Pengajaran', $statistik['pengajaran'], 'fa-person-chalkboard', 'info'],
                 ['Materi', $statistik['materi'], 'fa-book-open', 'warning'],
                 ['Tugas', $statistik['tugas'], 'fa-list-check', 'danger'],
-                ['Ujian', $statistik['ujian'], 'fa-file-circle-question', 'primary'],
+                ['Ulangan Harian', $statistik['ujian'], 'fa-file-circle-question', 'primary'],
                 ['Sesi Absensi', $statistik['sesi_absensi'], 'fa-clipboard-user', 'success'],
                 ['Pengumpulan', $statistik['pengumpulan'], 'fa-file-arrow-up', 'secondary'],
             ];
@@ -227,7 +227,7 @@ if ($siswa_id > 0) {
                     <div class="table-responsive"><table id="tableGuruMonitoring" class="table table-hover align-middle w-100"><thead class="table-light"><tr><th>Guru</th><th>Aktivitas</th><th>Status</th><th>Detail</th></tr></thead><tbody>
                         <?php foreach ($guru_list as $guru): ?><tr>
                             <td><strong><?= sanitize($guru['nama_lengkap']) ?></strong><br><small><?= sanitize($guru['username']) ?></small></td>
-                            <td><small>Pengajaran <?= (int)$guru['total_pengajaran'] ?> · Materi <?= (int)$guru['total_materi'] ?> · Tugas <?= (int)$guru['total_tugas'] ?> · Ujian <?= (int)$guru['total_ujian'] ?> · Absensi <?= (int)$guru['total_absensi'] ?></small></td>
+                            <td><small>Pengajaran <?= (int)$guru['total_pengajaran'] ?> · Materi <?= (int)$guru['total_materi'] ?> · Tugas <?= (int)$guru['total_tugas'] ?> · Ulangan Harian <?= (int)$guru['total_ujian'] ?> · Absensi <?= (int)$guru['total_absensi'] ?></small></td>
                             <td><span class="badge bg-<?= $guru['is_active'] ? 'success' : 'danger' ?>"><?= $guru['is_active'] ? 'Aktif' : 'Nonaktif' ?></span></td>
                             <td><div class="export-actions"><a href="monitoring.php?guru_id=<?= (int)$guru['id'] ?>" class="btn btn-sm btn-outline-primary">Lihat</a><a title="PDF guru" href="monitoring_export.php?jenis=guru&amp;format=pdf&amp;id=<?= (int)$guru['id'] ?>" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-file-pdf"></i></a><a title="Excel guru" href="monitoring_export.php?jenis=guru&amp;format=excel&amp;id=<?= (int)$guru['id'] ?>" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-file-excel"></i></a></div></td>
                         </tr><?php endforeach; ?>
@@ -242,7 +242,7 @@ if ($siswa_id > 0) {
                         <?php foreach ($siswa_list as $siswa): ?><tr>
                             <td><strong><?= sanitize($siswa['nama_lengkap']) ?></strong><br><small><?= sanitize($siswa['username']) ?></small></td>
                             <td><?= sanitize($siswa['nama_kelas'] ?: '-') ?></td>
-                            <td><small>Tugas <?= (int)$siswa['tugas_dikumpulkan'] ?> · Ujian <?= (int)$siswa['ujian_selesai'] ?> · Hadir <?= (int)$siswa['hadir_absensi'] ?> · Alpa <?= (int)$siswa['alpa_absensi'] ?></small></td>
+                            <td><small>Tugas <?= (int)$siswa['tugas_dikumpulkan'] ?> · Ulangan Harian <?= (int)$siswa['ujian_selesai'] ?> · Hadir <?= (int)$siswa['hadir_absensi'] ?> · Alpa <?= (int)$siswa['alpa_absensi'] ?></small></td>
                             <td><div class="export-actions"><a href="monitoring.php?siswa_id=<?= (int)$siswa['id'] ?>" class="btn btn-sm btn-outline-primary">Lihat</a><a title="PDF siswa" href="monitoring_export.php?jenis=siswa&amp;format=pdf&amp;id=<?= (int)$siswa['id'] ?>" class="btn btn-sm btn-outline-danger"><i class="fa-solid fa-file-pdf"></i></a><a title="Excel siswa" href="monitoring_export.php?jenis=siswa&amp;format=excel&amp;id=<?= (int)$siswa['id'] ?>" class="btn btn-sm btn-outline-success"><i class="fa-solid fa-file-excel"></i></a></div></td>
                         </tr><?php endforeach; ?>
                     </tbody></table></div>
