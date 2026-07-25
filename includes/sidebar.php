@@ -85,6 +85,9 @@ if ($role_id === 3 && class_exists('Database')) {
         padding: 3px 7px 12px;
         margin-top: 7px !important;
         gap: 2px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        flex: 1 1 auto;
     }
     #sidebar-wrapper .list-group-item {
         min-height: 42px;
@@ -152,6 +155,72 @@ if ($role_id === 3 && class_exists('Database')) {
     #sidebar-wrapper .list-group-item.text-danger i {
         color: #fb7185;
     }
+    #sidebar-wrapper {
+        display: flex;
+        flex-direction: column;
+        height: 100dvh;
+        overflow: hidden;
+    }
+    .admin-sidebar-toggle {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        z-index: 2;
+        width: 34px;
+        height: 34px;
+        display: grid;
+        place-items: center;
+        border: 1px solid rgba(255,255,255,.16);
+        border-radius: 9px;
+        background: rgba(15,23,42,.72);
+        color: #cbd5e1;
+        transition: color .18s ease, background .18s ease;
+    }
+    .admin-sidebar-toggle:hover {
+        color: #fff;
+        background: #0f172a;
+    }
+    #sidebar-wrapper.admin-sidebar { position: relative; }
+    #sidebar-wrapper.admin-sidebar .sidebar-profile,
+    #sidebar-wrapper.admin-sidebar .list-group-item,
+    #sidebar-wrapper.admin-sidebar .sidebar-menu-label {
+        transition: all .25s ease;
+    }
+    @media (min-width:992px) {
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar { width: 76px; }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .sidebar-profile-logo {
+            height: 76px;
+            padding: 14px;
+        }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .sidebar-profile-logo img {
+            width: 48px;
+            height: 48px;
+        }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .sidebar-profile-info,
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .sidebar-menu-label,
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .sidebar-menu-chevron,
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .sidebar-submenu {
+            display: none !important;
+        }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .admin-sidebar-toggle {
+            position: static;
+            margin: 9px auto 3px;
+        }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .list-group-item {
+            justify-content: center;
+            padding: 10px;
+            overflow: hidden;
+            font-size: 0;
+        }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .list-group-item i:first-child {
+            width: 24px;
+            margin: 0 !important;
+            font-size: 1rem;
+        }
+        body.admin-sidebar-compact #sidebar-wrapper.admin-sidebar .list-group-item:hover {
+            transform: none;
+        }
+    }
     @media (max-height: 700px) {
         .sidebar-profile-logo { height: 108px; padding: 9px 20px 12px; }
         .sidebar-profile-logo img { width: 80px; height: 80px; }
@@ -160,7 +229,7 @@ if ($role_id === 3 && class_exists('Database')) {
         #sidebar-wrapper .list-group-item i { font-size: .82rem; }
     }
 </style>
-<div id="sidebar-wrapper">
+<div id="sidebar-wrapper" class="<?= $role_id === 1 ? 'admin-sidebar' : '' ?>">
     <div class="sidebar-profile">
         <div class="sidebar-profile-logo">
             <img src="../assets/img/jb-mobile.png" alt="Logo SMKS Jaya Buana">
@@ -170,59 +239,56 @@ if ($role_id === 3 && class_exists('Database')) {
             <span class="sidebar-profile-role"><?= sanitize($sidebar_profile_role) ?></span>
         </div>
     </div>
+    <?php if ($role_id === 1): ?>
+    <button type="button" class="admin-sidebar-toggle" id="adminSidebarToggle" aria-label="Kecilkan sidebar" title="Kecilkan sidebar">
+        <i class="fa-solid fa-angles-left"></i>
+    </button>
+    <?php endif; ?>
     <div class="list-group list-group-flush mt-3">
         <?php if ($role_id === 1): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page == 'index.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-gauge me-2"></i> Dashboard
+            <i class="fa-solid fa-gauge me-2"></i><span class="sidebar-menu-label">Dashboard</span>
         </a>
-        <a href="users.php" class="list-group-item list-group-item-action <?= ($current_page == 'users.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-users-gear me-2"></i> Manajemen User
+        <?php $admin_master_aktif = in_array($current_page, ['users.php','guru.php','siswa.php','kelas.php','mapel.php','pengajaran.php'], true); ?>
+        <a href="#sidebarAdminMaster" class="list-group-item list-group-item-action <?= $admin_master_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_master_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminMaster">
+            <i class="fa-solid fa-database me-2"></i><span class="sidebar-menu-label flex-grow-1">Master Data</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
-        <a href="guru.php" class="list-group-item list-group-item-action <?= ($current_page == 'guru.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-chalkboard-user me-2"></i> Data Guru
+        <div class="collapse sidebar-submenu <?= $admin_master_aktif ? 'show' : '' ?>" id="sidebarAdminMaster">
+            <a href="users.php" class="list-group-item list-group-item-action <?= $current_page === 'users.php' ? 'active' : '' ?>"><i class="fa-solid fa-users-gear me-2"></i><span class="sidebar-menu-label">Manajemen User</span></a>
+            <a href="guru.php" class="list-group-item list-group-item-action <?= $current_page === 'guru.php' ? 'active' : '' ?>"><i class="fa-solid fa-chalkboard-user me-2"></i><span class="sidebar-menu-label">Data Guru</span></a>
+            <a href="siswa.php" class="list-group-item list-group-item-action <?= $current_page === 'siswa.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-graduate me-2"></i><span class="sidebar-menu-label">Data Siswa</span></a>
+            <a href="kelas.php" class="list-group-item list-group-item-action <?= $current_page === 'kelas.php' ? 'active' : '' ?>"><i class="fa-solid fa-school me-2"></i><span class="sidebar-menu-label">Kelas &amp; Jurusan</span></a>
+            <a href="mapel.php" class="list-group-item list-group-item-action <?= $current_page === 'mapel.php' ? 'active' : '' ?>"><i class="fa-solid fa-book me-2"></i><span class="sidebar-menu-label">Mata Pelajaran</span></a>
+            <a href="pengajaran.php" class="list-group-item list-group-item-action <?= $current_page === 'pengajaran.php' ? 'active' : '' ?>"><i class="fa-solid fa-person-chalkboard me-2"></i><span class="sidebar-menu-label">Pengajaran</span></a>
+        </div>
+        <?php $admin_monitor_aktif = in_array($current_page, ['monitoring.php','monitoring_materi.php','monitoring_tugas.php','monitoring_ujian.php','aktivitas_guru.php'], true); ?>
+        <a href="#sidebarAdminMonitoring" class="list-group-item list-group-item-action <?= $admin_monitor_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_monitor_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminMonitoring">
+            <i class="fa-solid fa-binoculars me-2"></i><span class="sidebar-menu-label flex-grow-1">Monitoring</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
-        <a href="siswa.php" class="list-group-item list-group-item-action <?= ($current_page == 'siswa.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-user-graduate me-2"></i> Data Siswa
+        <div class="collapse sidebar-submenu <?= $admin_monitor_aktif ? 'show' : '' ?>" id="sidebarAdminMonitoring">
+            <a href="monitoring.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring.php' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line me-2"></i><span class="sidebar-menu-label">Monitoring LMS</span></a>
+            <a href="monitoring_materi.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_materi.php' ? 'active' : '' ?>"><i class="fa-solid fa-book-open me-2"></i><span class="sidebar-menu-label">Monitoring Materi</span></a>
+            <a href="monitoring_tugas.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_tugas.php' ? 'active' : '' ?>"><i class="fa-solid fa-list-check me-2"></i><span class="sidebar-menu-label">Monitoring Tugas</span></a>
+            <a href="monitoring_ujian.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_ujian.php' ? 'active' : '' ?>"><i class="fa-solid fa-file-circle-question me-2"></i><span class="sidebar-menu-label">Monitoring Ulangan</span></a>
+            <a href="aktivitas_guru.php" class="list-group-item list-group-item-action <?= $current_page === 'aktivitas_guru.php' ? 'active' : '' ?>"><i class="fa-solid fa-person-chalkboard me-2"></i><span class="sidebar-menu-label">Aktivitas Guru</span></a>
+        </div>
+        <?php $admin_laporan_aktif = in_array($current_page, ['rekap_absensi.php','rekap_nilai.php','pusat_laporan.php'], true); ?>
+        <a href="#sidebarAdminLaporan" class="list-group-item list-group-item-action <?= $admin_laporan_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_laporan_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminLaporan">
+            <i class="fa-solid fa-chart-column me-2"></i><span class="sidebar-menu-label flex-grow-1">Rekap &amp; Laporan</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
-        <a href="kelas.php" class="list-group-item list-group-item-action <?= ($current_page == 'kelas.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-school me-2"></i> Kelas & Jurusan
+        <div class="collapse sidebar-submenu <?= $admin_laporan_aktif ? 'show' : '' ?>" id="sidebarAdminLaporan">
+            <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_absensi.php' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-check me-2"></i><span class="sidebar-menu-label">Rekap Absensi</span></a>
+            <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_nilai.php' ? 'active' : '' ?>"><i class="fa-solid fa-graduation-cap me-2"></i><span class="sidebar-menu-label">Rekap Nilai Akademik</span></a>
+            <a href="pusat_laporan.php" class="list-group-item list-group-item-action <?= $current_page === 'pusat_laporan.php' ? 'active' : '' ?>"><i class="fa-solid fa-file-export me-2"></i><span class="sidebar-menu-label">Pusat Laporan</span></a>
+        </div>
+        <?php $admin_sistem_aktif = in_array($current_page, ['kontrol_operasional.php','log_aktivitas.php'], true); ?>
+        <a href="#sidebarAdminSistem" class="list-group-item list-group-item-action <?= $admin_sistem_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_sistem_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminSistem">
+            <i class="fa-solid fa-gears me-2"></i><span class="sidebar-menu-label flex-grow-1">Sistem &amp; Kontrol</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
-        <a href="mapel.php" class="list-group-item list-group-item-action <?= ($current_page == 'mapel.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-book me-2"></i> Mata Pelajaran
-        </a>
-        <a href="pengajaran.php" class="list-group-item list-group-item-action <?= ($current_page == 'pengajaran.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-person-chalkboard me-2"></i> Pengajaran
-        </a>
-        <a href="monitoring.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-binoculars me-2"></i> Monitoring LMS
-        </a>
-        <a href="monitoring_materi.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring_materi.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-book-open me-2"></i> Monitoring Materi
-        </a>
-        <a href="monitoring_tugas.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring_tugas.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-list-check me-2"></i> Monitoring Tugas
-        </a>
-        <a href="monitoring_ujian.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring_ujian.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-file-circle-question me-2"></i> Monitoring Ulangan
-        </a>
-        <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page == 'rekap_nilai.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-graduation-cap me-2"></i> Rekap Nilai Akademik
-        </a>
-        <a href="aktivitas_guru.php" class="list-group-item list-group-item-action <?= ($current_page == 'aktivitas_guru.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-person-chalkboard me-2"></i> Aktivitas Guru
-        </a>
-        <a href="kontrol_operasional.php" class="list-group-item list-group-item-action <?= ($current_page == 'kontrol_operasional.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-screwdriver-wrench me-2"></i> Kontrol Operasional
-        </a>
-        <a href="pusat_laporan.php" class="list-group-item list-group-item-action <?= ($current_page == 'pusat_laporan.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-file-export me-2"></i> Pusat Laporan
-        </a>
-        <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= ($current_page == 'rekap_absensi.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
-        </a>
-        <a href="log_aktivitas.php" class="list-group-item list-group-item-action <?= ($current_page == 'log_aktivitas.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-clock-rotate-left me-2"></i> Log Aktivitas
-        </a>
+        <div class="collapse sidebar-submenu <?= $admin_sistem_aktif ? 'show' : '' ?>" id="sidebarAdminSistem">
+            <a href="kontrol_operasional.php" class="list-group-item list-group-item-action <?= $current_page === 'kontrol_operasional.php' ? 'active' : '' ?>"><i class="fa-solid fa-screwdriver-wrench me-2"></i><span class="sidebar-menu-label">Kontrol Operasional</span></a>
+            <a href="log_aktivitas.php" class="list-group-item list-group-item-action <?= $current_page === 'log_aktivitas.php' ? 'active' : '' ?>"><i class="fa-solid fa-clock-rotate-left me-2"></i><span class="sidebar-menu-label">Log Aktivitas</span></a>
+        </div>
         <?php elseif ($role_id === 2): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page === 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i> Dashboard Guru
@@ -295,35 +361,54 @@ if ($role_id === 3 && class_exists('Database')) {
         </a>
     </div>
 </div>
-<?php if (in_array($role_id, [2, 3], true)): ?>
 <style>
     .portal-sidebar-trigger,
     .portal-sidebar-overlay { display:none; }
     @media (max-width:991.98px) {
-        #sidebar-wrapper { position:fixed; inset:0 auto 0 0; z-index:1045; height:100dvh; overflow-y:auto; transform:translateX(-100%); box-shadow:12px 0 30px rgba(15,23,42,.25); }
-        body.student-menu-open #sidebar-wrapper { transform:translateX(0); }
-        #page-content-wrapper { width:100%; min-width:0; }
+        html, body { width:100%; max-width:100%; overflow-x:hidden; }
+        #wrapper { display:block !important; width:100% !important; max-width:100vw; }
+        #sidebar-wrapper {
+            position:fixed;
+            inset:0 auto 0 0;
+            z-index:1045;
+            width:min(280px, 86vw);
+            max-width:86vw;
+            height:100dvh;
+            flex:none;
+            transform:translateX(-105%);
+            box-shadow:12px 0 30px rgba(15,23,42,.25);
+        }
+        body.portal-menu-open { overflow:hidden; }
+        body.portal-menu-open #sidebar-wrapper { transform:translateX(0); }
+        #page-content-wrapper {
+            width:100% !important;
+            max-width:100vw;
+            min-width:0 !important;
+            margin:0 !important;
+            overflow-x:hidden;
+        }
         .portal-sidebar-trigger { display:grid; place-items:center; position:fixed; top:10px; left:12px; z-index:1035; width:44px; height:44px; border:1px solid #e5e7eb; border-radius:12px; background:#fff; color:#1e293b; box-shadow:0 4px 14px rgba(15,23,42,.12); }
         .portal-sidebar-overlay { display:block; position:fixed; inset:0; z-index:1040; background:rgba(15,23,42,.45); opacity:0; visibility:hidden; transition:opacity .2s ease,visibility .2s ease; }
-        body.student-menu-open .portal-sidebar-overlay { opacity:1; visibility:visible; }
+        body.portal-menu-open .portal-sidebar-overlay { opacity:1; visibility:visible; }
         .portal-sidebar-overlay ~ #page-content-wrapper > nav:first-child { padding-left:4.25rem!important; min-height:64px; }
+        .admin-sidebar-toggle { display:none; }
     }
 </style>
-<button type="button" class="portal-sidebar-trigger" id="studentMenuButton" aria-label="Buka menu <?= $role_id === 2 ? 'guru' : 'siswa' ?>" aria-controls="sidebar-wrapper" aria-expanded="false">
+<button type="button" class="portal-sidebar-trigger" id="portalMenuButton" aria-label="Buka menu <?= $role_id === 1 ? 'admin' : ($role_id === 2 ? 'guru' : 'siswa') ?>" aria-controls="sidebar-wrapper" aria-expanded="false">
     <i class="fa-solid fa-bars"></i>
 </button>
 <div class="portal-sidebar-overlay" id="menuOverlay" aria-hidden="true"></div>
 <script>
 document.addEventListener('DOMContentLoaded', function () {
-    const tombol = document.getElementById('studentMenuButton');
+    const tombol = document.getElementById('portalMenuButton');
     const overlay = document.getElementById('menuOverlay');
     const sidebar = document.getElementById('sidebar-wrapper');
     const tutupMenu = () => {
-        document.body.classList.remove('student-menu-open');
+        document.body.classList.remove('portal-menu-open');
         tombol?.setAttribute('aria-expanded', 'false');
     };
     tombol?.addEventListener('click', function () {
-        const terbuka = document.body.classList.toggle('student-menu-open');
+        const terbuka = document.body.classList.toggle('portal-menu-open');
         tombol.setAttribute('aria-expanded', terbuka ? 'true' : 'false');
     });
     overlay?.addEventListener('click', tutupMenu);
@@ -338,6 +423,39 @@ document.addEventListener('DOMContentLoaded', function () {
     window.addEventListener('resize', function () {
         if (window.innerWidth >= 992) tutupMenu();
     });
+
+    const adminToggle = document.getElementById('adminSidebarToggle');
+    const compactKey = 'lmsAdminSidebarCompact';
+    const aturAdminSidebar = function (compact) {
+        document.body.classList.toggle('admin-sidebar-compact', compact);
+        if (!adminToggle) return;
+        sidebar?.querySelectorAll('a.list-group-item').forEach(function (item) {
+            if (compact) {
+                item.setAttribute('title', item.textContent.replace(/\s+/g, ' ').trim());
+            } else {
+                item.removeAttribute('title');
+            }
+        });
+        adminToggle.setAttribute('aria-label', compact ? 'Perbesar sidebar' : 'Kecilkan sidebar');
+        adminToggle.setAttribute('title', compact ? 'Perbesar sidebar' : 'Kecilkan sidebar');
+        const icon = adminToggle.querySelector('i');
+        if (icon) icon.className = compact ? 'fa-solid fa-angles-right' : 'fa-solid fa-angles-left';
+    };
+    if (adminToggle) {
+        aturAdminSidebar(localStorage.getItem(compactKey) === '1');
+        adminToggle.addEventListener('click', function () {
+            const compact = !document.body.classList.contains('admin-sidebar-compact');
+            aturAdminSidebar(compact);
+            localStorage.setItem(compactKey, compact ? '1' : '0');
+        });
+        sidebar?.querySelectorAll('[data-bs-toggle="collapse"]').forEach(function (pemicu) {
+            pemicu.addEventListener('click', function () {
+                if (window.innerWidth >= 992 && document.body.classList.contains('admin-sidebar-compact')) {
+                    aturAdminSidebar(false);
+                    localStorage.setItem(compactKey, '0');
+                }
+            });
+        });
+    }
 });
 </script>
-<?php endif; ?>

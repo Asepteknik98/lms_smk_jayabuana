@@ -55,7 +55,9 @@ $persentase_siap = (int)round(($pemeriksaan_siap / $total_pemeriksaan) * 100);
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
 <div id="page-content-wrapper" class="admin-dashboard">
     <style>
-        .admin-dashboard { background: #f7f9fc; min-height: 100vh; }
+        .admin-dashboard { background: #f7f9fc; min-height: 100vh; min-width:0; width:100%; }
+        .admin-dashboard-nav { min-height:72px; }
+        .dashboard-content { width:100%; max-width:1440px; margin:0 auto; }
         .welcome-panel { background: linear-gradient(135deg, #172554, #1d4ed8); border-radius: 22px; color: #fff; padding: 30px; box-shadow: 0 18px 45px rgba(29,78,216,.18); }
         .dashboard-card { border: 1px solid #e8edf5 !important; border-radius: 18px !important; box-shadow: 0 8px 26px rgba(15,23,42,.045) !important; }
         .metric-link { color: inherit; text-decoration: none; display: block; height: 100%; }
@@ -69,13 +71,40 @@ $persentase_siap = (int)round(($pemeriksaan_siap / $total_pemeriksaan) * 100);
         .attention-item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 0; border-bottom: 1px solid #edf1f6; }
         .attention-item:last-child { border-bottom: 0; }
         .progress { height: 9px; background: #e8eef8; }
-        @media (max-width: 767.98px) { .welcome-panel { padding: 22px; border-radius: 18px; } .dashboard-content { padding: 18px !important; } }
+        @media (max-width: 991.98px) {
+            .dashboard-content { padding:20px!important; }
+            .dashboard-card { height:auto!important; }
+        }
+        @media (max-width: 575.98px) {
+            .admin-dashboard-nav { min-height:64px; padding-right:12px!important; }
+            .admin-dashboard-nav h5 { font-size:1rem; line-height:1.25; }
+            .admin-dashboard-nav small { font-size:.7rem; }
+            .admin-role-badge { max-width:96px; padding:7px 9px!important; overflow:hidden; text-overflow:ellipsis; font-size:.67rem; white-space:nowrap; }
+            .dashboard-content { padding:13px!important; }
+            .welcome-panel { padding:20px; border-radius:17px; }
+            .welcome-panel h2 { font-size:1.25rem; line-height:1.3; overflow-wrap:anywhere; }
+            .welcome-panel p { font-size:.78rem; line-height:1.5; }
+            .welcome-panel .btn { width:100%; padding:.65rem 1rem!important; font-size:.82rem; }
+            .metric-card { min-height:104px; padding:12px!important; }
+            .metric-card .d-flex { align-items:flex-start!important; }
+            .metric-card h2 { font-size:1.35rem; }
+            .metric-card small { font-size:.67rem; line-height:1.25; display:block; }
+            .metric-icon { width:38px; height:38px; flex:0 0 38px; border-radius:11px; font-size:.92rem; }
+            .dashboard-card { border-radius:15px!important; }
+            .dashboard-card.p-4 { padding:16px!important; }
+            .mini-stat { padding:12px; min-height:74px; }
+            .mini-stat h4 { font-size:1.15rem; }
+            .mini-stat small { font-size:.68rem; }
+            .action-link { padding:11px; gap:10px; }
+            .action-icon { width:36px; height:36px; flex-basis:36px; }
+            .attention-item { align-items:flex-start; padding:12px 0; }
+        }
     </style>
 
-    <nav class="navbar navbar-expand-lg navbar-light bg-white border-bottom px-4 py-3">
+    <nav class="navbar admin-dashboard-nav navbar-light bg-white border-bottom px-3 px-md-4 py-3">
         <div class="d-flex align-items-center justify-content-between w-100">
             <div><h5 class="mb-0 fw-bold">Dashboard Administrator</h5><small class="text-muted">Pusat kendali operasional LMS sekolah</small></div>
-            <span class="badge bg-primary-subtle text-primary px-3 py-2 rounded-pill"><i class="fa-solid fa-shield-halved me-1"></i> Administrator</span>
+            <span class="admin-role-badge badge bg-primary-subtle text-primary px-3 py-2 rounded-pill"><i class="fa-solid fa-shield-halved me-1"></i> Administrator</span>
         </div>
     </nav>
 

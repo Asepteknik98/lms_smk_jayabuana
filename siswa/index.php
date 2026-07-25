@@ -140,8 +140,25 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     .student-dashboard { --student-blue:#2563eb; --student-bg:#f5f7fb; background:var(--student-bg); min-width:0; }
     .student-topbar { position:sticky; top:0; z-index:20; background:rgba(255,255,255,.96); backdrop-filter:blur(10px); border-bottom:1px solid #e9edf5; }
     .student-main { max-width:1180px; margin:0 auto; }
-    .welcome-card { background:linear-gradient(135deg,#2563eb,#1d4ed8); border-radius:20px; color:#fff; overflow:hidden; position:relative; }
-    .welcome-card::after { content:""; position:absolute; width:150px; height:150px; border-radius:50%; background:rgba(255,255,255,.09); right:-45px; bottom:-75px; }
+    .welcome-card {
+        min-height:145px;
+        background-image:
+            linear-gradient(110deg,rgba(23,37,84,.94) 0%,rgba(29,78,216,.82) 58%,rgba(37,99,235,.64) 100%),
+            url('../assets/img/batikjb.webp');
+        background-size:cover;
+        background-position:center;
+        background-repeat:no-repeat;
+        border-radius:20px;
+        color:#fff;
+        overflow:hidden;
+        position:relative;
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+        box-shadow:0 12px 28px rgba(29,78,216,.18);
+    }
+    .welcome-card::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(15,23,42,.18),transparent 70%); pointer-events:none; }
+    .welcome-card > * { position:relative; z-index:1; }
     .quick-link { min-height:108px; border:1px solid #e8edf5; border-radius:16px; background:#fff; color:#172033; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-weight:650; box-shadow:0 5px 18px rgba(15,23,42,.05); transition:.2s ease; }
     .quick-link:active { transform:scale(.98); }
     .quick-icon { width:43px; height:43px; border-radius:13px; display:grid; place-items:center; font-size:1.1rem; }
@@ -157,7 +174,7 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     @media (max-width:575.98px) {
         .student-topbar { padding:12px 14px!important; }
         .student-main { padding:14px!important; }
-        .welcome-card { border-radius:17px; padding:18px!important; }
+        .welcome-card { min-height:132px; border-radius:17px; padding:18px!important; background-position:center; }
         .welcome-card h1 { font-size:1.18rem; line-height:1.35; }
         .welcome-meta { font-size:.78rem; }
         .quick-link { min-height:94px; border-radius:14px; font-size:.88rem; }
