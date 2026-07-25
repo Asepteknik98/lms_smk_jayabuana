@@ -103,10 +103,24 @@ $recent_submissions = $stmt_recent_sub->fetchAll();
 <style>
     .teacher-dashboard { --teacher-bg:#f5f7fb; background:var(--teacher-bg); min-width:0; width:100%; }
     .teacher-main { width:100%; max-width:none; margin:0; padding:28px 32px!important; }
-    .teacher-welcome { position:relative; overflow:hidden; min-height:160px; border-radius:22px; color:#fff; background:linear-gradient(120deg,#172554 0%,#1d4ed8 55%,#3b82f6 100%); box-shadow:0 12px 30px rgba(37,99,235,.2); display:flex; flex-direction:column; justify-content:center; }
-    .teacher-welcome::before,.teacher-welcome::after { content:""; position:absolute; border-radius:50%; background:rgba(255,255,255,.09); pointer-events:none; }
-    .teacher-welcome::before { width:240px; height:240px; right:8%; top:-165px; }
-    .teacher-welcome::after { width:210px; height:210px; right:-55px; bottom:-120px; }
+    .teacher-welcome {
+        position:relative;
+        overflow:hidden;
+        min-height:160px;
+        border-radius:22px;
+        color:#fff;
+        background-image:
+            linear-gradient(110deg,rgba(23,37,84,.95) 0%,rgba(29,78,216,.83) 58%,rgba(59,130,246,.64) 100%),
+            url('../assets/img/batikjb.webp');
+        background-size:cover;
+        background-position:center;
+        background-repeat:no-repeat;
+        box-shadow:0 12px 30px rgba(37,99,235,.2);
+        display:flex;
+        flex-direction:column;
+        justify-content:center;
+    }
+    .teacher-welcome::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(15,23,42,.18),transparent 70%); pointer-events:none; }
     .teacher-welcome-copy { position:relative; z-index:1; max-width:720px; }
     .teacher-quick { min-height:104px; padding:16px 10px; border:1px solid #e7ecf4; border-radius:17px; background:#fff; color:#1e293b; text-decoration:none; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:9px; font-size:.88rem; font-weight:650; text-align:center; box-shadow:0 5px 18px rgba(15,23,42,.05); transition:transform .2s ease,box-shadow .2s ease,border-color .2s ease; }
     .teacher-quick:active { transform:scale(.98); }

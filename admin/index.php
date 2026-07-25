@@ -58,7 +58,22 @@ $persentase_siap = (int)round(($pemeriksaan_siap / $total_pemeriksaan) * 100);
         .admin-dashboard { background: #f7f9fc; min-height: 100vh; min-width:0; width:100%; }
         .admin-dashboard-nav { min-height:72px; }
         .dashboard-content { width:100%; max-width:1440px; margin:0 auto; }
-        .welcome-panel { background: linear-gradient(135deg, #172554, #1d4ed8); border-radius: 22px; color: #fff; padding: 30px; box-shadow: 0 18px 45px rgba(29,78,216,.18); }
+        .welcome-panel {
+            position:relative;
+            overflow:hidden;
+            background-image:
+                linear-gradient(110deg,rgba(23,37,84,.95) 0%,rgba(29,78,216,.83) 58%,rgba(59,130,246,.64) 100%),
+                url('../assets/img/batikjb.webp');
+            background-size:cover;
+            background-position:center;
+            background-repeat:no-repeat;
+            border-radius:22px;
+            color:#fff;
+            padding:30px;
+            box-shadow:0 18px 45px rgba(29,78,216,.18);
+        }
+        .welcome-panel::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(15,23,42,.18),transparent 70%); pointer-events:none; }
+        .welcome-panel > * { position:relative; z-index:1; }
         .dashboard-card { border: 1px solid #e8edf5 !important; border-radius: 18px !important; box-shadow: 0 8px 26px rgba(15,23,42,.045) !important; }
         .metric-link { color: inherit; text-decoration: none; display: block; height: 100%; }
         .metric-card { transition: transform .2s ease, box-shadow .2s ease; }
