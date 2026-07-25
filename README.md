@@ -46,6 +46,14 @@ Status: Active Development
 
 **WebApp V1.0.0** merupakan versi rilis awal LMS SMKS Jaya Buana yang telah menyediakan fondasi utama sistem pembelajaran digital untuk tiga jenis pengguna, yaitu Administrator, Guru, dan Siswa.
 
+Status penggunaan saat ini:
+
+| Lingkungan | Status |
+| --- | --- |
+| Demo dan presentasi | Siap |
+| Pengujian internal sekolah | Siap dengan akun serta data uji |
+| Produksi publik | Memerlukan audit keamanan, backup, HTTPS, dan uji beban |
+
 Fitur utama yang tersedia pada versi ini meliputi:
 
 * Sistem autentikasi berdasarkan peran pengguna.
@@ -53,7 +61,8 @@ Fitur utama yang tersedia pada versi ini meliputi:
 * Manajemen data guru, siswa, kelas, jurusan, dan mata pelajaran.
 * Pengelolaan materi pembelajaran.
 * Dukungan materi berupa file, lampiran, dan video YouTube.
-* Sistem tugas dan pengumpulan jawaban siswa.
+* Sistem tugas multi-format: portofolio, esai, pilihan ganda, merangkum, dan video.
+* Penilaian otomatis untuk tugas pilihan ganda serta penilaian manual oleh guru.
 * Preview dan unduh jawaban tugas.
 * Absensi pembelajaran.
 * Ulangan harian berbasis komputer.
@@ -62,6 +71,7 @@ Fitur utama yang tersedia pada versi ini meliputi:
 * Ekspor laporan ke Excel dan PDF.
 * Progressive Web App atau PWA.
 * Antarmuka responsif untuk perangkat desktop dan mobile.
+* Identitas visual sekolah menggunakan logo dan motif `assets/img/batikjb.webp`.
 * Sistem keamanan dasar menggunakan CSRF, prepared statement, password hashing, dan pembatasan hak akses.
 
 Penomoran versi aplikasi menggunakan format:
@@ -96,9 +106,17 @@ V2.0.0 → Perubahan besar pada sistem atau arsitektur aplikasi
 * Pengelolaan data guru dan siswa.
 * Pengelolaan kelas, jurusan, serta mata pelajaran.
 * Pengaturan pengajaran berdasarkan guru, kelas, semester, dan tahun ajaran.
-* Monitoring kegiatan siswa.
-* Ekspor data monitoring.
+* Rekap absensi berdasarkan guru, kelas, mata pelajaran, semester, dan pertemuan.
+* Monitoring materi berdasarkan guru, kelas, status akses, file, dan pertemuan.
+* Monitoring tugas, pengumpulan siswa, keterlambatan, jenis tugas, dan status penilaian.
+* Monitoring ulangan, soal, peserta, siswa yang sudah atau belum mengerjakan, dan nilai.
+* Rekap nilai akademik gabungan tugas, ulangan, serta absensi.
+* Detail aktivitas dan produktivitas guru.
+* Kontrol operasional sesi absensi dan akses pembelajaran.
+* Pusat laporan berdasarkan kelas, guru, siswa, semester, dan tahun ajaran.
+* Ekspor laporan Excel dan PDF.
 * Pencatatan log aktivitas pengguna.
+* Sidebar berkelompok, mode ringkas pada desktop, dan off-canvas pada perangkat mobile.
 
 ### Guru
 
@@ -107,9 +125,12 @@ V2.0.0 → Perubahan besar pada sistem atau arsitektur aplikasi
 * Menambahkan video YouTube dan lampiran pada materi.
 * Membuka atau mengunci akses pembelajaran per pertemuan.
 * Mewajibkan siswa mengunduh materi sebelum tugas dapat diakses.
-* Membuat tugas beserta lampiran dan tenggat waktu.
+* Membuat tugas beserta lampiran, jenis tugas, pertanyaan, dan tenggat waktu.
+* Mendukung tugas Portofolio, Esai, Pilihan Ganda, Merangkum, dan Pembuatan Video.
+* Menambahkan beberapa pertanyaan esai atau pilihan ganda dengan opsi A-D dan kunci jawaban.
+* Mengunci struktur pertanyaan setelah terdapat pengumpulan siswa untuk menjaga konsistensi data.
 * Melihat, mengunduh, dan melakukan preview jawaban siswa.
-* Memberikan nilai serta catatan pada tugas.
+* Melihat jawaban formulir siswa, memberikan nilai, serta menambahkan catatan.
 * Membuka sesi absensi dan mengatur status Hadir, Sakit, Izin, atau Alpa.
 * Rekap absensi per kelas dengan ekspor Excel dan PDF.
 * Membuat ulangan harian dan mengelola soal.
@@ -128,10 +149,15 @@ V2.0.0 → Perubahan besar pada sistem atau arsitektur aplikasi
 
 * Dashboard pembelajaran dan pengingat kegiatan.
 * Mengakses serta mengunduh materi.
+* Menandai materi yang sudah dibaca melalui proses review.
+* Melihat indikator hijau pada pertemuan yang seluruh materinya sudah dibaca.
+* Melihat peringatan prasyarat tugas pada sub-dropdown pertemuan.
 * Menonton video pembelajaran YouTube langsung dari halaman materi.
 * Melihat status pertemuan yang terbuka atau masih terkunci.
-* Melihat tugas, mengunggah jawaban, dan membaca catatan guru.
-* Mengakses tugas setelah mengunduh materi apabila aturan wajib unduh diaktifkan.
+* Mengerjakan tugas portofolio, esai, pilihan ganda, rangkuman, dan pembuatan video.
+* Mengunggah portofolio, menulis jawaban, memilih opsi, atau mengirim tautan video.
+* Mengakses tugas setelah membaca, mengunduh lampiran, dan menyelesaikan review materi.
+* Melihat nilai otomatis pilihan ganda serta nilai dan catatan dari guru.
 * Melakukan check-in pada sesi absensi yang aktif.
 * Mengikuti ulangan harian berbasis komputer.
 * Mendapatkan peringatan tugas atau kuis yang belum dikerjakan.
@@ -210,6 +236,7 @@ Proyek ini tidak memerlukan Composer atau Node.js untuk menjalankan fitur utaman
    database/2026_07_24_hak_akses_pertemuan.sql
    database/2026_07_24_video_youtube_materi.sql
    database/2026_07_24_wajib_unduh_materi.sql
+   database/2026_07_25_jenis_tugas.sql
    ```
 
 6. Periksa konfigurasi pada `config/database.php`:
@@ -259,6 +286,19 @@ Hal yang perlu diperiksa saat deployment:
 * Aktifkan pencatatan error ke dalam file log.
 * Simpan cadangan database dan berkas unggahan secara berkala.
 * Jangan mengunggah data siswa atau contoh jawaban sensitif ke repositori publik.
+
+### Verifikasi Setelah Instalasi
+
+Setelah dump dan migrasi selesai diimpor, periksa alur berikut menggunakan akun uji:
+
+1. Admin membuat atau memeriksa pengajaran guru dan kelas.
+2. Guru membuka akses pertemuan serta mengunggah materi.
+3. Siswa membuka, mengunduh, dan melakukan review materi.
+4. Guru membuat masing-masing jenis tugas.
+5. Siswa mengirim jawaban dan guru melakukan penilaian.
+6. Admin membuka Monitoring Tugas dan Rekap Nilai Akademik.
+
+Untuk tugas Pilihan Ganda, pastikan guru telah mengisi seluruh opsi A-D dan memilih satu kunci jawaban pada setiap pertanyaan.
 
 ## Struktur Proyek
 
@@ -317,6 +357,11 @@ Tabel tambahan untuk sistem pembelajaran dan penilaian antara lain:
 * `akses_pertemuan`
 * `materi_siswa_dibaca`
 * `materi_siswa_diunduh`
+* `pertanyaan_tugas`
+* `opsi_tugas`
+* `jawaban_tugas`
+
+Migrasi `2026_07_25_jenis_tugas.sql` menambahkan kolom `jenis_tugas`, membuat tabel pertanyaan dan jawaban tugas, serta mengizinkan pengumpulan berbasis formulir tanpa file. Tugas lama tetap kompatibel dan menggunakan jenis `portofolio`.
 
 ## Riwayat Versi
 
@@ -333,10 +378,14 @@ Rilis awal LMS SMKS Jaya Buana dengan modul utama:
 * Video YouTube pada materi.
 * Penguncian akses pertemuan.
 * Wajib unduh materi.
-* Tugas dan pengumpulan jawaban.
+* Review materi dan penguncian tugas berdasarkan prasyarat belajar.
+* Lima jenis tugas dan pengumpulan jawaban berbasis file atau formulir.
+* Penilaian otomatis tugas pilihan ganda.
 * Absensi pembelajaran.
 * Ulangan harian.
 * Rekap dan laporan nilai.
+* Monitoring dan pusat laporan Administrator.
+* Kontrol operasional dan audit aktivitas.
 * Dukungan tampilan responsif.
 * Dukungan Progressive Web App.
 
