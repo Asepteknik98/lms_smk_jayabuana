@@ -213,7 +213,7 @@ $kelas_materi = array_values($kelas_materi);
                             </tbody>
                         </table>
                     </div>
-                    <div class="d-md-none">
+                    <div class="d-md-none" id="daftarMateriMobile">
                         <?php foreach($materi_list as $m): ?>
                             <article class="material-mobile-item" data-kelas="<?= sanitize($m['nama_kelas']) ?>">
                                 <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><div><span class="badge bg-primary">Pertemuan <?= (int)$m['pertemuan_ke'] ?></span> <button type="button" class="badge access-badge <?= $m['status_akses']==='Dibuka'?'bg-success':'bg-secondary' ?>" title="Klik untuk <?= $m['status_akses']==='Dibuka'?'mengunci':'membuka' ?> akses siswa" onclick="ubahStatusAkses(<?= (int)$m['pengajaran_id'] ?>,<?= (int)$m['pertemuan_ke'] ?>,'<?= $m['status_akses']==='Dibuka'?'Dikunci':'Dibuka' ?>')"><i class="fa-solid <?= $m['status_akses']==='Dibuka'?'fa-lock-open':'fa-lock' ?> me-1"></i><?= sanitize($m['status_akses']) ?></button></div><small class="text-muted"><?= date('d/m/Y',strtotime($m['created_at'])) ?></small></div>
@@ -223,6 +223,7 @@ $kelas_materi = array_values($kelas_materi);
                             </article>
                         <?php endforeach; ?>
                     </div>
+                    <nav class="d-md-none mt-3" id="paginationMateriMobile" aria-label="Halaman materi"></nav>
                     <?php endif; ?>
                 </div></section>
             </div>
@@ -237,7 +238,45 @@ $kelas_materi = array_values($kelas_materi);
 $(document).ready(function() {
     const tabelMateri = $('#tableMateri').DataTable({
         order: [],
+        pageLength: 5,
+        lengthChange: false,
         columnDefs: [{ targets: 6, visible: false, searchable: true }]
+    });
+    const materiPerHalaman = 5;
+    let halamanMateriMobile = 1;
+
+    function tampilkanMateriMobile() {
+        const kelasTerpilih = document.getElementById('filterKelasMateri')?.value || '';
+        const semuaMateri = Array.from(document.querySelectorAll('.material-mobile-item'));
+        const materiTersaring = semuaMateri.filter(function(item) {
+            return kelasTerpilih === '' || item.dataset.kelas === kelasTerpilih;
+        });
+        const totalHalaman = Math.max(1, Math.ceil(materiTersaring.length / materiPerHalaman));
+        halamanMateriMobile = Math.min(halamanMateriMobile, totalHalaman);
+        const awal = (halamanMateriMobile - 1) * materiPerHalaman;
+        const materiDitampilkan = new Set(materiTersaring.slice(awal, awal + materiPerHalaman));
+
+        semuaMateri.forEach(function(item) {
+            item.classList.toggle('d-none', !materiDitampilkan.has(item));
+        });
+
+        const navigasi = document.getElementById('paginationMateriMobile');
+        if (!navigasi) return;
+        if (materiTersaring.length <= materiPerHalaman) {
+            navigasi.innerHTML = '';
+            return;
+        }
+        navigasi.innerHTML =
+            '<div class="d-flex justify-content-between align-items-center gap-2">' +
+                '<button type="button" class="btn btn-sm btn-outline-primary" data-halaman="' + (halamanMateriMobile - 1) + '"' + (halamanMateriMobile === 1 ? ' disabled' : '') + '><i class="fa-solid fa-chevron-left me-1"></i>Sebelumnya</button>' +
+                '<small class="text-muted">Halaman ' + halamanMateriMobile + ' dari ' + totalHalaman + '</small>' +
+                '<button type="button" class="btn btn-sm btn-outline-primary" data-halaman="' + (halamanMateriMobile + 1) + '"' + (halamanMateriMobile === totalHalaman ? ' disabled' : '') + '>Berikutnya<i class="fa-solid fa-chevron-right ms-1"></i></button>' +
+            '</div>';
+    }
+
+    $('#paginationMateriMobile').on('click', 'button[data-halaman]', function() {
+        halamanMateriMobile = Number(this.dataset.halaman);
+        tampilkanMateriMobile();
     });
     $('#filterKelasMateri').on('change', function() {
         const kelasTerpilih = this.value;
@@ -245,10 +284,10 @@ $(document).ready(function() {
             ? '^' + $.fn.dataTable.util.escapeRegex(kelasTerpilih) + '$'
             : '';
         tabelMateri.column(6).search(pencarianKelas, true, false).draw();
-        document.querySelectorAll('.material-mobile-item').forEach(function(item) {
-            item.classList.toggle('d-none', kelasTerpilih !== '' && item.dataset.kelas !== kelasTerpilih);
-        });
+        halamanMateriMobile = 1;
+        tampilkanMateriMobile();
     });
+    tampilkanMateriMobile();
 
     $('#formMateri').on('submit', function(e) {
         e.preventDefault();

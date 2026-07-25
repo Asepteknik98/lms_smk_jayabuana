@@ -122,6 +122,29 @@ if ($role_id === 3 && class_exists('Database')) {
     #sidebar-wrapper .list-group-item.active i {
         color: #38bdf8;
     }
+    #sidebar-wrapper .sidebar-submenu {
+        margin: 1px 0 4px;
+        padding-left: 13px;
+    }
+    #sidebar-wrapper .sidebar-submenu .list-group-item {
+        min-height: 36px;
+        padding: 7px 10px 7px 17px;
+        font-size: .8rem;
+        border-radius: 8px;
+    }
+    #sidebar-wrapper .sidebar-submenu .list-group-item i {
+        width: 18px;
+        font-size: .78rem;
+    }
+    #sidebar-wrapper .sidebar-menu-chevron {
+        width: auto !important;
+        margin-right: 0 !important;
+        font-size: .7rem !important;
+        transition: transform .2s ease;
+    }
+    #sidebar-wrapper [aria-expanded="true"] .sidebar-menu-chevron {
+        transform: rotate(180deg);
+    }
     #sidebar-wrapper .list-group-item.text-danger {
         margin-top: 10px !important;
         color: #fb7185 !important;
@@ -186,18 +209,26 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="tugas.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['tugas.php', 'tugas_penilaian.php'], true) ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check me-2"></i> Tugas
         </a>
-        <a href="absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-wifi me-2"></i> Absensi Online
+        <?php $sidebar_absensi_aktif = in_array($current_page, ['absensi.php', 'absensi_manual.php', 'riwayat_absensi.php', 'rekap_absensi.php'], true); ?>
+        <a href="#sidebarAbsensiGuru" class="list-group-item list-group-item-action <?= $sidebar_absensi_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" role="button" aria-expanded="<?= $sidebar_absensi_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAbsensiGuru">
+            <i class="fa-solid fa-clipboard-user me-2"></i>
+            <span class="flex-grow-1">Absensi</span>
+            <i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
-        <a href="absensi_manual.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi_manual.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-user-check me-2"></i> Absensi Manual
-        </a>
-        <a href="riwayat_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'riwayat_absensi.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Absensi
-        </a>
-        <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_absensi.php') ? 'active' : '' ?>">
-            <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
-        </a>
+        <div class="collapse sidebar-submenu <?= $sidebar_absensi_aktif ? 'show' : '' ?>" id="sidebarAbsensiGuru">
+            <a href="absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi.php') ? 'active' : '' ?>">
+                <i class="fa-solid fa-wifi me-2"></i> Absensi Online
+            </a>
+            <a href="absensi_manual.php" class="list-group-item list-group-item-action <?= ($current_page === 'absensi_manual.php') ? 'active' : '' ?>">
+                <i class="fa-solid fa-user-check me-2"></i> Absensi Manual
+            </a>
+            <a href="riwayat_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'riwayat_absensi.php') ? 'active' : '' ?>">
+                <i class="fa-solid fa-clock-rotate-left me-2"></i> Riwayat Absensi
+            </a>
+            <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_absensi.php') ? 'active' : '' ?>">
+                <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
+            </a>
+        </div>
         <a href="ujian.php" class="list-group-item list-group-item-action <?= ($current_page === 'ujian.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-file-circle-question me-2"></i> Ulangan Harian
         </a>

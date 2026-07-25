@@ -50,8 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('absensi.php');
         }
 
+        $pertemuan_sudah_ada = false;
         try {
             $db->beginTransaction();
+
+            $stmt_pertemuan = $db->prepare(
+                'SELECT 1
+                 FROM sesi_absensi
+                 WHERE pengajaran_id = ? AND pertemuan_ke = ?
+                 LIMIT 1'
+            );
+            $stmt_pertemuan->execute([$pengajaran_id, $pertemuan_ke]);
+            if ($stmt_pertemuan->fetchColumn()) {
+                $pertemuan_sudah_ada = true;
+                throw new RuntimeException('Absensi untuk pertemuan tersebut sudah tersedia. Pilih pertemuan lain.');
+            }
+
             $jumlah_ditutup = proses_penutupan_absensi_otomatis($db, $pengajaran_id, true);
             $stmt = $db->prepare(
                 "INSERT INTO sesi_absensi
@@ -72,8 +86,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             error_log('Gagal membuka sesi absensi: ' . $e->getMessage());
-            $_SESSION['flash_error'] = $e->getCode() === '23000'
-                ? 'Absensi untuk pertemuan tersebut sudah tersedia.'
+            $_SESSION['flash_error'] = $pertemuan_sudah_ada || $e->getCode() === '23000'
+                ? 'Absensi untuk pertemuan tersebut sudah tersedia. Pilih pertemuan lain.'
                 : 'Sesi absensi gagal dibuat.';
         }
         redirect('absensi.php');
@@ -120,6 +134,21 @@ $stmt_pengajaran = $db->prepare(
 );
 $stmt_pengajaran->execute([$guru_id]);
 $pengajaran_list = $stmt_pengajaran->fetchAll();
+
+$pertemuan_terpakai = [];
+if ($pengajaran_list) {
+    $stmt_pertemuan_terpakai = $db->prepare(
+        'SELECT sa.pengajaran_id, sa.pertemuan_ke
+         FROM sesi_absensi sa
+         JOIN pengajaran p ON p.id = sa.pengajaran_id
+         WHERE p.guru_id = ?
+         ORDER BY sa.pengajaran_id, sa.pertemuan_ke'
+    );
+    $stmt_pertemuan_terpakai->execute([$guru_id]);
+    foreach ($stmt_pertemuan_terpakai->fetchAll() as $sesi) {
+        $pertemuan_terpakai[(int)$sesi['pengajaran_id']][] = (int)$sesi['pertemuan_ke'];
+    }
+}
 
 $awal = new DateTime();
 $akhir = (clone $awal)->modify('+30 minutes');
@@ -168,7 +197,7 @@ $akhir = (clone $awal)->modify('+30 minutes');
                         <input type="hidden" name="action" value="buka">
                         <div class="row g-3"><div class="col-12">
                             <label class="form-label fw-semibold">Mapel dan Kelas</label>
-                            <select name="pengajaran_id" class="form-select" required>
+                            <select name="pengajaran_id" id="pengajaranAbsensi" class="form-select" required>
                                 <option value="">-- Pilih Pengajaran --</option>
                                 <?php foreach ($pengajaran_list as $item): ?>
                                     <option value="<?= (int)$item['id'] ?>"><?= sanitize($item['nama_mapel']) ?> — <?= sanitize($item['nama_kelas']) ?> (<?= sanitize($item['semester']) ?>)</option>
@@ -177,9 +206,9 @@ $akhir = (clone $awal)->modify('+30 minutes');
                         </div>
                         <div class="col-7 col-md-6">
                             <label class="form-label fw-semibold">Pertemuan</label>
-                            <select name="pertemuan_ke" class="form-select" required>
+                            <select name="pertemuan_ke" id="pertemuanAbsensi" class="form-select" required disabled>
                                 <option value="">-- Pilih Pertemuan --</option>
-                                <?php for ($i = 1; $i <= 20; $i++): ?><option value="<?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?>
+                                <?php for ($i = 1; $i <= 20; $i++): ?><option value="<?= $i ?>" data-label="Pertemuan <?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?>
                             </select>
                         </div>
                         <div class="col-5 col-md-6"><label class="form-label fw-semibold">Tanggal</label><input type="date" name="tanggal" value="<?= $awal->format('Y-m-d') ?>" class="form-control" required></div>
@@ -192,4 +221,28 @@ $akhir = (clone $awal)->modify('+30 minutes');
         </div></section>
     </div>
 </div>
+<script>
+const pertemuanTerpakai = <?= json_encode($pertemuan_terpakai, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const pengajaranAbsensi = document.getElementById('pengajaranAbsensi');
+const pertemuanAbsensi = document.getElementById('pertemuanAbsensi');
+
+function perbaruiPilihanPertemuan() {
+    if (!pengajaranAbsensi || !pertemuanAbsensi) return;
+
+    const pengajaranId = pengajaranAbsensi.value;
+    const sudahAda = new Set((pertemuanTerpakai[pengajaranId] || []).map(String));
+
+    pertemuanAbsensi.value = '';
+    pertemuanAbsensi.disabled = !pengajaranId;
+    Array.from(pertemuanAbsensi.options).forEach(function (option) {
+        if (!option.value) return;
+        const terpakai = sudahAda.has(option.value);
+        option.disabled = terpakai;
+        option.textContent = option.dataset.label + (terpakai ? ' — sudah ada' : '');
+    });
+}
+
+pengajaranAbsensi?.addEventListener('change', perbaruiPilihanPertemuan);
+perbaruiPilihanPertemuan();
+</script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
