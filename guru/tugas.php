@@ -59,6 +59,46 @@ function simpan_lampiran_tugas(array $file): ?string
     return $nama;
 }
 
+function data_pertanyaan_tugas(array $post, string $jenis): array
+{
+    if (!in_array($jenis, ['esai', 'pilihan_ganda'], true)) return [];
+    $daftar = [];
+    foreach (($post['pertanyaan'] ?? []) as $index => $teks) {
+        $teks = trim((string)$teks);
+        if ($teks === '') continue;
+        if (mb_strlen($teks) > 5000) throw new RuntimeException('Pertanyaan terlalu panjang.');
+        $item = ['pertanyaan' => $teks, 'opsi' => [], 'kunci' => null];
+        if ($jenis === 'pilihan_ganda') {
+            foreach (['A','B','C','D'] as $label) {
+                $opsi = trim((string)($post['opsi'][$index][$label] ?? ''));
+                if ($opsi === '') throw new RuntimeException('Semua opsi A-D wajib diisi.');
+                $item['opsi'][$label] = $opsi;
+            }
+            $kunci = strtoupper((string)($post['kunci'][$index] ?? ''));
+            if (!isset($item['opsi'][$kunci])) throw new RuntimeException('Kunci jawaban wajib dipilih.');
+            $item['kunci'] = $kunci;
+        }
+        $daftar[] = $item;
+    }
+    if (!$daftar) throw new RuntimeException('Tambahkan minimal satu pertanyaan.');
+    if (count($daftar) > 50) throw new RuntimeException('Maksimal 50 pertanyaan.');
+    return $daftar;
+}
+
+function simpan_pertanyaan_tugas(PDO $db, int $tugas_id, array $daftar): void
+{
+    $db->prepare('DELETE FROM pertanyaan_tugas WHERE tugas_id=?')->execute([$tugas_id]);
+    $buat = $db->prepare('INSERT INTO pertanyaan_tugas (tugas_id,pertanyaan,urutan) VALUES (?,?,?)');
+    $buat_opsi = $db->prepare('INSERT INTO opsi_tugas (pertanyaan_id,label_opsi,teks_opsi,is_benar) VALUES (?,?,?,?)');
+    foreach ($daftar as $urutan => $item) {
+        $buat->execute([$tugas_id, $item['pertanyaan'], $urutan + 1]);
+        $pertanyaan_id = (int)$db->lastInsertId();
+        foreach ($item['opsi'] as $label => $teks) {
+            $buat_opsi->execute([$pertanyaan_id, $label, $teks, $label === $item['kunci'] ? 1 : 0]);
+        }
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!verify_csrf($_POST['csrf_token'] ?? '')) {
         kembali_tugas('error', 'Sesi keamanan berakhir. Silakan muat ulang halaman.');
@@ -73,10 +113,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
             $judul = trim($_POST['judul'] ?? '');
             $deskripsi = trim($_POST['deskripsi'] ?? '');
+            $jenis_tugas = (string)($_POST['jenis_tugas'] ?? 'portofolio');
             $deadline_raw = trim($_POST['deadline'] ?? '');
             $deadline_obj = DateTime::createFromFormat('Y-m-d\TH:i', $deadline_raw);
 
-            if ($pengajaran_id < 1 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || !$deadline_obj) {
+            if ($pengajaran_id < 1 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || !$deadline_obj || !in_array($jenis_tugas, ['portofolio','esai','pilihan_ganda','merangkum','video'], true)) {
                 throw new RuntimeException('Kelas, pertemuan 1–20, judul, dan tenggat wajib diisi dengan benar.');
             }
             if (mb_strlen($judul) > 200) {
@@ -89,15 +130,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Kelas atau mata pelajaran bukan pengajaran Anda.');
             }
 
+            $pertanyaan = data_pertanyaan_tugas($_POST, $jenis_tugas);
             $lampiran_baru = simpan_lampiran_tugas($_FILES['file_lampiran'] ?? []);
             if ($aksi === 'create') {
-                $sql = 'INSERT INTO tugas (pengajaran_id, pertemuan_ke, judul, deskripsi, deadline, file_lampiran) VALUES (?, ?, ?, ?, ?, ?)';
-                $db->prepare($sql)->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $deadline_obj->format('Y-m-d H:i:s'), $lampiran_baru]);
+                $db->beginTransaction();
+                $sql = 'INSERT INTO tugas (pengajaran_id, pertemuan_ke, judul, deskripsi, jenis_tugas, deadline, file_lampiran) VALUES (?, ?, ?, ?, ?, ?, ?)';
+                $db->prepare($sql)->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $jenis_tugas, $deadline_obj->format('Y-m-d H:i:s'), $lampiran_baru]);
+                simpan_pertanyaan_tugas($db, (int)$db->lastInsertId(), $pertanyaan);
+                $db->commit();
                 catat_log($_SESSION['user_id'], "Membuat tugas: $judul");
                 kembali_tugas('success', 'Tugas berhasil dibuat dan dapat dilihat siswa.');
             }
 
-            $cek = $db->prepare('SELECT t.file_lampiran FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id WHERE t.id=? AND p.guru_id=?');
+            $cek = $db->prepare('SELECT t.file_lampiran,t.jenis_tugas,(SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.tugas_id=t.id) total_pengumpulan FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id WHERE t.id=? AND p.guru_id=?');
             $cek->execute([$id, $guru_id]);
             $lama = $cek->fetch();
             if (!$lama) {
@@ -105,8 +150,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 throw new RuntimeException('Tugas tidak ditemukan atau bukan milik Anda.');
             }
             $lampiran = $lampiran_baru ?: $lama['file_lampiran'];
-            $sql = 'UPDATE tugas SET pengajaran_id=?, pertemuan_ke=?, judul=?, deskripsi=?, deadline=?, file_lampiran=? WHERE id=?';
-            $db->prepare($sql)->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $deadline_obj->format('Y-m-d H:i:s'), $lampiran, $id]);
+            $struktur_dikunci = (int)$lama['total_pengumpulan'] > 0;
+            if ($struktur_dikunci) $jenis_tugas = $lama['jenis_tugas'];
+            $db->beginTransaction();
+            $sql = 'UPDATE tugas SET pengajaran_id=?, pertemuan_ke=?, judul=?, deskripsi=?, jenis_tugas=?, deadline=?, file_lampiran=? WHERE id=?';
+            $db->prepare($sql)->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $jenis_tugas, $deadline_obj->format('Y-m-d H:i:s'), $lampiran, $id]);
+            if (!$struktur_dikunci) simpan_pertanyaan_tugas($db, $id, $pertanyaan);
+            $db->commit();
             if ($lampiran_baru && $lama['file_lampiran']) @unlink(__DIR__ . '/../assets/upload/tugas/' . basename($lama['file_lampiran']));
             catat_log($_SESSION['user_id'], "Mengubah tugas: $judul");
             kembali_tugas('success', 'Tugas berhasil diperbarui.');
@@ -129,6 +179,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             kembali_tugas('success', 'Tugas beserta pengumpulannya berhasil dihapus.');
         }
     } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
         if ($lampiran_baru) @unlink(__DIR__ . '/../assets/upload/tugas/' . basename($lampiran_baru));
         kembali_tugas('error', $e instanceof RuntimeException ? $e->getMessage() : 'Tugas gagal diproses. Silakan coba kembali.');
     }
@@ -163,6 +214,29 @@ $stmt = $db->prepare("SELECT t.*,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_aj
     WHERE p.guru_id=?$filter_sql ORDER BY t.deadline DESC");
 $stmt->execute($filter_parameter);
 $daftar_tugas = $stmt->fetchAll();
+$struktur_tugas = [];
+if ($daftar_tugas) {
+    $id_tugas = array_map(static fn($t): int => (int)$t['id'], $daftar_tugas);
+    $placeholder = implode(',', array_fill(0, count($id_tugas), '?'));
+    $stmt_struktur = $db->prepare("SELECT pt.id,pt.tugas_id,pt.pertanyaan,pt.urutan,ot.label_opsi,ot.teks_opsi,ot.is_benar
+        FROM pertanyaan_tugas pt LEFT JOIN opsi_tugas ot ON ot.pertanyaan_id=pt.id
+        WHERE pt.tugas_id IN ($placeholder) ORDER BY pt.tugas_id,pt.urutan,ot.label_opsi");
+    $stmt_struktur->execute($id_tugas);
+    foreach ($stmt_struktur->fetchAll() as $baris) {
+        $tid = (int)$baris['tugas_id']; $pid = (int)$baris['id'];
+        if (!isset($struktur_tugas[$tid][$pid])) {
+            $struktur_tugas[$tid][$pid] = ['pertanyaan'=>$baris['pertanyaan'],'opsi'=>[],'kunci'=>null];
+        }
+        if ($baris['label_opsi']) {
+            $struktur_tugas[$tid][$pid]['opsi'][$baris['label_opsi']] = $baris['teks_opsi'];
+            if ($baris['is_benar']) $struktur_tugas[$tid][$pid]['kunci'] = $baris['label_opsi'];
+        }
+    }
+    foreach ($daftar_tugas as &$item_tugas) {
+        $item_tugas['struktur'] = array_values($struktur_tugas[(int)$item_tugas['id']] ?? []);
+    }
+    unset($item_tugas);
+}
 
 // Batasi kartu tugas per halaman agar daftar tetap ringkas.
 $tugas_per_halaman = 3;
@@ -251,10 +325,12 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
                 <div class="col-12 col-md-6 col-xl-4"><article class="card teacher-task-card h-100"><div class="card-body p-3 d-flex flex-column">
                     <div class="d-flex justify-content-between align-items-start gap-2 mb-2"><span class="badge task-badge bg-primary-subtle text-primary"><?= sanitize($t['nama_mapel']) ?> &middot; <?= sanitize($t['nama_kelas']) ?></span><span class="badge <?= $lewat?'bg-secondary':'bg-success' ?> flex-shrink-0"><?= $lewat?'Ditutup':'Aktif' ?></span></div>
                     <h2 class="task-heading fw-bold mb-2"><?= sanitize($t['judul']) ?></h2>
+                    <?php $label_jenis=['portofolio'=>'Portofolio','esai'=>'Esai','pilihan_ganda'=>'Pilihan Ganda','merangkum'=>'Merangkum','video'=>'Pembuatan Video']; ?>
+                    <span class="badge bg-info-subtle text-info align-self-start mb-2"><i class="fa-solid fa-shapes me-1"></i><?= sanitize($label_jenis[$t['jenis_tugas']] ?? 'Portofolio') ?></span>
                     <div class="task-meta-box text-muted mb-2"><div><i class="fa-solid fa-calendar-day me-1"></i>Pertemuan <?= (int)$t['pertemuan_ke'] ?> &middot; <?= sanitize($t['semester']) ?></div><div><i class="fa-regular fa-clock me-1"></i><?= date('d M Y, H:i', strtotime($t['deadline'])) ?></div></div>
                     <?php if ($t['file_lampiran']): ?><a href="tugas_lampiran.php?id=<?= (int)$t['id'] ?>" target="_blank" rel="noopener" class="small text-decoration-none d-inline-block mb-3"><i class="fa-solid fa-paperclip me-1"></i>Lihat lampiran soal</a><?php else: ?><small class="text-muted d-block mb-3"><i class="fa-solid fa-file-circle-xmark me-1"></i>Tanpa lampiran soal</small><?php endif; ?>
                     <div class="task-stats mb-3"><div><strong><?= (int)$t['total_siswa'] ?></strong><small>Siswa</small></div><div><strong class="text-success"><?= (int)$t['sudah_mengumpulkan'] ?></strong><small>Terkumpul</small></div><div><strong class="text-warning"><?= (int)$t['belum_dinilai'] ?></strong><small>Belum Nilai</small></div></div>
-                    <div class="d-flex gap-2 mt-auto"><a href="tugas_penilaian.php?tugas_id=<?= (int)$t['id'] ?>" class="btn btn-primary btn-sm task-action-main flex-grow-1"><i class="fa-solid fa-users-viewfinder me-1"></i>Lihat & Nilai</a><button class="btn btn-outline-secondary btn-sm task-action-icon" data-bs-toggle="modal" data-bs-target="#modalTugas" aria-label="Edit tugas" onclick='editTugas(<?= json_encode(["id"=>(int)$t["id"],"pengajaran_id"=>(int)$t["pengajaran_id"],"pertemuan_ke"=>(int)$t["pertemuan_ke"],"judul"=>$t["judul"],"deskripsi"=>$t["deskripsi"],"deadline"=>date("Y-m-d\\TH:i",strtotime($t["deadline"]))], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen"></i></button><form method="post" class="d-flex" onsubmit="return confirm('Hapus tugas beserta seluruh jawaban siswa?')"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><button class="btn btn-outline-danger btn-sm task-action-icon" aria-label="Hapus tugas"><i class="fa-solid fa-trash"></i></button></form></div>
+                    <div class="d-flex gap-2 mt-auto"><a href="tugas_penilaian.php?tugas_id=<?= (int)$t['id'] ?>" class="btn btn-primary btn-sm task-action-main flex-grow-1"><i class="fa-solid fa-users-viewfinder me-1"></i>Lihat & Nilai</a><button class="btn btn-outline-secondary btn-sm task-action-icon" data-bs-toggle="modal" data-bs-target="#modalTugas" aria-label="Edit tugas" onclick='editTugas(<?= json_encode(["id"=>(int)$t["id"],"pengajaran_id"=>(int)$t["pengajaran_id"],"pertemuan_ke"=>(int)$t["pertemuan_ke"],"judul"=>$t["judul"],"deskripsi"=>$t["deskripsi"],"jenis_tugas"=>$t["jenis_tugas"],"struktur"=>$t["struktur"],"terkumpul"=>(int)$t["sudah_mengumpulkan"],"deadline"=>date("Y-m-d\\TH:i",strtotime($t["deadline"]))], JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-pen"></i></button><form method="post" class="d-flex" onsubmit="return confirm('Hapus tugas beserta seluruh jawaban siswa?')"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="delete"><input type="hidden" name="id" value="<?= (int)$t['id'] ?>"><button class="btn btn-outline-danger btn-sm task-action-icon" aria-label="Hapus tugas"><i class="fa-solid fa-trash"></i></button></form></div>
                 </div></article></div>
             <?php endforeach; ?>
             </div>
@@ -283,13 +359,30 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
 <div class="modal fade" id="modalTugas" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0"><form method="post" enctype="multipart/form-data" id="formTugas"><div class="modal-header"><div><h5 class="modal-title fw-bold" id="judulModal">Buat Tugas Baru</h5><small class="text-muted">Lengkapi informasi tugas untuk siswa.</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
     <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" id="aksiTugas" value="create"><input type="hidden" name="id" id="idTugas">
     <div class="row g-3"><div class="col-md-8"><label class="form-label fw-semibold">Mata Pelajaran & Kelas</label><select class="form-select" name="pengajaran_id" id="pengajaranTugas" required><option value="">Pilih pengajaran</option><?php foreach ($pengajaran as $p): ?><option value="<?= (int)$p['id'] ?>"><?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?> (<?= sanitize($p['semester']) ?>)</option><?php endforeach; ?></select></div><div class="col-md-4"><label class="form-label fw-semibold">Pertemuan</label><select class="form-select" name="pertemuan_ke" id="pertemuanTugas" required><?php for($i=1;$i<=20;$i++): ?><option value="<?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?></select></div>
-    <div class="col-12"><label class="form-label fw-semibold">Judul Tugas</label><input class="form-control" name="judul" id="namaTugas" maxlength="200" required></div><div class="col-12"><label class="form-label fw-semibold">Deskripsi / Instruksi</label><textarea class="form-control" name="deskripsi" id="deskripsiTugas" rows="4"></textarea></div><div class="col-md-6"><label class="form-label fw-semibold">Tenggat Waktu</label><input type="datetime-local" class="form-control" name="deadline" id="deadlineTugas" required></div><div class="col-md-6"><label class="form-label fw-semibold">Lampiran</label><input type="file" class="form-control" name="file_lampiran" accept=".pdf,.docx,.pptx,.zip"><small class="text-muted">PDF, DOCX, PPTX, ZIP · maks. 10 MB</small></div></div>
+    <div class="col-12"><label class="form-label fw-semibold">Judul Tugas</label><input class="form-control" name="judul" id="namaTugas" maxlength="200" required></div><div class="col-12"><label class="form-label fw-semibold">Deskripsi / Instruksi</label><textarea class="form-control" name="deskripsi" id="deskripsiTugas" rows="4"></textarea></div>
+    <div class="col-12"><label class="form-label fw-semibold">Jenis Tugas</label><select class="form-select" name="jenis_tugas" id="jenisTugas" required><option value="portofolio">Portofolio</option><option value="esai">Esai</option><option value="pilihan_ganda">Pilihan Ganda</option><option value="merangkum">Merangkum</option><option value="video">Pembuatan Video</option></select><small class="text-muted">Form jawaban siswa akan menyesuaikan jenis tugas.</small></div>
+    <div class="col-12 d-none" id="areaPertanyaan"><div class="d-flex justify-content-between align-items-center mb-2"><label class="form-label fw-semibold mb-0">Daftar Pertanyaan</label><button type="button" class="btn btn-sm btn-outline-primary" id="tambahPertanyaan"><i class="fa-solid fa-plus me-1"></i>Pertanyaan</button></div><div id="daftarPertanyaan"></div></div>
+    <div class="col-md-6"><label class="form-label fw-semibold">Tenggat Waktu</label><input type="datetime-local" class="form-control" name="deadline" id="deadlineTugas" required></div><div class="col-md-6"><label class="form-label fw-semibold">Lampiran</label><input type="file" class="form-control" name="file_lampiran" accept=".pdf,.docx,.pptx,.zip"><small class="text-muted">PDF, DOCX, PPTX, ZIP · maks. 10 MB</small></div></div>
     <div id="infoEdit" class="alert alert-info small mt-3 mb-0 d-none">Kosongkan lampiran jika tidak ingin mengganti file lama.</div>
     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Publikasikan Tugas</button></div></form></div></div></div>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 <script>
-function tugasBaru(pengajaranId=0,pertemuan=0){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='create';document.getElementById('idTugas').value='';document.getElementById('judulModal').textContent='Buat Tugas Baru';document.getElementById('infoEdit').classList.add('d-none');if(pengajaranId)document.getElementById('pengajaranTugas').value=String(pengajaranId);if(pertemuan)document.getElementById('pertemuanTugas').value=String(pertemuan)}
-function editTugas(d){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='update';document.getElementById('idTugas').value=d.id;document.getElementById('pengajaranTugas').value=d.pengajaran_id;document.getElementById('pertemuanTugas').value=d.pertemuan_ke;document.getElementById('namaTugas').value=d.judul;document.getElementById('deskripsiTugas').value=d.deskripsi||'';document.getElementById('deadlineTugas').value=d.deadline;document.getElementById('judulModal').textContent='Edit Tugas';document.getElementById('infoEdit').classList.remove('d-none')}
+const jenisTugas=document.getElementById('jenisTugas'),areaPertanyaan=document.getElementById('areaPertanyaan'),daftarPertanyaan=document.getElementById('daftarPertanyaan');
+let nomorPertanyaan=0;
+function tambahPertanyaan(data={}){
+    const i=nomorPertanyaan++, pg=jenisTugas.value==='pilihan_ganda', kartu=document.createElement('div');
+    kartu.className='border rounded-3 p-3 mb-2 bg-light';
+    const opsi=pg?['A','B','C','D'].map(label=>`<div class="input-group input-group-sm mb-2"><span class="input-group-text">${label}</span><input class="form-control" name="opsi[${i}][${label}]" value="${escapeHtml(data.opsi?.[label]||'')}" required><span class="input-group-text"><input type="radio" name="kunci[${i}]" value="${label}" ${data.kunci===label?'checked':''} required> Benar</span></div>`).join(''):'';
+    kartu.innerHTML=`<div class="d-flex justify-content-between mb-2"><strong class="small">Pertanyaan</strong><button type="button" class="btn btn-sm btn-link text-danger p-0 hapus-pertanyaan">Hapus</button></div><textarea class="form-control mb-2" name="pertanyaan[${i}]" rows="2" required>${escapeHtml(data.pertanyaan||'')}</textarea>${opsi}`;
+    kartu.querySelector('.hapus-pertanyaan').addEventListener('click',()=>kartu.remove());
+    daftarPertanyaan.appendChild(kartu);
+}
+function escapeHtml(teks){const d=document.createElement('div');d.textContent=teks;return d.innerHTML}
+function aturJenis(struktur=[]){const memakaiPertanyaan=['esai','pilihan_ganda'].includes(jenisTugas.value);areaPertanyaan.classList.toggle('d-none',!memakaiPertanyaan);daftarPertanyaan.innerHTML='';nomorPertanyaan=0;if(memakaiPertanyaan)(struktur.length?struktur:[{}]).forEach(tambahPertanyaan)}
+jenisTugas.addEventListener('change',()=>aturJenis());
+document.getElementById('tambahPertanyaan').addEventListener('click',()=>tambahPertanyaan());
+function tugasBaru(pengajaranId=0,pertemuan=0){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='create';document.getElementById('idTugas').value='';document.getElementById('judulModal').textContent='Buat Tugas Baru';document.getElementById('infoEdit').classList.add('d-none');jenisTugas.disabled=false;aturJenis();if(pengajaranId)document.getElementById('pengajaranTugas').value=String(pengajaranId);if(pertemuan)document.getElementById('pertemuanTugas').value=String(pertemuan)}
+function editTugas(d){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='update';document.getElementById('idTugas').value=d.id;document.getElementById('pengajaranTugas').value=d.pengajaran_id;document.getElementById('pertemuanTugas').value=d.pertemuan_ke;document.getElementById('namaTugas').value=d.judul;document.getElementById('deskripsiTugas').value=d.deskripsi||'';jenisTugas.value=d.jenis_tugas||'portofolio';jenisTugas.disabled=d.terkumpul>0;document.getElementById('deadlineTugas').value=d.deadline;document.getElementById('judulModal').textContent='Edit Tugas';document.getElementById('infoEdit').classList.remove('d-none');document.getElementById('infoEdit').textContent=d.terkumpul>0?'Jenis dan pertanyaan dikunci karena sudah ada jawaban siswa. Data umum masih dapat diubah.':'Kosongkan lampiran jika tidak ingin mengganti file lama.';aturJenis(d.struktur||[])}
 <?php if ($buka_form_tugas): ?>
 document.addEventListener('DOMContentLoaded',function(){tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>);bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTugas')).show()});
 <?php endif; ?>

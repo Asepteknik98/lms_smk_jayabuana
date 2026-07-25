@@ -186,7 +186,7 @@ CREATE TABLE `pengumpulan_tugas` (
   `id` int(10) UNSIGNED NOT NULL,
   `tugas_id` int(10) UNSIGNED NOT NULL,
   `siswa_id` int(10) UNSIGNED NOT NULL,
-  `file_tugas` varchar(255) NOT NULL,
+  `file_tugas` varchar(255) DEFAULT NULL,
   `catatan` text DEFAULT NULL,
   `nilai` decimal(5,2) DEFAULT NULL,
   `catatan_guru` text DEFAULT NULL,
@@ -277,6 +277,7 @@ CREATE TABLE `tugas` (
   `pertemuan_ke` tinyint(3) UNSIGNED NOT NULL DEFAULT 1,
   `judul` varchar(200) NOT NULL,
   `deskripsi` text DEFAULT NULL,
+  `jenis_tugas` enum('portofolio','esai','pilihan_ganda','merangkum','video') NOT NULL DEFAULT 'portofolio',
   `deadline` datetime NOT NULL,
   `file_lampiran` varchar(255) DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT current_timestamp()

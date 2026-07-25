@@ -52,9 +52,17 @@ $stmt_t = $db->prepare("
 ");
 $stmt_t->execute([$siswa_id, $kelas_id, $siswa_id, $siswa_id]);
 $tugas_list = $stmt_t->fetchAll();
+$pertanyaan_per_tugas=[];
+if($tugas_list){
+    $ids=array_map(static fn($t)=>(int)$t['id'],$tugas_list);
+    $ph=implode(',',array_fill(0,count($ids),'?'));
+    $stmt_q=$db->prepare("SELECT pt.id,pt.tugas_id,pt.pertanyaan,pt.urutan,ot.id opsi_id,ot.label_opsi,ot.teks_opsi FROM pertanyaan_tugas pt LEFT JOIN opsi_tugas ot ON ot.pertanyaan_id=pt.id WHERE pt.tugas_id IN($ph) ORDER BY pt.tugas_id,pt.urutan,ot.label_opsi");
+    $stmt_q->execute($ids);
+    foreach($stmt_q->fetchAll() as $r){$tid=(int)$r['tugas_id'];$pid=(int)$r['id'];if(!isset($pertanyaan_per_tugas[$tid][$pid]))$pertanyaan_per_tugas[$tid][$pid]=['id'=>$pid,'pertanyaan'=>$r['pertanyaan'],'opsi'=>[]];if($r['opsi_id'])$pertanyaan_per_tugas[$tid][$pid]['opsi'][]=['id'=>(int)$r['opsi_id'],'label'=>$r['label_opsi'],'teks'=>$r['teks_opsi']];}
+}
 $daftar_mapel=[];foreach($tugas_list as $item)$daftar_mapel[$item['nama_mapel']]=$item['nama_mapel'];ksort($daftar_mapel);
 $filter_status=$_GET['status']??'semua';$filter_mapel=trim($_GET['mapel']??'');$filter_pengajaran=(int)($_GET['pengajaran_id']??0);$filter_pertemuan=(int)($_GET['pertemuan']??0);if(!in_array($filter_status,['semua','aktif','selesai','terlambat'],true))$filter_status='semua';
-$tugas_list=array_values(array_filter($tugas_list,static function($item)use($filter_status,$filter_mapel,$filter_pengajaran,$filter_pertemuan){$submitted=!empty($item['jawaban_file']);$expired=strtotime($item['deadline'])<time();$statusOk=$filter_status==='semua'||($filter_status==='selesai'&&$submitted)||($filter_status==='aktif'&&!$submitted&&!$expired)||($filter_status==='terlambat'&&!$submitted&&$expired);return $statusOk&&($filter_mapel===''||$item['nama_mapel']===$filter_mapel)&&(!$filter_pengajaran||(int)$item['pengajaran_id']===$filter_pengajaran)&&(!$filter_pertemuan||(int)$item['pertemuan_ke']===$filter_pertemuan);}));
+$tugas_list=array_values(array_filter($tugas_list,static function($item)use($filter_status,$filter_mapel,$filter_pengajaran,$filter_pertemuan){$submitted=!empty($item['pengumpulan_id']);$expired=strtotime($item['deadline'])<time();$statusOk=$filter_status==='semua'||($filter_status==='selesai'&&$submitted)||($filter_status==='aktif'&&!$submitted&&!$expired)||($filter_status==='terlambat'&&!$submitted&&$expired);return $statusOk&&($filter_mapel===''||$item['nama_mapel']===$filter_mapel)&&(!$filter_pengajaran||(int)$item['pengajaran_id']===$filter_pengajaran)&&(!$filter_pertemuan||(int)$item['pertemuan_ke']===$filter_pertemuan);}));
 
 // Batasi jumlah kartu agar halaman tetap ringkas meskipun tugas sangat banyak.
 $tugas_per_halaman = 3;
@@ -109,7 +117,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
         <?php endif; ?>
         <div class="row g-3 student-task-grid">
             <?php foreach($tugas_list as $t): 
-                $is_submitted = !empty($t['jawaban_file']);
+                $is_submitted = !empty($t['pengumpulan_id']);
                 $is_expired   = strtotime(date('Y-m-d H:i:s')) > strtotime($t['deadline']);
             ?>
             <div class="col-12 col-md-6 col-xl-4">
@@ -127,6 +135,8 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                     </div>
 
                     <h2 class="task-title fw-bold mb-1"><?= sanitize($t['judul']) ?></h2>
+                    <?php $label_jenis=['portofolio'=>'Portofolio','esai'=>'Esai','pilihan_ganda'=>'Pilihan Ganda','merangkum'=>'Merangkum','video'=>'Pembuatan Video']; ?>
+                    <span class="badge bg-primary-subtle text-primary align-self-start mb-2"><?= sanitize($label_jenis[$t['jenis_tugas']] ?? 'Portofolio') ?></span>
                     <p class="task-meta text-muted mb-2">Guru: <?= sanitize($t['nama_guru']) ?> &middot; Pertemuan <?= (int)$t['pertemuan_ke'] ?></p>
                     <?php if ($t['deskripsi']): ?>
                         <details class="task-instruction p-2 mb-2">
@@ -162,12 +172,12 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                             <?php $ukuran_aktual=$t['ukuran_file'];if(!$ukuran_aktual&&$t['jawaban_file']){$path_jawaban=__DIR__.'/../assets/upload/jawaban/'.basename($t['jawaban_file']);$ukuran_aktual=is_file($path_jawaban)?filesize($path_jawaban):null;} ?>
                             <div class="border rounded bg-light p-2 mt-2 small">
                                 <div class="fw-semibold mb-1"><i class="fa-solid fa-receipt text-success me-1"></i>Bukti Pengumpulan</div>
-                                <div class="text-truncate" title="<?= sanitize($t['nama_file_asli']?:$t['jawaban_file']) ?>"><i class="fa-solid fa-paperclip text-muted me-1"></i><?= sanitize($t['nama_file_asli']?:$t['jawaban_file']) ?></div>
+                                <?php if($t['jawaban_file']): ?><div class="text-truncate" title="<?= sanitize($t['nama_file_asli']?:$t['jawaban_file']) ?>"><i class="fa-solid fa-paperclip text-muted me-1"></i><?= sanitize($t['nama_file_asli']?:$t['jawaban_file']) ?></div><?php else: ?><div class="text-muted"><i class="fa-solid fa-keyboard me-1"></i>Jawaban dikirim melalui formulir</div><?php endif; ?>
                                 <div class="text-muted mt-1"><?= $ukuran_aktual?($ukuran_aktual<1048576?number_format($ukuran_aktual/1024,0).' KB':number_format($ukuran_aktual/1048576,2).' MB'):'Ukuran tidak tersedia' ?> · <?= $t['dikumpulkan_pada']?date('d/m/Y H:i',strtotime($t['dikumpulkan_pada'])):'-' ?></div>
                                 <span class="badge <?= $t['nilai']===null?'bg-warning text-dark':'bg-success' ?> mt-2"><?= $t['nilai']===null?'Menunggu Penilaian':'Sudah Dinilai' ?></span>
                             </div>
                         <?php elseif(!$is_expired): ?>
-                            <button class="btn btn-outline-primary btn-sm w-100" onclick='openSubmitModal(<?= (int)$t['id'] ?>, <?= json_encode($t['judul'], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>
+                            <button type="button" class="btn btn-outline-primary btn-sm w-100" onclick='openSubmitModal(<?= json_encode(["id"=>(int)$t["id"],"judul"=>$t["judul"],"jenis"=>$t["jenis_tugas"]??"portofolio","pertanyaan"=>array_values($pertanyaan_per_tugas[(int)$t["id"]]??[])], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT) ?>)'>
                                 <i class="fa-solid fa-paper-plane me-1"></i> Kirim Jawaban
                             </button>
                         <?php else: ?>
@@ -175,9 +185,9 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                         <?php endif; ?>
 
                         <?php if ($is_submitted): ?>
-                            <a href="file_pembelajaran.php?jenis=jawaban&amp;id=<?= (int)$t['pengumpulan_id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-link btn-sm w-100 mt-1">
+                            <?php if($t['jawaban_file']): ?><a href="file_pembelajaran.php?jenis=jawaban&amp;id=<?= (int)$t['pengumpulan_id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-link btn-sm w-100 mt-1">
                                 <i class="fa-solid fa-eye me-1"></i> Lihat jawaban yang sudah dikirim
-                            </a>
+                            </a><?php endif; ?>
                         <?php endif; ?>
 
                         <?php if ($t['catatan_guru']): ?>
@@ -226,6 +236,8 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                     <input type="hidden" name="csrf_token" value="<?= $_SESSION['csrf_token'] ?>">
                     <input type="hidden" name="tugas_id" id="modalTugasId">
 
+                    <div id="jawabanDinamis"></div>
+                    <div id="areaUploadJawaban">
                     <div class="upload-choice mb-3">
                         <label class="form-label fw-semibold"><i class="fa-solid fa-camera text-primary me-1"></i>Ambil Foto Jawaban</label>
                         <input type="file" name="foto_kamera" id="cameraInput" class="form-control" accept="image/*" capture="environment">
@@ -238,7 +250,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
                         <div class="form-text">PDF, DOCX, ZIP/RAR, JPG/JPEG, PNG, WEBP, atau HEIC · maksimal 10 MB.</div>
                     </div>
                     <div id="cameraPreviewWrap" class="d-none mb-3"><div class="d-flex justify-content-between align-items-center mb-2"><small class="fw-semibold text-success"><i class="fa-solid fa-circle-check me-1"></i>Foto siap dikirim</small><button type="button" class="btn btn-sm btn-link text-danger p-0" id="removeCameraPhoto">Hapus foto</button></div><img id="cameraPreview" class="camera-preview" alt="Preview foto jawaban"></div>
-                    <div id="selectedFileInfo" class="alert alert-info py-2 small d-none mb-3"></div>
+                    <div id="selectedFileInfo" class="alert alert-info py-2 small d-none mb-3"></div></div>
                     <div>
                         <div class="progress mt-3 d-none" id="uploadProgress" style="height:8px"><div class="progress-bar" style="width:0%"></div></div>
                     </div>
@@ -256,14 +268,15 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
 <script>
-let submitModal;
+let submitModal,currentJenis='portofolio';
 
 $(document).ready(function() {
     submitModal = new bootstrap.Modal(document.getElementById('submitModal'));
 
     $('#formKirimTugas').on('submit', function(e) {
         e.preventDefault();
-        if(!$('#cameraInput')[0].files.length&&!$('#fileInput')[0].files.length){Swal.fire('Pilih Jawaban','Ambil foto dengan kamera atau pilih file jawaban terlebih dahulu.','warning');return}
+        if(currentJenis==='portofolio'&&!$('#cameraInput')[0].files.length&&!$('#fileInput')[0].files.length){Swal.fire('Pilih Jawaban','Ambil foto dengan kamera atau pilih file jawaban terlebih dahulu.','warning');return}
+        if(!this.reportValidity())return;
         let formData = new FormData(this);
 
         const button=$('#submitTaskButton'),progress=$('#uploadProgress'),bar=progress.find('.progress-bar');button.prop('disabled',true).html('<span class="spinner-border spinner-border-sm me-1"></span>Mengunggah...');progress.removeClass('d-none');
@@ -291,10 +304,22 @@ $(document).ready(function() {
     $('#removeCameraPhoto').on('click',function(){$('#cameraInput').val('');$('#cameraPreviewWrap').addClass('d-none');$('#cameraPreview').removeAttr('src')});
 });
 
-function openSubmitModal(tugasId, judul) {
+function openSubmitModal(tugas) {
     $('#formKirimTugas')[0].reset();$('#cameraPreviewWrap,#selectedFileInfo,#uploadProgress').addClass('d-none');$('#cameraPreview').removeAttr('src');
-    $('#modalTugasId').val(tugasId);
-    $('#modalTugasTitle').text('Kirim Jawaban: ' + judul);
+    $('#modalTugasId').val(tugas.id);
+    $('#modalTugasTitle').text('Kirim Jawaban: ' + tugas.judul);
+    currentJenis=tugas.jenis||'portofolio';
+    $('#areaUploadJawaban').toggleClass('d-none',currentJenis!=='portofolio');
+    const area=$('#jawabanDinamis').empty();
+    if(currentJenis==='esai'){
+        (tugas.pertanyaan||[]).forEach((q,i)=>area.append(`<div class="mb-3"><label class="form-label fw-semibold">${i+1}. ${escapeHtml(q.pertanyaan)}</label><textarea class="form-control" name="jawaban[${q.id}]" rows="4" maxlength="20000" required></textarea></div>`));
+    }else if(currentJenis==='pilihan_ganda'){
+        (tugas.pertanyaan||[]).forEach((q,i)=>{const pilihan=(q.opsi||[]).map(o=>`<label class="d-flex gap-2 border rounded p-2 mb-2"><input class="form-check-input flex-shrink-0" type="radio" name="jawaban[${q.id}]" value="${o.id}" required><span><strong>${escapeHtml(o.label)}.</strong> ${escapeHtml(o.teks)}</span></label>`).join('');area.append(`<div class="mb-4"><div class="fw-semibold mb-2">${i+1}. ${escapeHtml(q.pertanyaan)}</div>${pilihan}</div>`)});
+    }else if(currentJenis==='merangkum'){
+        area.html('<label class="form-label fw-semibold">Tulis Ringkasan</label><textarea class="form-control mb-3" name="jawaban_ringkasan" rows="8" minlength="10" maxlength="30000" required placeholder="Tuliskan hasil rangkuman Anda..."></textarea>');
+    }else if(currentJenis==='video'){
+        area.html('<label class="form-label fw-semibold">Tautan Video</label><input type="url" class="form-control mb-3" name="tautan_video" required placeholder="https://youtube.com/..."><div class="form-text mb-3">Unggah video ke YouTube/Google Drive, lalu kirim tautan yang dapat diakses guru.</div>');
+    }
     submitModal.show();
 }
 function escapeHtml(value){return $('<div>').text(value).html()}

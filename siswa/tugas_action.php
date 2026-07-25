@@ -31,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $tugas_id = intval($_POST['tugas_id'] ?? 0);
 
     // Cek apakah deadline tugas sudah lewat
-    $stmt_t = $db->prepare("SELECT t.deadline FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka' WHERE t.id=? AND p.kelas_id=? AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) OR (EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_dibaca msb ON msb.materi_id=mat.id AND msb.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke AND mat.file_path IS NOT NULL) OR EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke))))");
+    $stmt_t = $db->prepare("SELECT t.deadline,t.jenis_tugas FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka' WHERE t.id=? AND p.kelas_id=? AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) OR (EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_dibaca msb ON msb.materi_id=mat.id AND msb.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke AND mat.file_path IS NOT NULL) OR EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke))))");
     $stmt_t->execute([$tugas_id, $kelas_id, $siswa_id, $siswa_id]);
     $tugas = $stmt_t->fetch();
 
@@ -53,7 +53,78 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
-    // Upload Berkas Tugas
+    $jenis = $tugas['jenis_tugas'] ?? 'portofolio';
+    if (in_array($jenis, ['esai','pilihan_ganda'], true)) {
+        $stmt_q = $db->prepare('SELECT pt.id,ot.id opsi_id,ot.is_benar FROM pertanyaan_tugas pt LEFT JOIN opsi_tugas ot ON ot.pertanyaan_id=pt.id WHERE pt.tugas_id=? ORDER BY pt.urutan,ot.label_opsi');
+        $stmt_q->execute([$tugas_id]);
+        $soal = [];
+        foreach ($stmt_q->fetchAll() as $row) {
+            $pid=(int)$row['id'];
+            if (!isset($soal[$pid])) $soal[$pid]=[];
+            if ($row['opsi_id']) $soal[$pid][(int)$row['opsi_id']] = (int)$row['is_benar'];
+        }
+        if (!$soal) { echo json_encode(['status'=>'error','message'=>'Pertanyaan tugas belum tersedia.']); exit; }
+        $jawaban = $_POST['jawaban'] ?? [];
+        foreach (array_keys($soal) as $pid) {
+            if (!isset($jawaban[$pid]) || trim((string)$jawaban[$pid])==='') {
+                echo json_encode(['status'=>'error','message'=>'Semua pertanyaan wajib dijawab.']); exit;
+            }
+        }
+        try {
+            $db->beginTransaction();
+            $nilai_otomatis = null;
+            if ($jenis === 'pilihan_ganda') {
+                $benar=0;
+                foreach ($soal as $pid=>$opsi) {
+                    $dipilih=(int)$jawaban[$pid];
+                    if (!array_key_exists($dipilih,$opsi)) throw new RuntimeException('Pilihan jawaban tidak valid.');
+                    if ($opsi[$dipilih]===1) $benar++;
+                }
+                $nilai_otomatis=round($benar/count($soal)*100,2);
+            }
+            $db->prepare('INSERT INTO pengumpulan_tugas (tugas_id,siswa_id,file_tugas,catatan,nilai) VALUES (?,?,NULL,NULL,?)')->execute([$tugas_id,$siswa_id,$nilai_otomatis]);
+            $pengumpulan_id=(int)$db->lastInsertId();
+            $simpan=$db->prepare('INSERT INTO jawaban_tugas (pengumpulan_id,pertanyaan_id,opsi_id,jawaban_teks,benar) VALUES (?,?,?,?,?)');
+            foreach ($soal as $pid=>$opsi) {
+                if ($jenis==='pilihan_ganda') {
+                    $oid=(int)$jawaban[$pid]; $simpan->execute([$pengumpulan_id,$pid,$oid,null,$opsi[$oid]]);
+                } else {
+                    $teks=trim((string)$jawaban[$pid]);
+                    if (mb_strlen($teks)>20000) throw new RuntimeException('Jawaban esai terlalu panjang.');
+                    $simpan->execute([$pengumpulan_id,$pid,null,$teks,null]);
+                }
+            }
+            $db->commit();
+            catat_log($_SESSION['user_id'], "Mengirimkan jawaban tugas ID: $tugas_id");
+            echo json_encode(['status'=>'success','message'=>$jenis==='pilihan_ganda'?'Jawaban berhasil dikirim dan dinilai otomatis.':'Jawaban esai berhasil dikirim.']);
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Pengumpulan tugas teks gagal: '.$e->getMessage());
+            echo json_encode(['status'=>'error','message'=>'Jawaban gagal disimpan atau sudah pernah dikumpulkan.']);
+        }
+        exit;
+    }
+
+    if ($jenis === 'merangkum' || $jenis === 'video') {
+        $catatan = trim((string)($_POST[$jenis === 'video' ? 'tautan_video' : 'jawaban_ringkasan'] ?? ''));
+        $skema_video = strtolower((string)parse_url($catatan, PHP_URL_SCHEME));
+        if ($jenis === 'video' && (!filter_var($catatan, FILTER_VALIDATE_URL) || !in_array($skema_video, ['http','https'], true))) {
+            echo json_encode(['status'=>'error','message'=>'Masukkan tautan video yang valid.']); exit;
+        }
+        if ($jenis === 'merangkum' && (mb_strlen($catatan)<10 || mb_strlen($catatan)>30000)) {
+            echo json_encode(['status'=>'error','message'=>'Ringkasan wajib diisi (10-30.000 karakter).']); exit;
+        }
+        try {
+            $db->prepare('INSERT INTO pengumpulan_tugas (tugas_id,siswa_id,file_tugas,catatan) VALUES (?,?,NULL,?)')->execute([$tugas_id,$siswa_id,$catatan]);
+            catat_log($_SESSION['user_id'], "Mengirimkan jawaban tugas ID: $tugas_id");
+            echo json_encode(['status'=>'success','message'=>'Tugas berhasil dikumpulkan.']);
+        } catch (PDOException $e) {
+            echo json_encode(['status'=>'error','message'=>'Jawaban gagal disimpan atau sudah pernah dikumpulkan.']);
+        }
+        exit;
+    }
+
+    // Portofolio menggunakan unggahan berkas.
     $uploadKey=(isset($_FILES['foto_kamera'])&&$_FILES['foto_kamera']['error']===UPLOAD_ERR_OK)?'foto_kamera':'file_jawaban';
     if (!isset($_FILES[$uploadKey]) || $_FILES[$uploadKey]['error'] !== UPLOAD_ERR_OK) {
         echo json_encode(['status' => 'error', 'message' => 'Wajib melampirkan file jawaban!']);
