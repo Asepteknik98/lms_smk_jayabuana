@@ -208,6 +208,15 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page == 'rekap_nilai.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-graduation-cap me-2"></i> Rekap Nilai Akademik
         </a>
+        <a href="aktivitas_guru.php" class="list-group-item list-group-item-action <?= ($current_page == 'aktivitas_guru.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-person-chalkboard me-2"></i> Aktivitas Guru
+        </a>
+        <a href="kontrol_operasional.php" class="list-group-item list-group-item-action <?= ($current_page == 'kontrol_operasional.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-screwdriver-wrench me-2"></i> Kontrol Operasional
+        </a>
+        <a href="pusat_laporan.php" class="list-group-item list-group-item-action <?= ($current_page == 'pusat_laporan.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-file-export me-2"></i> Pusat Laporan
+        </a>
         <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= ($current_page == 'rekap_absensi.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
         </a>
