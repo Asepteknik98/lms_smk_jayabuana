@@ -196,6 +196,21 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="monitoring.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-binoculars me-2"></i> Monitoring LMS
         </a>
+        <a href="monitoring_materi.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring_materi.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-book-open me-2"></i> Monitoring Materi
+        </a>
+        <a href="monitoring_tugas.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring_tugas.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-list-check me-2"></i> Monitoring Tugas
+        </a>
+        <a href="monitoring_ujian.php" class="list-group-item list-group-item-action <?= ($current_page == 'monitoring_ujian.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-file-circle-question me-2"></i> Monitoring Ulangan
+        </a>
+        <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page == 'rekap_nilai.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-graduation-cap me-2"></i> Rekap Nilai Akademik
+        </a>
+        <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= ($current_page == 'rekap_absensi.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-clipboard-check me-2"></i> Rekap Absensi
+        </a>
         <a href="log_aktivitas.php" class="list-group-item list-group-item-action <?= ($current_page == 'log_aktivitas.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-clock-rotate-left me-2"></i> Log Aktivitas
         </a>
