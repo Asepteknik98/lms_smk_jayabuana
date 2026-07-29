@@ -124,6 +124,33 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     }
 }
 
+// --- PROSES 4: HAPUS BEBERAPA MAPEL ---
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'hapus_massal') {
+    $mapel_ids = is_array($_POST['mapel_ids'] ?? null) ? $_POST['mapel_ids'] : [];
+    $mapel_ids = array_values(array_unique(array_filter(
+        array_map('intval', $mapel_ids),
+        static fn($id) => $id > 0
+    )));
+
+    if (!$mapel_ids) {
+        $error = 'Pilih minimal satu mata pelajaran yang akan dihapus.';
+    } else {
+        try {
+            $db->beginTransaction();
+            $placeholder = implode(',', array_fill(0, count($mapel_ids), '?'));
+            $stmt_del_massal = $db->prepare("DELETE FROM mapel WHERE id IN ($placeholder)");
+            $stmt_del_massal->execute($mapel_ids);
+            $jumlah_dihapus = $stmt_del_massal->rowCount();
+            $db->commit();
+            $success = "$jumlah_dihapus mata pelajaran berhasil dihapus!";
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Gagal menghapus mapel secara massal: ' . $e->getMessage());
+            $error = 'Penghapusan dibatalkan. Salah satu mapel masih digunakan pada pengajaran, materi, tugas, atau data akademik lainnya.';
+        }
+    }
+}
+
 // --- QUERY MAPEL BESERTA GURU PENGAMPU DARI TABEL PENGAJARAN ---
 $stmt_list = $db->query("
     SELECT m.*,
@@ -182,15 +209,73 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
         <!-- Tabel Data Mapel -->
         <div class="card border-0 shadow-sm rounded-3">
             <div class="card-body p-4">
+                <div class="row g-3 align-items-end mb-4">
+                    <div class="col-lg-4">
+                        <label for="cariMapel" class="form-label fw-semibold">Cari Mata Pelajaran</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-white"><i class="fa-solid fa-magnifying-glass text-muted"></i></span>
+                            <input type="search" id="cariMapel" class="form-control" placeholder="Kode, nama mapel, atau Guru">
+                        </div>
+                    </div>
+                    <div class="col-sm-6 col-lg-2">
+                        <label for="filterKelompokMapel" class="form-label fw-semibold">Kelompok</label>
+                        <select id="filterKelompokMapel" class="form-select">
+                            <option value="">Semua Kelompok</option>
+                            <option value="Muatan Nasional">Muatan Nasional</option>
+                            <option value="Muatan Kewilayahan">Muatan Kewilayahan</option>
+                            <option value="Muatan Kejuruan">Muatan Kejuruan</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6 col-lg-2">
+                        <label for="filterGuruMapel" class="form-label fw-semibold">Guru</label>
+                        <select id="filterGuruMapel" class="form-select">
+                            <option value="">Semua Guru</option>
+                            <?php foreach ($daftar_guru as $guru): ?>
+                                <option value="<?= (int)$guru['id'] ?>"><?= sanitize($guru['nama_lengkap']) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="col-sm-6 col-lg-2">
+                        <label for="filterSemesterMapel" class="form-label fw-semibold">Semester</label>
+                        <select id="filterSemesterMapel" class="form-select">
+                            <option value="">Semua Semester</option>
+                            <option value="Ganjil">Ganjil</option>
+                            <option value="Genap">Genap</option>
+                        </select>
+                    </div>
+                    <div class="col-sm-6 col-lg-2">
+                        <button type="button" id="resetFilterMapel" class="btn btn-outline-secondary w-100">
+                            <i class="fa-solid fa-rotate-left me-1"></i> Reset
+                        </button>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <small class="text-muted">Filter dijalankan langsung tanpa memuat ulang halaman.</small>
+                    <span id="jumlahHasilMapel" class="badge bg-primary-subtle text-primary"></span>
+                </div>
+                <form id="formHapusMassalMapel" action="mapel.php" method="POST" onsubmit="return confirm('Hapus semua mata pelajaran yang dipilih? Tindakan ini tidak dapat dibatalkan.');">
+                    <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
+                    <input type="hidden" name="action" value="hapus_massal">
+                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                        <span id="jumlahPilihanMapel" class="small text-muted">Belum ada mapel dipilih.</span>
+                        <button type="submit" id="hapusMassalMapel" class="btn btn-danger btn-sm" disabled>
+                            <i class="fa-solid fa-trash-can me-1"></i> Hapus yang Dipilih
+                        </button>
+                    </div>
+                </form>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead class="table-light">
                             <tr>
+                                <th width="45">
+                                    <input type="checkbox" id="pilihSemuaMapel" class="form-check-input" aria-label="Pilih semua mapel yang terlihat">
+                                </th>
                                 <th width="50">No</th>
                                 <th>Kode Mapel</th>
                                 <th>Guru Pengampu</th>
                                 <th>Semester</th>
                                 <th>Nama Mata Pelajaran</th>
+                                <th>Kelas</th>
                                 <th>Kelompok</th>
                                 <th width="150">Aksi</th>
                             </tr>
@@ -198,11 +283,35 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                         <tbody>
                             <?php if (empty($daftar_mapel)): ?>
                                 <tr>
-                                    <td colspan="7" class="text-center py-4 text-muted">Belum ada data mata pelajaran yang terdaftar.</td>
+                                    <td colspan="9" class="text-center py-4 text-muted">Belum ada data mata pelajaran yang terdaftar.</td>
                                 </tr>
                             <?php else: ?>
                                 <?php $no = 1; foreach ($daftar_mapel as $m): ?>
-                                    <tr>
+                                    <?php
+                                    $penugasan_mapel = $pengajaran_per_mapel[$m['id']] ?? [];
+                                    $guru_ids_mapel = array_values(array_unique(array_map(
+                                        static fn($penugasan) => (string)(int)$penugasan['guru_id'],
+                                        $penugasan_mapel
+                                    )));
+                                    $semester_mapel = array_values(array_unique(array_column($penugasan_mapel, 'semester')));
+                                    $kelas_mapel = array_values(array_unique(array_column($penugasan_mapel, 'nama_kelas')));
+                                    sort($kelas_mapel, SORT_NATURAL);
+                                    $teks_pencarian = implode(' ', [
+                                        $m['kode_mapel'],
+                                        $m['nama_mapel'],
+                                        $m['kelompok'] ?? '',
+                                        str_replace('||', ' ', $m['nama_guru'] ?? ''),
+                                        implode(' ', $kelas_mapel),
+                                    ]);
+                                    ?>
+                                    <tr class="mapel-data-row"
+                                        data-search="<?= sanitize(mb_strtolower($teks_pencarian, 'UTF-8')) ?>"
+                                        data-kelompok="<?= sanitize($m['kelompok'] ?? '') ?>"
+                                        data-guru="<?= sanitize(implode(',', $guru_ids_mapel)) ?>"
+                                        data-semester="<?= sanitize(implode(',', $semester_mapel)) ?>">
+                                        <td>
+                                            <input type="checkbox" name="mapel_ids[]" value="<?= (int)$m['id'] ?>" form="formHapusMassalMapel" class="form-check-input pilih-mapel" aria-label="Pilih <?= sanitize($m['nama_mapel']) ?>">
+                                        </td>
                                         <td><?= $no++ ?></td>
                                         <td><code><?= sanitize($m['kode_mapel']) ?></code></td>
                                         <td>
@@ -233,6 +342,19 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                                             <?php endif; ?>
                                         </td>
                                         <td><strong><?= sanitize($m['nama_mapel']) ?></strong></td>
+                                        <td>
+                                            <?php if ($kelas_mapel): ?>
+                                                <div class="d-flex flex-wrap gap-1">
+                                                    <?php foreach ($kelas_mapel as $nama_kelas): ?>
+                                                        <span class="badge bg-success-subtle text-success-emphasis border border-success-subtle">
+                                                            <i class="fa-solid fa-school me-1"></i><?= sanitize($nama_kelas) ?>
+                                                        </span>
+                                                    <?php endforeach; ?>
+                                                </div>
+                                            <?php else: ?>
+                                                <span class="text-muted small"><i class="fa-solid fa-school-circle-xmark me-1"></i>Belum ditentukan</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><span class="badge bg-secondary"><?= sanitize($m['kelompok'] ?: 'Umum') ?></span></td>
                                         <td>
                                             <button class="btn btn-sm btn-warning me-1 rounded-2" 
@@ -281,7 +403,6 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                                                         </div>
                                                         <hr>
                                                         <label class="form-label fw-semibold">Guru Pengampu</label>
-                                                        <?php $penugasan_mapel = $pengajaran_per_mapel[$m['id']] ?? []; ?>
                                                         <?php if ($penugasan_mapel): ?>
                                                             <p class="text-muted small">Guru diatur per kelas, semester, dan tahun ajaran.</p>
                                                             <?php foreach ($penugasan_mapel as $penugasan): ?>
@@ -314,6 +435,12 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                                     </div>
 
                                 <?php endforeach; ?>
+                                <tr id="mapelTidakDitemukan" class="d-none">
+                                    <td colspan="9" class="text-center py-5 text-muted">
+                                        <i class="fa-solid fa-magnifying-glass d-block fs-3 mb-2"></i>
+                                        Tidak ada mata pelajaran yang sesuai dengan filter.
+                                    </td>
+                                </tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -393,5 +520,92 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
         </div>
     </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const pencarian = document.getElementById('cariMapel');
+    const kelompok = document.getElementById('filterKelompokMapel');
+    const guru = document.getElementById('filterGuruMapel');
+    const semester = document.getElementById('filterSemesterMapel');
+    const reset = document.getElementById('resetFilterMapel');
+    const jumlahHasil = document.getElementById('jumlahHasilMapel');
+    const tidakDitemukan = document.getElementById('mapelTidakDitemukan');
+    const baris = Array.from(document.querySelectorAll('.mapel-data-row'));
+    const pilihSemua = document.getElementById('pilihSemuaMapel');
+    const pilihan = Array.from(document.querySelectorAll('.pilih-mapel'));
+    const hapusMassal = document.getElementById('hapusMassalMapel');
+    const jumlahPilihan = document.getElementById('jumlahPilihanMapel');
+
+    if (!pencarian || !kelompok || !guru || !semester || !reset) return;
+
+    function terapkanFilter() {
+        const kata = pencarian.value.trim().toLocaleLowerCase('id-ID');
+        let terlihat = 0;
+
+        baris.forEach(function (row) {
+            const guruIds = (row.dataset.guru || '').split(',').filter(Boolean);
+            const semesterList = (row.dataset.semester || '').split(',').filter(Boolean);
+            const cocok = (!kata || (row.dataset.search || '').includes(kata))
+                && (!kelompok.value || row.dataset.kelompok === kelompok.value)
+                && (!guru.value || guruIds.includes(guru.value))
+                && (!semester.value || semesterList.includes(semester.value));
+
+            row.classList.toggle('d-none', !cocok);
+            if (cocok) terlihat++;
+        });
+
+        if (jumlahHasil) jumlahHasil.textContent = terlihat + ' dari ' + baris.length + ' mapel';
+        if (tidakDitemukan) tidakDitemukan.classList.toggle('d-none', terlihat !== 0);
+        perbaruiPilihan();
+    }
+
+    function perbaruiPilihan() {
+        const terpilih = pilihan.filter(function (checkbox) { return checkbox.checked; });
+        const terlihat = pilihan.filter(function (checkbox) {
+            return !checkbox.closest('.mapel-data-row').classList.contains('d-none');
+        });
+        const terlihatTerpilih = terlihat.filter(function (checkbox) { return checkbox.checked; });
+
+        if (hapusMassal) hapusMassal.disabled = terpilih.length === 0;
+        if (jumlahPilihan) {
+            jumlahPilihan.textContent = terpilih.length
+                ? terpilih.length + ' mapel dipilih.'
+                : 'Belum ada mapel dipilih.';
+        }
+        if (pilihSemua) {
+            pilihSemua.checked = terlihat.length > 0 && terlihatTerpilih.length === terlihat.length;
+            pilihSemua.indeterminate = terlihatTerpilih.length > 0 && terlihatTerpilih.length < terlihat.length;
+        }
+    }
+
+    pencarian.addEventListener('input', terapkanFilter);
+    kelompok.addEventListener('change', terapkanFilter);
+    guru.addEventListener('change', terapkanFilter);
+    semester.addEventListener('change', terapkanFilter);
+    pilihan.forEach(function (checkbox) {
+        checkbox.addEventListener('change', perbaruiPilihan);
+    });
+    if (pilihSemua) {
+        pilihSemua.addEventListener('change', function () {
+            pilihan.forEach(function (checkbox) {
+                if (!checkbox.closest('.mapel-data-row').classList.contains('d-none')) {
+                    checkbox.checked = pilihSemua.checked;
+                }
+            });
+            perbaruiPilihan();
+        });
+    }
+    reset.addEventListener('click', function () {
+        pencarian.value = '';
+        kelompok.value = '';
+        guru.value = '';
+        semester.value = '';
+        terapkanFilter();
+        pencarian.focus();
+    });
+
+    terapkanFilter();
+});
+</script>
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
