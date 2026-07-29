@@ -37,7 +37,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script><?php endif; ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <?php if((int)($_SESSION['role_id']??0)===3): ?><script>
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/lms/sw.js',{scope:'/lms/'}).catch(()=>{}))}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}))}
 let deferredPwaPrompt=null;
 const pwaButtons=()=>document.querySelectorAll('[data-install-pwa]');
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;

@@ -11,8 +11,12 @@ $db = Database::getInstance();
 $success = '';
 $error   = '';
 
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && !verify_csrf($_POST['csrf_token'] ?? '')) {
+    $error = 'Token keamanan tidak valid. Silakan muat ulang halaman.';
+}
+
 // --- PROSES 1: TAMBAH MAPEL BARU ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tambah') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'tambah') {
     $kode_mapel = trim($_POST['kode_mapel'] ?? '');
     $nama_mapel = trim($_POST['nama_mapel'] ?? '');
     $kelompok   = trim($_POST['kelompok'] ?? '');
@@ -28,39 +32,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $error = "Kode, nama mapel, Guru, kelas, tahun ajaran, dan semester wajib diisi dengan benar!";
     } else {
         try {
-            // Cek apakah kode mapel sudah ada
-            $stmt_cek = $db->prepare("SELECT id FROM mapel WHERE kode_mapel = ?");
+            // Kode mapel adalah master unik. Jika sudah ada, gunakan master
+            // tersebut untuk membuat penugasan pada kelas yang lain.
+            $stmt_cek = $db->prepare("SELECT id, nama_mapel FROM mapel WHERE kode_mapel = ?");
             $stmt_cek->execute([$kode_mapel]);
-            if ($stmt_cek->fetch()) {
-                $error = "Kode Mapel '$kode_mapel' sudah digunakan!";
-            } else {
-                $stmt_master = $db->prepare("SELECT EXISTS(SELECT 1 FROM guru WHERE id=?) AS guru_valid, EXISTS(SELECT 1 FROM kelas WHERE id=?) AS kelas_valid");
-                $stmt_master->execute([$guru_id, $kelas_id]);
-                $master = $stmt_master->fetch();
-                if (!$master || !(int)$master['guru_valid'] || !(int)$master['kelas_valid']) {
-                    throw new RuntimeException('Guru atau kelas tidak ditemukan.');
-                }
+            $mapel_tersedia = $stmt_cek->fetch();
 
-                $db->beginTransaction();
+            $stmt_master = $db->prepare("SELECT EXISTS(SELECT 1 FROM guru WHERE id=?) AS guru_valid, EXISTS(SELECT 1 FROM kelas WHERE id=?) AS kelas_valid");
+            $stmt_master->execute([$guru_id, $kelas_id]);
+            $master = $stmt_master->fetch();
+            if (!$master || !(int)$master['guru_valid'] || !(int)$master['kelas_valid']) {
+                throw new RuntimeException('Guru atau kelas tidak ditemukan.');
+            }
+
+            $db->beginTransaction();
+            if ($mapel_tersedia) {
+                $mapel_baru_id = (int)$mapel_tersedia['id'];
+            } else {
                 $stmt_add = $db->prepare("INSERT INTO mapel (kode_mapel, nama_mapel, kelompok, created_at) VALUES (?, ?, ?, NOW())");
                 $stmt_add->execute([$kode_mapel, $nama_mapel, $kelompok]);
                 $mapel_baru_id = (int)$db->lastInsertId();
-
-                $stmt_pengajaran_baru = $db->prepare("INSERT INTO pengajaran (guru_id,mapel_id,kelas_id,tahun_ajaran,semester) VALUES (?,?,?,?,?)");
-                $stmt_pengajaran_baru->execute([$guru_id, $mapel_baru_id, $kelas_id, $tahun_ajaran, $semester]);
-                $db->commit();
-                $success = "Mata Pelajaran dan Guru pengampu berhasil ditambahkan!";
             }
+
+            $stmt_pengajaran_baru = $db->prepare("INSERT INTO pengajaran (guru_id,mapel_id,kelas_id,tahun_ajaran,semester) VALUES (?,?,?,?,?)");
+            $stmt_pengajaran_baru->execute([$guru_id, $mapel_baru_id, $kelas_id, $tahun_ajaran, $semester]);
+            $db->commit();
+            $success = $mapel_tersedia
+                ? "Penugasan {$mapel_tersedia['nama_mapel']} untuk kelas baru berhasil ditambahkan!"
+                : "Mata Pelajaran dan Guru pengampu berhasil ditambahkan!";
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             error_log('Gagal menambah mapel dan pengajaran: ' . $e->getMessage());
-            $error = $e instanceof RuntimeException ? $e->getMessage() : 'Mata pelajaran gagal ditambahkan.';
+            $error = $e instanceof PDOException
+                ? ($e->getCode() === '23000'
+                    ? 'Guru tersebut sudah ditugaskan pada mapel, kelas, tahun ajaran, dan semester yang sama.'
+                    : 'Mata pelajaran atau penugasan gagal ditambahkan.')
+                : ($e instanceof RuntimeException ? $e->getMessage() : 'Mata pelajaran atau penugasan gagal ditambahkan.');
         }
     }
 }
 
 // --- PROSES 2: EDIT MAPEL ---
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'edit') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'edit') {
     $mapel_id   = (int)($_POST['mapel_id'] ?? 0);
     $kode_mapel = trim($_POST['kode_mapel'] ?? '');
     $nama_mapel = trim($_POST['nama_mapel'] ?? '');
@@ -100,8 +113,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 }
 
 // --- PROSES 3: HAPUS MAPEL ---
-if (isset($_GET['hapus'])) {
-    $mapel_id = (int)$_GET['hapus'];
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] ?? '') === 'hapus') {
+    $mapel_id = (int)($_POST['mapel_id'] ?? 0);
     try {
         $stmt_del = $db->prepare("DELETE FROM mapel WHERE id = ?");
         $stmt_del->execute([$mapel_id]);
@@ -227,11 +240,12 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                                                     data-bs-target="#modalEditMapel<?= $m['id'] ?>">
                                                 <i class="fa-solid fa-pen-to-square"></i>
                                             </button>
-                                            <a href="mapel.php?hapus=<?= $m['id'] ?>" 
-                                               class="btn btn-sm btn-danger rounded-2" 
-                                               onclick="return confirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?');">
-                                                <i class="fa-solid fa-trash"></i>
-                                            </a>
+                                            <form action="mapel.php" method="POST" class="d-inline" onsubmit="return confirm('Apakah Anda yakin ingin menghapus mata pelajaran ini?');">
+                                                <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
+                                                <input type="hidden" name="action" value="hapus">
+                                                <input type="hidden" name="mapel_id" value="<?= (int)$m['id'] ?>">
+                                                <button type="submit" class="btn btn-sm btn-danger rounded-2"><i class="fa-solid fa-trash"></i></button>
+                                            </form>
                                         </td>
                                     </tr>
 
@@ -240,6 +254,7 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                                         <div class="modal-dialog">
                                             <div class="modal-content">
                                                 <form action="mapel.php" method="POST">
+                                                    <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
                                                     <input type="hidden" name="action" value="edit">
                                                     <input type="hidden" name="mapel_id" value="<?= $m['id'] ?>">
                                                     
@@ -250,11 +265,11 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                                                     <div class="modal-body">
                                                         <div class="mb-3">
                                                             <label class="form-label fw-semibold">Kode Mapel *</label>
-                                                            <input type="text" name="kode_mapel" class="form-control" required value="<?= htmlspecialchars($m['kode_mapel']) ?>">
+                                                            <input type="text" name="kode_mapel" class="form-control" maxlength="20" required value="<?= htmlspecialchars($m['kode_mapel']) ?>">
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label fw-semibold">Nama Mata Pelajaran *</label>
-                                                            <input type="text" name="nama_mapel" class="form-control" required value="<?= htmlspecialchars($m['nama_mapel']) ?>">
+                                                            <input type="text" name="nama_mapel" class="form-control" maxlength="100" required value="<?= htmlspecialchars($m['nama_mapel']) ?>">
                                                         </div>
                                                         <div class="mb-3">
                                                             <label class="form-label fw-semibold">Kelompok Mapel</label>
@@ -314,20 +329,22 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
     <div class="modal-dialog">
         <div class="modal-content">
             <form action="mapel.php" method="POST">
+                <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
                 <input type="hidden" name="action" value="tambah">
                 
                 <div class="modal-header">
-                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus text-primary me-2"></i> Tambah Mapel Baru</h5>
+                    <h5 class="modal-title fw-bold"><i class="fa-solid fa-plus text-primary me-2"></i> Tambah Mapel / Penugasan</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Kode Mapel *</label>
-                        <input type="text" name="kode_mapel" class="form-control" required placeholder="Contoh: TKJ-01, MTK-01, BING-01">
+                        <input type="text" name="kode_mapel" class="form-control" maxlength="20" required placeholder="Gunakan kode yang sama untuk mapel yang sudah ada">
+                        <div class="form-text">Kode yang sudah ada akan dipakai untuk menambahkan Guru ke kelas lain.</div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Nama Mata Pelajaran *</label>
-                        <input type="text" name="nama_mapel" class="form-control" required placeholder="Contoh: Administrasi Infrastruktur Jaringan">
+                        <input type="text" name="nama_mapel" class="form-control" maxlength="100" required placeholder="Contoh: Administrasi Infrastruktur Jaringan">
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Kelompok Mapel</label>
@@ -370,7 +387,7 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Mapel</button>
+                    <button type="submit" class="btn btn-primary">Simpan Mapel / Penugasan</button>
                 </div>
             </form>
         </div>

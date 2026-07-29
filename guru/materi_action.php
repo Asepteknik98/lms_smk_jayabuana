@@ -86,14 +86,15 @@ try {
         }
 
         $status = ($_POST['status'] ?? '') === 'Dibuka' ? 'Dibuka' : 'Dikunci';
+        $dibuka_pada = $status === 'Dibuka' ? date('Y-m-d H:i:s') : null;
         $stmt = $db->prepare(
             "INSERT INTO akses_pertemuan (pengajaran_id,pertemuan_ke,status,dibuka_pada)
-             VALUES (?,?,?,CASE WHEN ?='Dibuka' THEN NOW() ELSE NULL END)
+             VALUES (?,?,?,?)
              ON DUPLICATE KEY UPDATE
                 status=VALUES(status),
-                dibuka_pada=CASE WHEN VALUES(status)='Dibuka' THEN NOW() ELSE NULL END"
+                dibuka_pada=VALUES(dibuka_pada)"
         );
-        $stmt->execute([$pengajaran_id, $pertemuan_ke, $status, $status]);
+        $stmt->execute([$pengajaran_id, $pertemuan_ke, $status, $dibuka_pada]);
         catat_log($_SESSION['user_id'], "$status akses pertemuan $pertemuan_ke pada pengajaran ID $pengajaran_id");
         respons_materi('success', "Pertemuan $pertemuan_ke berhasil " . ($status === 'Dibuka' ? 'dibuka untuk siswa.' : 'dikunci dari siswa.'));
     }

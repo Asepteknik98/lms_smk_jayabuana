@@ -9,7 +9,9 @@ $statistik = [
     'guru' => (int)$db->query('SELECT COUNT(*) FROM guru')->fetchColumn(),
     'siswa' => (int)$db->query('SELECT COUNT(*) FROM siswa')->fetchColumn(),
     'kelas' => (int)$db->query('SELECT COUNT(*) FROM kelas')->fetchColumn(),
-    'mapel' => (int)$db->query('SELECT COUNT(*) FROM mapel')->fetchColumn(),
+    // Statistik Mata Pelajaran mengikuti jumlah penugasan aktif per Guru/kelas.
+    // Master mapel tetap unik, tetapi setiap pemakaian pada kelas dihitung.
+    'mapel' => (int)$db->query('SELECT COUNT(*) FROM pengajaran')->fetchColumn(),
     'pengajaran' => (int)$db->query('SELECT COUNT(*) FROM pengajaran')->fetchColumn(),
     'materi' => (int)$db->query('SELECT COUNT(*) FROM materi')->fetchColumn(),
     'tugas' => (int)$db->query('SELECT COUNT(*) FROM tugas')->fetchColumn(),

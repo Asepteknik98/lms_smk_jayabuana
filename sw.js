@@ -1,10 +1,10 @@
-const CACHE_NAME = 'lms-jb-static-v1';
-const OFFLINE_URL = '/lms/offline.html';
+const CACHE_NAME = 'lms-jb-static-v2';
+const OFFLINE_URL = '/offline.html';
 const PRECACHE = [
   OFFLINE_URL,
-  '/lms/assets/img/jb-mobile.png',
-  '/lms/assets/img/pwa-icon-192.png',
-  '/lms/assets/img/pwa-icon-512.png'
+  '/assets/img/jb-mobile.png',
+  '/assets/img/pwa-icon-192.png',
+  '/assets/img/pwa-icon-512.png'
 ];
 
 self.addEventListener('install', event => {
@@ -30,8 +30,8 @@ self.addEventListener('fetch', event => {
   }
 
   if (url.origin === self.location.origin &&
-      url.pathname.startsWith('/lms/assets/') &&
-      !url.pathname.startsWith('/lms/assets/upload/')) {
+      url.pathname.startsWith('/assets/') &&
+      !url.pathname.startsWith('/assets/upload/')) {
     event.respondWith(
       caches.match(request).then(cached => cached || fetch(request).then(response => {
         if (response.ok) {

@@ -10,7 +10,7 @@ if (empty($_SESSION['csrf_token'])) {
 
 // 2. Jika user SUDAH LOGIN, cegah mereka buka halaman login lagi (Auto Redirect)
 if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
-    $base_url = '/lms';
+    $base_url = '';
     switch ((int)$_SESSION['role_id']) {
         case 1:
             header("Location: " . $base_url . "/admin/index.php");
@@ -63,7 +63,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     // Absolute Redirect sesuai Role
-                    $base_url = '/lms';
+                    $base_url = '';
                     switch ((int)$user['role_id']) {
                         case 1:
                             header("Location: " . $base_url . "/admin/index.php");
@@ -201,7 +201,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 const password=document.getElementById('password'),toggle=document.getElementById('passwordToggle');
 toggle.addEventListener('click',()=>{const visible=password.type==='text';password.type=visible?'password':'text';toggle.setAttribute('aria-pressed',String(!visible));toggle.setAttribute('aria-label',visible?'Tampilkan kata sandi':'Sembunyikan kata sandi');toggle.innerHTML=`<i class="fa-regular ${visible?'fa-eye':'fa-eye-slash'}"></i>`;password.focus()});
 document.getElementById('loginForm').addEventListener('submit',function(){const button=document.getElementById('loginButton');button.disabled=true;button.innerHTML='<span class="spinner-border spinner-border-sm me-2" aria-hidden="true"></span>Memverifikasi akun...'});
-if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/lms/sw.js',{scope:'/lms/'}).catch(()=>{}))}
+if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}))}
 </script>
 </body>
 </html>

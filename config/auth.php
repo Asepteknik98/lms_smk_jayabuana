@@ -4,7 +4,7 @@ require_once __DIR__ . '/helper.php';
 
 if (!function_exists('check_access')) {
     function check_access($allowed_roles = []) {
-        $base_url = '/lms';
+        $base_url = '';
 
         // 1. Cek Login
         if (!isset($_SESSION['user_id']) || empty($_SESSION['user_id'])) {

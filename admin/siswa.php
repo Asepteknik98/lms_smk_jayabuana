@@ -62,23 +62,48 @@ if (isset($_GET['download_template'])) {
 
 // --- 3. TAMBAH SISWA (MANUAL) ---
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'tambah') {
-    $nis = trim($_POST['nis'] ?? ''); $nisn = trim($_POST['nisn']); $nama = trim($_POST['nama_lengkap']); $kelas_id = (int)$_POST['kelas_id'];
-    $email = trim($_POST['email']); $username = trim($_POST['username']); $password = $_POST['password'];
+    if (!verify_csrf($_POST['csrf_token'] ?? '')) {
+        $_SESSION['flash_error'] = 'Token keamanan tidak valid. Silakan muat ulang halaman.';
+        redirect('siswa.php');
+    }
+
+    $nis = trim($_POST['nis'] ?? '');
+    $nisn = trim($_POST['nisn'] ?? '');
+    $nama = trim($_POST['nama_lengkap'] ?? '');
+    $kelas_id = (int)($_POST['kelas_id'] ?? 0);
+    $email = trim($_POST['email'] ?? '');
+    $username = trim($_POST['username'] ?? '');
+    $password = (string)($_POST['password'] ?? '');
 
     try {
+        if ($nis === '' || $nisn === '' || $nama === '' || $kelas_id < 1 || $username === '' || $password === '') {
+            throw new InvalidArgumentException('NIS, NISN, nama, kelas, username, dan password wajib diisi.');
+        }
+        if ($email !== '' && !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            throw new InvalidArgumentException('Format email tidak valid.');
+        }
+
         $db->beginTransaction();
         $hashed = password_hash($password, PASSWORD_BCRYPT);
         $stmt_u = $db->prepare("INSERT INTO users (username, password, email, role_id, is_active, created_at, updated_at) VALUES (?, ?, ?, 3, 1, NOW(), NOW())");
-        $stmt_u->execute([$username, $hashed, $email]);
+        $email_db = $email !== '' ? $email : null;
+        $stmt_u->execute([$username, $hashed, $email_db]);
         $uid = $db->lastInsertId();
 
         $stmt_s = $db->prepare("INSERT INTO siswa (user_id, kelas_id, nis, nisn, nama_lengkap, email, created_at) VALUES (?, ?, ?, ?, ?, ?, NOW())");
-        $stmt_s->execute([$uid, $kelas_id, $nis, $nisn, $nama, $email]);
+        $stmt_s->execute([$uid, $kelas_id, $nis, $nisn, $nama, $email_db]);
         $db->commit();
-        $success = "Siswa berhasil ditambahkan!";
-    } catch (Exception $e) {
-        $db->rollBack();
-        $error = "Gagal: " . $e->getMessage();
+        try {
+            catat_log($_SESSION['user_id'], "Menambah siswa: $nama ($username)");
+        } catch (Throwable $log_error) {
+            error_log('Gagal mencatat log tambah siswa: ' . $log_error->getMessage());
+        }
+        $_SESSION['flash_success'] = "Siswa $nama berhasil ditambahkan dan tersimpan.";
+        redirect('siswa.php?' . http_build_query(['q' => $username]));
+    } catch (Throwable $e) {
+        if ($db->inTransaction()) $db->rollBack();
+        $_SESSION['flash_error'] = 'Siswa gagal ditambahkan: ' . $e->getMessage();
+        redirect('siswa.php');
     }
 }
 
@@ -403,7 +428,9 @@ $query_pagination = ['q' => $pencarian, 'kelas_id' => $filter_kelas, 'per_page' 
 
 <!-- Modal Tambah -->
 <div class="modal fade" id="modalTambah"><div class="modal-dialog"><div class="modal-content p-3">
-    <form method="POST"><input type="hidden" name="action" value="tambah">
+    <form method="POST">
+        <input type="hidden" name="action" value="tambah">
+        <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
         <h5>Tambah Siswa</h5>
         <input type="text" name="nis" placeholder="NIS" class="form-control mb-2" required>
         <input type="text" name="nisn" placeholder="NISN" class="form-control mb-2" required>
