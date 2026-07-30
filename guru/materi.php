@@ -32,6 +32,10 @@ foreach ($pengajaran_list as $pengajaran_item) {
         . ' (' . $pengajaran_item['semester'] . ', ' . $pengajaran_item['tahun_ajaran'] . ')';
     $kelompok_pengajaran[$kunci]['kelas'][] = $pengajaran_item;
 }
+$ada_kelas_gabungan = count(array_filter(
+    $kelompok_pengajaran,
+    static fn(array $kelompok): bool => count($kelompok['kelas']) > 1
+)) > 0;
 
 // Ambil Daftar Materi yang sudah dibuat
 $stmt_m = $db->prepare("
@@ -98,7 +102,7 @@ $kelas_materi = array_values($kelas_materi);
                         <input type="hidden" id="aksiMateri" value="create_materi">
                         
                         <div class="mb-3">
-                            <div id="pilihanGabunganMateri">
+                            <div id="pilihanGabunganMateri" class="<?= $ada_kelas_gabungan ? '' : 'd-none' ?>">
                                 <label class="form-label fw-semibold">Mata Pelajaran & Kelas Tujuan</label>
                                 <div class="material-class-list border rounded-3 p-2">
                                     <?php foreach($kelompok_pengajaran as $kunci_kelompok => $kelompok): ?>
@@ -113,9 +117,9 @@ $kelas_materi = array_values($kelas_materi);
                                 </div>
                                 <div class="form-text">Pilih satu atau beberapa kelas yang menerima materi yang sama.</div>
                             </div>
-                            <div id="pilihanTunggalMateri" class="d-none">
+                            <div id="pilihanTunggalMateri" class="<?= $ada_kelas_gabungan ? 'd-none' : '' ?>">
                                 <label class="form-label fw-semibold">Pilih Kelas / Mata Pelajaran</label>
-                                <select name="pengajaran_id" id="pengajaranMateri" class="form-select">
+                                <select name="pengajaran_id" id="pengajaranMateri" class="form-select" <?= $ada_kelas_gabungan ? '' : 'required' ?>>
                                     <option value="">-- Pilih Mapel & Kelas --</option>
                                     <?php foreach($pengajaran_list as $p): ?>
                                         <option value="<?= (int)$p['pengajaran_id'] ?>"><?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?> (<?= sanitize($p['semester']) ?>, <?= sanitize($p['tahun_ajaran']) ?>)</option>
@@ -257,6 +261,7 @@ $kelas_materi = array_values($kelas_materi);
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
 <script>
+const adaKelasGabunganMateri=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;
 $(document).ready(function() {
     const tabelMateri = $('#tableMateri').DataTable({
         order: [],
@@ -323,7 +328,7 @@ $(document).ready(function() {
 
     $('#formMateri').on('submit', function(e) {
         e.preventDefault();
-        if(document.getElementById('aksiMateri').value==='create_materi' && !document.querySelector('.kelas-materi:checked')){
+        if(document.getElementById('aksiMateri').value==='create_materi' && adaKelasGabunganMateri && !document.querySelector('.kelas-materi:checked')){
             Swal.fire('Pilih Kelas','Pilih minimal satu kelas yang menerima materi.','warning');
             return;
         }
@@ -367,9 +372,9 @@ function resetFormMateri(){
     document.getElementById('formMateri').reset();
     document.getElementById('materiId').value='';
     document.getElementById('aksiMateri').value='create_materi';
-    document.getElementById('pilihanGabunganMateri').classList.remove('d-none');
-    document.getElementById('pilihanTunggalMateri').classList.add('d-none');
-    document.getElementById('pengajaranMateri').required=false;
+    document.getElementById('pilihanGabunganMateri').classList.toggle('d-none',!adaKelasGabunganMateri);
+    document.getElementById('pilihanTunggalMateri').classList.toggle('d-none',adaKelasGabunganMateri);
+    document.getElementById('pengajaranMateri').required=!adaKelasGabunganMateri;
     document.getElementById('fileMateri').required=true;
     document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru';
     document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi';
