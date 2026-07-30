@@ -102,14 +102,25 @@ $kelas_materi = array_values($kelas_materi);
                         <input type="hidden" id="aksiMateri" value="create_materi">
                         
                         <div class="mb-3">
-                            <div id="pilihanGabunganMateri" class="<?= $ada_kelas_gabungan ? '' : 'd-none' ?>">
+                            <?php if ($ada_kelas_gabungan): ?>
+                                <div id="modeMateri" class="mb-3">
+                                    <label class="form-label fw-semibold d-block">Mode Kelas</label>
+                                    <div class="btn-group w-100" role="group" aria-label="Mode kelas materi">
+                                        <input type="radio" class="btn-check" name="mode_kelas_materi" id="modeMateriTunggal" value="tunggal" checked>
+                                        <label class="btn btn-outline-primary" for="modeMateriTunggal">Kelas Tunggal</label>
+                                        <input type="radio" class="btn-check" name="mode_kelas_materi" id="modeMateriGabungan" value="gabungan">
+                                        <label class="btn btn-outline-primary" for="modeMateriGabungan">Kelas Gabungan</label>
+                                    </div>
+                                </div>
+                            <?php endif; ?>
+                            <div id="pilihanGabunganMateri" class="d-none">
                                 <label class="form-label fw-semibold">Mata Pelajaran & Kelas Tujuan</label>
                                 <div class="material-class-list border rounded-3 p-2">
                                     <?php foreach($kelompok_pengajaran as $kunci_kelompok => $kelompok): ?>
                                         <div class="small fw-bold text-primary px-2 pt-2"><?= sanitize($kelompok['label']) ?></div>
                                         <?php foreach($kelompok['kelas'] as $p): $id_kelas_materi='materiKelas'.(int)$p['pengajaran_id']; ?>
                                             <div class="form-check px-2 py-2 border-bottom">
-                                                <input class="form-check-input ms-0 me-2 kelas-materi" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$p['pengajaran_id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_materi ?>">
+                                                <input class="form-check-input ms-0 me-2 kelas-materi" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$p['pengajaran_id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_materi ?>" disabled>
                                                 <label class="form-check-label" for="<?= $id_kelas_materi ?>"><?= sanitize($p['nama_kelas']) ?></label>
                                             </div>
                                         <?php endforeach; ?>
@@ -117,9 +128,9 @@ $kelas_materi = array_values($kelas_materi);
                                 </div>
                                 <div class="form-text">Pilih satu atau beberapa kelas yang menerima materi yang sama.</div>
                             </div>
-                            <div id="pilihanTunggalMateri" class="<?= $ada_kelas_gabungan ? 'd-none' : '' ?>">
+                            <div id="pilihanTunggalMateri">
                                 <label class="form-label fw-semibold">Pilih Kelas / Mata Pelajaran</label>
-                                <select name="pengajaran_id" id="pengajaranMateri" class="form-select" <?= $ada_kelas_gabungan ? '' : 'required' ?>>
+                                <select name="pengajaran_id" id="pengajaranMateri" class="form-select" required>
                                     <option value="">-- Pilih Mapel & Kelas --</option>
                                     <?php foreach($pengajaran_list as $p): ?>
                                         <option value="<?= (int)$p['pengajaran_id'] ?>"><?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?> (<?= sanitize($p['semester']) ?>, <?= sanitize($p['tahun_ajaran']) ?>)</option>
@@ -262,6 +273,14 @@ $kelas_materi = array_values($kelas_materi);
 
 <script>
 const adaKelasGabunganMateri=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;
+function aturModeMateri(mode){
+    const gabungan=adaKelasGabunganMateri&&mode==='gabungan';
+    document.getElementById('pilihanGabunganMateri').classList.toggle('d-none',!gabungan);
+    document.getElementById('pilihanTunggalMateri').classList.toggle('d-none',gabungan);
+    document.getElementById('pengajaranMateri').disabled=gabungan;
+    document.getElementById('pengajaranMateri').required=!gabungan;
+    document.querySelectorAll('.kelas-materi').forEach(function(checkbox){checkbox.disabled=!gabungan});
+}
 $(document).ready(function() {
     const tabelMateri = $('#tableMateri').DataTable({
         order: [],
@@ -325,10 +344,14 @@ $(document).ready(function() {
             });
         });
     });
+    document.querySelectorAll('input[name="mode_kelas_materi"]').forEach(function(radio){
+        radio.addEventListener('change',function(){aturModeMateri(this.value)});
+    });
 
     $('#formMateri').on('submit', function(e) {
         e.preventDefault();
-        if(document.getElementById('aksiMateri').value==='create_materi' && adaKelasGabunganMateri && !document.querySelector('.kelas-materi:checked')){
+        const modeGabungan=adaKelasGabunganMateri&&document.getElementById('modeMateriGabungan')?.checked;
+        if(document.getElementById('aksiMateri').value==='create_materi' && modeGabungan && !document.querySelector('.kelas-materi:checked')){
             Swal.fire('Pilih Kelas','Pilih minimal satu kelas yang menerima materi.','warning');
             return;
         }
@@ -354,8 +377,11 @@ $(document).ready(function() {
 function editMateri(data){
     document.getElementById('materiId').value=data.id;
     document.getElementById('aksiMateri').value='update_materi';
+    document.getElementById('modeMateri')?.classList.add('d-none');
     document.getElementById('pilihanGabunganMateri').classList.add('d-none');
     document.getElementById('pilihanTunggalMateri').classList.remove('d-none');
+    document.querySelectorAll('.kelas-materi').forEach(function(checkbox){checkbox.disabled=true});
+    document.getElementById('pengajaranMateri').disabled=false;
     document.getElementById('pengajaranMateri').required=true;
     document.getElementById('pengajaranMateri').value=data.pengajaran_id;
     document.getElementById('pertemuanMateri').value=data.pertemuan_ke;
@@ -372,9 +398,10 @@ function resetFormMateri(){
     document.getElementById('formMateri').reset();
     document.getElementById('materiId').value='';
     document.getElementById('aksiMateri').value='create_materi';
-    document.getElementById('pilihanGabunganMateri').classList.toggle('d-none',!adaKelasGabunganMateri);
-    document.getElementById('pilihanTunggalMateri').classList.toggle('d-none',adaKelasGabunganMateri);
-    document.getElementById('pengajaranMateri').required=!adaKelasGabunganMateri;
+    document.getElementById('modeMateri')?.classList.remove('d-none');
+    const modeTunggal=document.getElementById('modeMateriTunggal');
+    if(modeTunggal)modeTunggal.checked=true;
+    aturModeMateri('tunggal');
     document.getElementById('fileMateri').required=true;
     document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru';
     document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi';

@@ -228,20 +228,31 @@ $akhir = (clone $awal)->modify('+30 minutes');
                         <input type="hidden" name="action" value="buka">
                         <div class="row g-3"><div class="col-12">
                             <?php if ($ada_kelas_gabungan): ?>
-                                <label class="form-label fw-semibold">Mapel dan Kelas Tujuan</label>
-                                <div class="attendance-class-list border rounded-3 p-2">
+                                <div class="mb-3">
+                                    <label class="form-label fw-semibold d-block">Mode Kelas</label>
+                                    <div class="btn-group w-100" role="group" aria-label="Mode kelas absensi">
+                                        <input type="radio" class="btn-check" name="mode_kelas_absensi" id="modeAbsensiTunggal" value="tunggal" checked>
+                                        <label class="btn btn-outline-primary" for="modeAbsensiTunggal">Kelas Tunggal</label>
+                                        <input type="radio" class="btn-check" name="mode_kelas_absensi" id="modeAbsensiGabungan" value="gabungan">
+                                        <label class="btn btn-outline-primary" for="modeAbsensiGabungan">Kelas Gabungan</label>
+                                    </div>
+                                </div>
+                                <div id="pilihanGabunganAbsensi" class="d-none">
+                                <label class="form-label fw-semibold">Mapel dan Kelas Tujuan</label><div class="attendance-class-list border rounded-3 p-2">
                                     <?php foreach ($kelompok_pengajaran as $kunci_kelompok => $kelompok): ?>
                                         <div class="small fw-bold text-primary px-2 pt-2"><?= sanitize($kelompok['label']) ?></div>
                                         <?php foreach ($kelompok['kelas'] as $item): $id_kelas_absensi='absensiKelas'.(int)$item['id']; ?>
                                             <div class="form-check px-2 py-2 border-bottom">
-                                                <input class="form-check-input ms-0 me-2 kelas-absensi" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$item['id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_absensi ?>">
+                                                <input class="form-check-input ms-0 me-2 kelas-absensi" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$item['id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_absensi ?>" disabled>
                                                 <label class="form-check-label" for="<?= $id_kelas_absensi ?>"><?= sanitize($item['nama_kelas']) ?></label>
                                             </div>
                                         <?php endforeach; ?>
                                     <?php endforeach; ?>
                                 </div>
                                 <div class="form-text">Pilih satu atau beberapa kelas untuk membuka absensi pada waktu yang sama.</div>
-                            <?php else: ?>
+                                </div>
+                            <?php endif; ?>
+                            <div id="pilihanTunggalAbsensi">
                                 <label class="form-label fw-semibold">Mapel dan Kelas</label>
                                 <select name="pengajaran_id" id="pengajaranAbsensi" class="form-select" required>
                                     <option value="">-- Pilih Pengajaran --</option>
@@ -249,7 +260,7 @@ $akhir = (clone $awal)->modify('+30 minutes');
                                         <option value="<?= (int)$item['id'] ?>"><?= sanitize($item['nama_mapel']) ?> — <?= sanitize($item['nama_kelas']) ?> (<?= sanitize($item['semester']) ?>)</option>
                                     <?php endforeach; ?>
                                 </select>
-                            <?php endif; ?>
+                            </div>
                         </div>
                         <div class="col-7 col-md-6">
                             <label class="form-label fw-semibold">Pertemuan</label>
@@ -269,15 +280,26 @@ $akhir = (clone $awal)->modify('+30 minutes');
     </div>
 </div>
 <script>
+const adaKelasGabunganAbsensi=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;
 const pertemuanTerpakai = <?= json_encode($pertemuan_terpakai, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const pengajaranAbsensi = document.getElementById('pengajaranAbsensi');
 const pertemuanAbsensi = document.getElementById('pertemuanAbsensi');
 const kelasAbsensi = Array.from(document.querySelectorAll('.kelas-absensi'));
+function aturModeAbsensi(mode){
+    const gabungan=adaKelasGabunganAbsensi&&mode==='gabungan';
+    document.getElementById('pilihanGabunganAbsensi')?.classList.toggle('d-none',!gabungan);
+    document.getElementById('pilihanTunggalAbsensi').classList.toggle('d-none',gabungan);
+    pengajaranAbsensi.disabled=gabungan;
+    pengajaranAbsensi.required=!gabungan;
+    kelasAbsensi.forEach(function(checkbox){checkbox.disabled=!gabungan});
+    perbaruiPilihanPertemuan();
+}
 
 function perbaruiPilihanPertemuan() {
     if (!pertemuanAbsensi) return;
 
-    const pengajaranIds = kelasAbsensi.length
+    const modeGabungan=adaKelasGabunganAbsensi&&document.getElementById('modeAbsensiGabungan')?.checked;
+    const pengajaranIds = modeGabungan
         ? kelasAbsensi.filter(function(checkbox){return checkbox.checked}).map(function(checkbox){return checkbox.value})
         : (pengajaranAbsensi?.value ? [pengajaranAbsensi.value] : []);
     const sudahAda = new Set();
@@ -296,6 +318,9 @@ function perbaruiPilihanPertemuan() {
 }
 
 pengajaranAbsensi?.addEventListener('change', perbaruiPilihanPertemuan);
+document.querySelectorAll('input[name="mode_kelas_absensi"]').forEach(function(radio){
+    radio.addEventListener('change',function(){aturModeAbsensi(this.value)});
+});
 kelasAbsensi.forEach(function(checkbox){
     checkbox.addEventListener('change',function(){
         if(this.checked){
@@ -308,7 +333,8 @@ kelasAbsensi.forEach(function(checkbox){
     });
 });
 document.getElementById('formAbsensi')?.addEventListener('submit',function(event){
-    if(kelasAbsensi.length && !kelasAbsensi.some(function(checkbox){return checkbox.checked})){
+    const modeGabungan=adaKelasGabunganAbsensi&&document.getElementById('modeAbsensiGabungan')?.checked;
+    if(modeGabungan && !kelasAbsensi.some(function(checkbox){return checkbox.checked})){
         event.preventDefault();
         Swal.fire({icon:'warning',title:'Pilih Kelas',text:'Pilih minimal satu kelas untuk membuka absensi.'});
     }
