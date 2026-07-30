@@ -21,15 +21,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
     $nama_mapel = trim($_POST['nama_mapel'] ?? '');
     $kelompok   = trim($_POST['kelompok'] ?? '');
     $guru_id    = (int)($_POST['guru_id'] ?? 0);
-    $kelas_id   = (int)($_POST['kelas_id'] ?? 0);
+    $kelas_input = is_array($_POST['kelas_ids'] ?? null)
+        ? $_POST['kelas_ids']
+        : [$_POST['kelas_id'] ?? 0];
+    $kelas_ids = array_values(array_unique(array_filter(
+        array_map('intval', $kelas_input),
+        static fn(int $id): bool => $id > 0
+    )));
     $tahun_ajaran = trim($_POST['tahun_ajaran'] ?? '');
     $semester   = $_POST['semester'] ?? '';
 
     $tahun_valid = preg_match('/^(\d{4})\/(\d{4})$/', $tahun_ajaran, $tahun)
         && (int)$tahun[2] === (int)$tahun[1] + 1;
 
-    if (empty($kode_mapel) || empty($nama_mapel) || $guru_id < 1 || $kelas_id < 1 || !$tahun_valid || !in_array($semester, ['Ganjil', 'Genap'], true)) {
-        $error = "Kode, nama mapel, Guru, kelas, tahun ajaran, dan semester wajib diisi dengan benar!";
+    if (empty($kode_mapel) || empty($nama_mapel) || $guru_id < 1 || !$kelas_ids || !$tahun_valid || !in_array($semester, ['Ganjil', 'Genap'], true)) {
+        $error = "Kode, nama mapel, Guru, minimal satu kelas, tahun ajaran, dan semester wajib diisi dengan benar!";
     } else {
         try {
             // Kode mapel adalah master unik. Jika sudah ada, gunakan master
@@ -38,11 +44,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
             $stmt_cek->execute([$kode_mapel]);
             $mapel_tersedia = $stmt_cek->fetch();
 
-            $stmt_master = $db->prepare("SELECT EXISTS(SELECT 1 FROM guru WHERE id=?) AS guru_valid, EXISTS(SELECT 1 FROM kelas WHERE id=?) AS kelas_valid");
-            $stmt_master->execute([$guru_id, $kelas_id]);
-            $master = $stmt_master->fetch();
-            if (!$master || !(int)$master['guru_valid'] || !(int)$master['kelas_valid']) {
-                throw new RuntimeException('Guru atau kelas tidak ditemukan.');
+            $stmt_guru_valid = $db->prepare("SELECT EXISTS(SELECT 1 FROM guru WHERE id=?)");
+            $stmt_guru_valid->execute([$guru_id]);
+            $placeholder_kelas = implode(',', array_fill(0, count($kelas_ids), '?'));
+            $stmt_kelas_valid = $db->prepare("SELECT COUNT(*) FROM kelas WHERE id IN ($placeholder_kelas)");
+            $stmt_kelas_valid->execute($kelas_ids);
+            if (!(int)$stmt_guru_valid->fetchColumn() || (int)$stmt_kelas_valid->fetchColumn() !== count($kelas_ids)) {
+                throw new RuntimeException('Guru atau salah satu kelas tidak ditemukan.');
             }
 
             $db->beginTransaction();
@@ -54,18 +62,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($error) && ($_POST['action'] 
                 $mapel_baru_id = (int)$db->lastInsertId();
             }
 
-            $stmt_pengajaran_baru = $db->prepare("INSERT INTO pengajaran (guru_id,mapel_id,kelas_id,tahun_ajaran,semester) VALUES (?,?,?,?,?)");
-            $stmt_pengajaran_baru->execute([$guru_id, $mapel_baru_id, $kelas_id, $tahun_ajaran, $semester]);
+            $stmt_cek_pengajaran = $db->prepare(
+                "SELECT EXISTS(
+                    SELECT 1 FROM pengajaran
+                    WHERE guru_id=? AND mapel_id=? AND kelas_id=? AND tahun_ajaran=? AND semester=?
+                )"
+            );
+            $stmt_pengajaran_baru = $db->prepare(
+                "INSERT INTO pengajaran (guru_id,mapel_id,kelas_id,tahun_ajaran,semester)
+                 VALUES (?,?,?,?,?)"
+            );
+            $jumlah_ditambahkan = 0;
+            $jumlah_dilewati = 0;
+            foreach ($kelas_ids as $kelas_id) {
+                $parameter = [$guru_id, $mapel_baru_id, $kelas_id, $tahun_ajaran, $semester];
+                $stmt_cek_pengajaran->execute($parameter);
+                if ($stmt_cek_pengajaran->fetchColumn()) {
+                    $jumlah_dilewati++;
+                    continue;
+                }
+                $stmt_pengajaran_baru->execute($parameter);
+                $jumlah_ditambahkan++;
+            }
             $db->commit();
-            $success = $mapel_tersedia
-                ? "Penugasan {$mapel_tersedia['nama_mapel']} untuk kelas baru berhasil ditambahkan!"
-                : "Mata Pelajaran dan Guru pengampu berhasil ditambahkan!";
+            if ($jumlah_ditambahkan > 0) {
+                $nama_mapel_hasil = $mapel_tersedia['nama_mapel'] ?? $nama_mapel;
+                $success = "$jumlah_ditambahkan penugasan $nama_mapel_hasil berhasil ditambahkan.";
+                if ($jumlah_dilewati > 0) {
+                    $success .= " $jumlah_dilewati kelas dilewati karena penugasannya sudah tersedia.";
+                }
+            } else {
+                $success = 'Tidak ada penugasan baru. Seluruh kelas yang dipilih sudah ditugaskan kepada Guru tersebut.';
+            }
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
             error_log('Gagal menambah mapel dan pengajaran: ' . $e->getMessage());
             $error = $e instanceof PDOException
                 ? ($e->getCode() === '23000'
-                    ? 'Guru tersebut sudah ditugaskan pada mapel, kelas, tahun ajaran, dan semester yang sama.'
+                    ? 'Salah satu penugasan kelas sudah tersedia atau data yang dikirim tidak valid.'
                     : 'Mata pelajaran atau penugasan gagal ditambahkan.')
                 : ($e instanceof RuntimeException ? $e->getMessage() : 'Mata pelajaran atau penugasan gagal ditambahkan.');
         }
@@ -455,7 +489,7 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
 <div class="modal fade" id="modalTambahMapel" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form action="mapel.php" method="POST">
+            <form action="mapel.php" method="POST" id="formTambahMapel">
                 <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
                 <input type="hidden" name="action" value="tambah">
                 
@@ -494,12 +528,19 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Kelas yang Diajar *</label>
-                        <select name="kelas_id" class="form-select" required>
-                            <option value="">-- Pilih Kelas --</option>
+                        <div class="border rounded-3 p-2" style="max-height:220px;overflow-y:auto">
                             <?php foreach ($daftar_kelas as $kelas): ?>
-                                <option value="<?= (int)$kelas['id'] ?>"><?= sanitize($kelas['nama_kelas']) ?> — <?= sanitize($kelas['jurusan']) ?></option>
+                                <?php $id_pilihan_kelas = 'kelasTambah' . (int)$kelas['id']; ?>
+                                <div class="form-check px-2 py-2 border-bottom">
+                                    <input class="form-check-input ms-0 me-2 kelas-penugasan" type="checkbox" name="kelas_ids[]" value="<?= (int)$kelas['id'] ?>" id="<?= $id_pilihan_kelas ?>">
+                                    <label class="form-check-label d-block" for="<?= $id_pilihan_kelas ?>">
+                                        <strong><?= sanitize($kelas['nama_kelas']) ?></strong>
+                                        <?php if ($kelas['jurusan']): ?><small class="text-muted"> — <?= sanitize($kelas['jurusan']) ?></small><?php endif; ?>
+                                    </label>
+                                </div>
                             <?php endforeach; ?>
-                        </select>
+                        </div>
+                        <div class="form-text">Pilih satu atau beberapa kelas. Setiap kelas akan dibuat sebagai penugasan terpisah.</div>
                     </div>
                     <div class="row g-3">
                         <div class="col-md-7">
@@ -514,7 +555,7 @@ foreach ($stmt_pengajaran->fetchAll() as $pengajaran) {
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button>
-                    <button type="submit" class="btn btn-primary">Simpan Mapel / Penugasan</button>
+                    <button type="submit" class="btn btn-primary" id="simpanPenugasanMapel">Simpan Mapel / Penugasan</button>
                 </div>
             </form>
         </div>
@@ -535,8 +576,19 @@ document.addEventListener('DOMContentLoaded', function () {
     const pilihan = Array.from(document.querySelectorAll('.pilih-mapel'));
     const hapusMassal = document.getElementById('hapusMassalMapel');
     const jumlahPilihan = document.getElementById('jumlahPilihanMapel');
+    const formTambahMapel = document.getElementById('formTambahMapel');
+    const kelasPenugasan = Array.from(document.querySelectorAll('.kelas-penugasan'));
 
     if (!pencarian || !kelompok || !guru || !semester || !reset) return;
+
+    if (formTambahMapel) {
+        formTambahMapel.addEventListener('submit', function (event) {
+            if (!kelasPenugasan.some(function (checkbox) { return checkbox.checked; })) {
+                event.preventDefault();
+                Swal.fire({ icon: 'warning', title: 'Pilih Kelas', text: 'Pilih minimal satu kelas yang diajar.' });
+            }
+        });
+    }
 
     function terapkanFilter() {
         const kata = pencarian.value.trim().toLocaleLowerCase('id-ID');
