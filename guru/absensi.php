@@ -24,6 +24,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     if ($action === 'buka') {
         $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
+        $pengajaran_ids = is_array($_POST['pengajaran_ids'] ?? null)
+            ? array_values(array_unique(array_filter(
+                array_map('intval', $_POST['pengajaran_ids']),
+                static fn(int $id): bool => $id > 0
+            )))
+            : array_filter([$pengajaran_id]);
         $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
         $tanggal = trim($_POST['tanggal'] ?? '');
         $waktu_buka_input = trim($_POST['waktu_buka'] ?? '');
@@ -33,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $waktu_tutup = DateTime::createFromFormat('Y-m-d\TH:i', $waktu_tutup_input);
         $tanggal_valid = DateTime::createFromFormat('Y-m-d', $tanggal);
 
-        if ($pengajaran_id < 1 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || !$tanggal_valid || !$waktu_buka || !$waktu_tutup) {
+        if (!$pengajaran_ids || $pertemuan_ke < 1 || $pertemuan_ke > 20 || !$tanggal_valid || !$waktu_buka || !$waktu_tutup) {
             $_SESSION['flash_error'] = 'Data sesi absensi belum lengkap atau tidak valid.';
             redirect('absensi.php');
         }
@@ -43,10 +49,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             redirect('absensi.php');
         }
 
-        $stmt_milik = $db->prepare('SELECT id FROM pengajaran WHERE id = ? AND guru_id = ?');
-        $stmt_milik->execute([$pengajaran_id, $guru_id]);
-        if (!$stmt_milik->fetch()) {
-            $_SESSION['flash_error'] = 'Pengajaran tidak valid atau bukan milik Anda.';
+        $placeholder_pengajaran = implode(',', array_fill(0, count($pengajaran_ids), '?'));
+        $stmt_milik = $db->prepare("SELECT id,mapel_id,tahun_ajaran,semester FROM pengajaran WHERE id IN ($placeholder_pengajaran) AND guru_id=?");
+        $stmt_milik->execute([...$pengajaran_ids, $guru_id]);
+        $pengajaran_valid = $stmt_milik->fetchAll();
+        if (count($pengajaran_valid) !== count($pengajaran_ids)) {
+            $_SESSION['flash_error'] = 'Salah satu pengajaran tidak valid atau bukan milik Anda.';
+            redirect('absensi.php');
+        }
+        $kelompok_valid = array_unique(array_map(
+            static fn(array $item): string => $item['mapel_id'] . '|' . $item['tahun_ajaran'] . '|' . $item['semester'],
+            $pengajaran_valid
+        ));
+        if (count($kelompok_valid) !== 1) {
+            $_SESSION['flash_error'] = 'Kelas gabungan harus berasal dari mapel, semester, dan tahun ajaran yang sama.';
             redirect('absensi.php');
         }
 
@@ -60,28 +76,31 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                  WHERE pengajaran_id = ? AND pertemuan_ke = ?
                  LIMIT 1'
             );
-            $stmt_pertemuan->execute([$pengajaran_id, $pertemuan_ke]);
-            if ($stmt_pertemuan->fetchColumn()) {
-                $pertemuan_sudah_ada = true;
-                throw new RuntimeException('Absensi untuk pertemuan tersebut sudah tersedia. Pilih pertemuan lain.');
-            }
-
-            $jumlah_ditutup = proses_penutupan_absensi_otomatis($db, $pengajaran_id, true);
             $stmt = $db->prepare(
                 "INSERT INTO sesi_absensi
                     (pengajaran_id, pertemuan_ke, tanggal, waktu_buka, waktu_tutup, status)
                  VALUES (?, ?, ?, ?, ?, 'Dibuka')"
             );
-            $stmt->execute([
-                $pengajaran_id,
-                $pertemuan_ke,
-                $tanggal,
-                $waktu_buka->format('Y-m-d H:i:s'),
-                $waktu_tutup->format('Y-m-d H:i:s'),
-            ]);
+            $jumlah_ditutup = 0;
+            foreach ($pengajaran_ids as $id_pengajaran) {
+                $stmt_pertemuan->execute([$id_pengajaran, $pertemuan_ke]);
+                if ($stmt_pertemuan->fetchColumn()) {
+                    $pertemuan_sudah_ada = true;
+                    throw new RuntimeException('Absensi untuk pertemuan tersebut sudah tersedia pada salah satu kelas.');
+                }
+                $jumlah_ditutup += proses_penutupan_absensi_otomatis($db, $id_pengajaran, true);
+                $stmt->execute([
+                    $id_pengajaran,
+                    $pertemuan_ke,
+                    $tanggal,
+                    $waktu_buka->format('Y-m-d H:i:s'),
+                    $waktu_tutup->format('Y-m-d H:i:s'),
+                ]);
+            }
             $db->commit();
-            catat_log($_SESSION['user_id'], "Membuka absensi pertemuan $pertemuan_ke");
-            $_SESSION['flash_success'] = "Sesi absensi pertemuan ke-$pertemuan_ke berhasil dibuka."
+            $jumlah_kelas = count($pengajaran_ids);
+            catat_log($_SESSION['user_id'], "Membuka absensi pertemuan $pertemuan_ke untuk $jumlah_kelas kelas");
+            $_SESSION['flash_success'] = "Sesi absensi pertemuan ke-$pertemuan_ke berhasil dibuka untuk $jumlah_kelas kelas."
                 . ($jumlah_ditutup ? " $jumlah_ditutup sesi sebelumnya otomatis ditutup." : '');
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
@@ -125,7 +144,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 
 $stmt_pengajaran = $db->prepare(
-    'SELECT p.id, p.tahun_ajaran, p.semester, m.nama_mapel, k.nama_kelas
+    'SELECT p.id, p.mapel_id, p.kelas_id, p.tahun_ajaran, p.semester, m.nama_mapel, k.nama_kelas
      FROM pengajaran p
      JOIN mapel m ON m.id = p.mapel_id
      JOIN kelas k ON k.id = p.kelas_id
@@ -134,6 +153,17 @@ $stmt_pengajaran = $db->prepare(
 );
 $stmt_pengajaran->execute([$guru_id]);
 $pengajaran_list = $stmt_pengajaran->fetchAll();
+$kelompok_pengajaran = [];
+foreach ($pengajaran_list as $pengajaran_item) {
+    $kunci = $pengajaran_item['mapel_id'] . '|' . $pengajaran_item['tahun_ajaran'] . '|' . $pengajaran_item['semester'];
+    $kelompok_pengajaran[$kunci]['label'] = $pengajaran_item['nama_mapel']
+        . ' (' . $pengajaran_item['semester'] . ', ' . $pengajaran_item['tahun_ajaran'] . ')';
+    $kelompok_pengajaran[$kunci]['kelas'][] = $pengajaran_item;
+}
+$ada_kelas_gabungan = count(array_filter(
+    $kelompok_pengajaran,
+    static fn(array $kelompok): bool => count($kelompok['kelas']) > 1
+)) > 0;
 
 $pertemuan_terpakai = [];
 if ($pengajaran_list) {
@@ -163,6 +193,7 @@ $akhir = (clone $awal)->modify('+30 minutes');
     .attendance-form-card { border:0; border-radius:18px; box-shadow:0 7px 24px rgba(15,23,42,.07); }
     .attendance-form-card .form-label { font-size:.83rem; margin-bottom:.38rem; }
     .attendance-form-card .form-control,.attendance-form-card .form-select { min-height:44px; border-radius:10px; border-color:#dfe5ee; }
+    .attendance-class-list { max-height:220px; overflow-y:auto; }
     .time-field { background:#f8fafc; border:1px solid #edf1f5; border-radius:13px; padding:12px; height:100%; }
     .open-attendance-button { min-height:48px; border-radius:11px; font-weight:700; }
     .attendance-tip { border-radius:12px; background:#eff6ff; color:#475569; font-size:.76rem; line-height:1.5; }
@@ -192,17 +223,33 @@ $akhir = (clone $awal)->modify('+30 minutes');
                     <?php if (!$pengajaran_list): ?>
                         <div class="alert alert-warning mb-0">Admin belum memberikan pengajaran kepada Anda.</div>
                     <?php else: ?>
-                    <form method="post" action="absensi.php">
+                    <form method="post" action="absensi.php" id="formAbsensi">
                         <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
                         <input type="hidden" name="action" value="buka">
                         <div class="row g-3"><div class="col-12">
-                            <label class="form-label fw-semibold">Mapel dan Kelas</label>
-                            <select name="pengajaran_id" id="pengajaranAbsensi" class="form-select" required>
-                                <option value="">-- Pilih Pengajaran --</option>
-                                <?php foreach ($pengajaran_list as $item): ?>
-                                    <option value="<?= (int)$item['id'] ?>"><?= sanitize($item['nama_mapel']) ?> — <?= sanitize($item['nama_kelas']) ?> (<?= sanitize($item['semester']) ?>)</option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?php if ($ada_kelas_gabungan): ?>
+                                <label class="form-label fw-semibold">Mapel dan Kelas Tujuan</label>
+                                <div class="attendance-class-list border rounded-3 p-2">
+                                    <?php foreach ($kelompok_pengajaran as $kunci_kelompok => $kelompok): ?>
+                                        <div class="small fw-bold text-primary px-2 pt-2"><?= sanitize($kelompok['label']) ?></div>
+                                        <?php foreach ($kelompok['kelas'] as $item): $id_kelas_absensi='absensiKelas'.(int)$item['id']; ?>
+                                            <div class="form-check px-2 py-2 border-bottom">
+                                                <input class="form-check-input ms-0 me-2 kelas-absensi" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$item['id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_absensi ?>">
+                                                <label class="form-check-label" for="<?= $id_kelas_absensi ?>"><?= sanitize($item['nama_kelas']) ?></label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="form-text">Pilih satu atau beberapa kelas untuk membuka absensi pada waktu yang sama.</div>
+                            <?php else: ?>
+                                <label class="form-label fw-semibold">Mapel dan Kelas</label>
+                                <select name="pengajaran_id" id="pengajaranAbsensi" class="form-select" required>
+                                    <option value="">-- Pilih Pengajaran --</option>
+                                    <?php foreach ($pengajaran_list as $item): ?>
+                                        <option value="<?= (int)$item['id'] ?>"><?= sanitize($item['nama_mapel']) ?> — <?= sanitize($item['nama_kelas']) ?> (<?= sanitize($item['semester']) ?>)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            <?php endif; ?>
                         </div>
                         <div class="col-7 col-md-6">
                             <label class="form-label fw-semibold">Pertemuan</label>
@@ -225,15 +272,21 @@ $akhir = (clone $awal)->modify('+30 minutes');
 const pertemuanTerpakai = <?= json_encode($pertemuan_terpakai, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const pengajaranAbsensi = document.getElementById('pengajaranAbsensi');
 const pertemuanAbsensi = document.getElementById('pertemuanAbsensi');
+const kelasAbsensi = Array.from(document.querySelectorAll('.kelas-absensi'));
 
 function perbaruiPilihanPertemuan() {
-    if (!pengajaranAbsensi || !pertemuanAbsensi) return;
+    if (!pertemuanAbsensi) return;
 
-    const pengajaranId = pengajaranAbsensi.value;
-    const sudahAda = new Set((pertemuanTerpakai[pengajaranId] || []).map(String));
+    const pengajaranIds = kelasAbsensi.length
+        ? kelasAbsensi.filter(function(checkbox){return checkbox.checked}).map(function(checkbox){return checkbox.value})
+        : (pengajaranAbsensi?.value ? [pengajaranAbsensi.value] : []);
+    const sudahAda = new Set();
+    pengajaranIds.forEach(function(id){
+        (pertemuanTerpakai[id] || []).forEach(function(pertemuan){sudahAda.add(String(pertemuan))});
+    });
 
     pertemuanAbsensi.value = '';
-    pertemuanAbsensi.disabled = !pengajaranId;
+    pertemuanAbsensi.disabled = pengajaranIds.length===0;
     Array.from(pertemuanAbsensi.options).forEach(function (option) {
         if (!option.value) return;
         const terpakai = sudahAda.has(option.value);
@@ -243,6 +296,23 @@ function perbaruiPilihanPertemuan() {
 }
 
 pengajaranAbsensi?.addEventListener('change', perbaruiPilihanPertemuan);
+kelasAbsensi.forEach(function(checkbox){
+    checkbox.addEventListener('change',function(){
+        if(this.checked){
+            const grup=this.dataset.group;
+            kelasAbsensi.forEach(function(pilihan){
+                if(pilihan.dataset.group!==grup)pilihan.checked=false;
+            });
+        }
+        perbaruiPilihanPertemuan();
+    });
+});
+document.getElementById('formAbsensi')?.addEventListener('submit',function(event){
+    if(kelasAbsensi.length && !kelasAbsensi.some(function(checkbox){return checkbox.checked})){
+        event.preventDefault();
+        Swal.fire({icon:'warning',title:'Pilih Kelas',text:'Pilih minimal satu kelas untuk membuka absensi.'});
+    }
+});
 perbaruiPilihanPertemuan();
 </script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
