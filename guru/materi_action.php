@@ -44,6 +44,17 @@ function simpan_file_materi(array $file): ?string
     return $nama;
 }
 
+function salin_file_materi(string $nama_sumber): string
+{
+    $folder = __DIR__ . '/../assets/upload/materi/';
+    $ext = strtolower(pathinfo($nama_sumber, PATHINFO_EXTENSION));
+    $nama_baru = 'materi_' . bin2hex(random_bytes(12)) . '.' . $ext;
+    if (!copy($folder . basename($nama_sumber), $folder . $nama_baru)) {
+        throw new RuntimeException('File materi gagal disalin untuk kelas lainnya.');
+    }
+    return $nama_baru;
+}
+
 function validasi_video_youtube(string $url): ?string
 {
     if ($url === '') return null;
@@ -102,6 +113,12 @@ try {
     if (in_array($action, ['create_materi', 'update_materi'], true)) {
         $materi_id = (int)($_POST['materi_id'] ?? 0);
         $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
+        $pengajaran_ids = $action === 'create_materi' && is_array($_POST['pengajaran_ids'] ?? null)
+            ? array_values(array_unique(array_filter(
+                array_map('intval', $_POST['pengajaran_ids']),
+                static fn(int $id): bool => $id > 0
+            )))
+            : array_filter([$pengajaran_id]);
         $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
         $judul = trim($_POST['judul'] ?? '');
         $deskripsi = trim($_POST['deskripsi'] ?? '');
@@ -109,24 +126,47 @@ try {
         if ($pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || mb_strlen($judul) > 200) {
             throw new RuntimeException('Pertemuan 1–20 dan judul maksimal 200 karakter wajib diisi.');
         }
-        $stmt = $db->prepare('SELECT id FROM pengajaran WHERE id=? AND guru_id=?');
-        $stmt->execute([$pengajaran_id, $guru_id]);
-        if (!$stmt->fetchColumn()) throw new RuntimeException('Pengajaran tidak valid atau bukan milik Anda.');
+        if (!$pengajaran_ids) throw new RuntimeException('Pilih minimal satu kelas yang akan menerima materi.');
+        $placeholder = implode(',', array_fill(0, count($pengajaran_ids), '?'));
+        $stmt = $db->prepare("SELECT id,mapel_id,tahun_ajaran,semester FROM pengajaran WHERE id IN ($placeholder) AND guru_id=?");
+        $stmt->execute([...$pengajaran_ids, $guru_id]);
+        $pengajaran_valid = $stmt->fetchAll();
+        if (count($pengajaran_valid) !== count($pengajaran_ids)) {
+            throw new RuntimeException('Salah satu pengajaran tidak valid atau bukan milik Anda.');
+        }
+        $kelompok_valid = array_unique(array_map(
+            static fn(array $item): string => $item['mapel_id'] . '|' . $item['tahun_ajaran'] . '|' . $item['semester'],
+            $pengajaran_valid
+        ));
+        if (count($kelompok_valid) !== 1) {
+            throw new RuntimeException('Kelas gabungan harus berasal dari mapel, semester, dan tahun ajaran yang sama.');
+        }
 
         $file_baru = simpan_file_materi($_FILES['file_materi'] ?? []);
         if ($action === 'create_materi') {
             if (!$file_baru) {
                 throw new RuntimeException('File modul wajib diunggah agar siswa dapat mengunduh materi sebelum membuka tugas.');
             }
+            $file_dibuat = [$file_baru];
             try {
+                $db->beginTransaction();
                 $stmt = $db->prepare('INSERT INTO materi (pengajaran_id,pertemuan_ke,judul,deskripsi,video_url,file_path) VALUES (?,?,?,?,?,?)');
-                $stmt->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $video_url, $file_baru]);
+                foreach ($pengajaran_ids as $index => $id_pengajaran) {
+                    $file_kelas = $index === 0 ? $file_baru : salin_file_materi($file_baru);
+                    if ($index > 0) $file_dibuat[] = $file_kelas;
+                    $stmt->execute([$id_pengajaran, $pertemuan_ke, $judul, $deskripsi ?: null, $video_url, $file_kelas]);
+                }
+                $db->commit();
             } catch (Throwable $e) {
-                if ($file_baru) @unlink(__DIR__ . '/../assets/upload/materi/' . $file_baru);
+                if ($db->inTransaction()) $db->rollBack();
+                foreach (array_unique($file_dibuat) as $file) {
+                    @unlink(__DIR__ . '/../assets/upload/materi/' . basename($file));
+                }
                 throw $e;
             }
-            catat_log($_SESSION['user_id'], "Membuat modul pertemuan $pertemuan_ke: $judul");
-            respons_materi('success', 'Materi berhasil dipublikasikan.');
+            $jumlah_kelas = count($pengajaran_ids);
+            catat_log($_SESSION['user_id'], "Membuat modul pertemuan $pertemuan_ke untuk $jumlah_kelas kelas: $judul");
+            respons_materi('success', "Materi berhasil dipublikasikan ke $jumlah_kelas kelas.");
         }
 
         $stmt = $db->prepare('SELECT mat.file_path FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id WHERE mat.id=? AND p.guru_id=?');

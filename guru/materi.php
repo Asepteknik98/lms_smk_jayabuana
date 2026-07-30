@@ -15,7 +15,7 @@ $guru_id = $guru['id'] ?? 0;
 
 // Ambil daftar kelas dan mata pelajaran yang diampu oleh Guru ini
 $stmt_p = $db->prepare("
-    SELECT p.id as pengajaran_id, m.nama_mapel, k.nama_kelas, k.tingkat,
+    SELECT p.id as pengajaran_id, p.mapel_id, p.kelas_id, m.nama_mapel, k.nama_kelas, k.tingkat,
            p.tahun_ajaran, p.semester
     FROM pengajaran p
     JOIN mapel m ON p.mapel_id = m.id
@@ -25,6 +25,13 @@ $stmt_p = $db->prepare("
 ");
 $stmt_p->execute([$guru_id]);
 $pengajaran_list = $stmt_p->fetchAll();
+$kelompok_pengajaran = [];
+foreach ($pengajaran_list as $pengajaran_item) {
+    $kunci = $pengajaran_item['mapel_id'] . '|' . $pengajaran_item['tahun_ajaran'] . '|' . $pengajaran_item['semester'];
+    $kelompok_pengajaran[$kunci]['label'] = $pengajaran_item['nama_mapel']
+        . ' (' . $pengajaran_item['semester'] . ', ' . $pengajaran_item['tahun_ajaran'] . ')';
+    $kelompok_pengajaran[$kunci]['kelas'][] = $pengajaran_item;
+}
 
 // Ambil Daftar Materi yang sudah dibuat
 $stmt_m = $db->prepare("
@@ -57,6 +64,7 @@ $kelas_materi = array_values($kelas_materi);
     .material-panel .form-label { font-size:.84rem; margin-bottom:.4rem; }
     .material-panel .form-control,.material-panel .form-select { min-height:44px; border-radius:10px; border-color:#dfe5ee; }
     .material-panel textarea.form-control { min-height:94px; }
+    .material-class-list { max-height:220px; overflow-y:auto; }
     .publish-button { min-height:46px; border-radius:11px; font-weight:700; }
     .material-mobile-item { border:1px solid #e9edf4; border-radius:14px; padding:14px; background:#fff; }
     .material-mobile-item + .material-mobile-item { margin-top:10px; }
@@ -90,16 +98,30 @@ $kelas_materi = array_values($kelas_materi);
                         <input type="hidden" id="aksiMateri" value="create_materi">
                         
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Pilih Kelas / Mata Pelajaran</label>
-                            <select name="pengajaran_id" id="pengajaranMateri" class="form-select" required>
-                                <option value="">-- Pilih Mapel & Kelas --</option>
-                                <?php foreach($pengajaran_list as $p): ?>
-                                    <option value="<?= $p['pengajaran_id'] ?>">
-                                        <?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?>
-                                        (<?= sanitize($p['semester']) ?>, <?= sanitize($p['tahun_ajaran']) ?>)
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <div id="pilihanGabunganMateri">
+                                <label class="form-label fw-semibold">Mata Pelajaran & Kelas Tujuan</label>
+                                <div class="material-class-list border rounded-3 p-2">
+                                    <?php foreach($kelompok_pengajaran as $kunci_kelompok => $kelompok): ?>
+                                        <div class="small fw-bold text-primary px-2 pt-2"><?= sanitize($kelompok['label']) ?></div>
+                                        <?php foreach($kelompok['kelas'] as $p): $id_kelas_materi='materiKelas'.(int)$p['pengajaran_id']; ?>
+                                            <div class="form-check px-2 py-2 border-bottom">
+                                                <input class="form-check-input ms-0 me-2 kelas-materi" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$p['pengajaran_id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_materi ?>">
+                                                <label class="form-check-label" for="<?= $id_kelas_materi ?>"><?= sanitize($p['nama_kelas']) ?></label>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    <?php endforeach; ?>
+                                </div>
+                                <div class="form-text">Pilih satu atau beberapa kelas yang menerima materi yang sama.</div>
+                            </div>
+                            <div id="pilihanTunggalMateri" class="d-none">
+                                <label class="form-label fw-semibold">Pilih Kelas / Mata Pelajaran</label>
+                                <select name="pengajaran_id" id="pengajaranMateri" class="form-select">
+                                    <option value="">-- Pilih Mapel & Kelas --</option>
+                                    <?php foreach($pengajaran_list as $p): ?>
+                                        <option value="<?= (int)$p['pengajaran_id'] ?>"><?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?> (<?= sanitize($p['semester']) ?>, <?= sanitize($p['tahun_ajaran']) ?>)</option>
+                                    <?php endforeach; ?>
+                                </select>
+                            </div>
                         </div>
 
                         <div class="mb-3">
@@ -289,8 +311,22 @@ $(document).ready(function() {
     });
     tampilkanMateriMobile();
 
+    document.querySelectorAll('.kelas-materi').forEach(function(checkbox){
+        checkbox.addEventListener('change',function(){
+            if(!this.checked)return;
+            const grup=this.dataset.group;
+            document.querySelectorAll('.kelas-materi:checked').forEach(function(pilihan){
+                if(pilihan.dataset.group!==grup)pilihan.checked=false;
+            });
+        });
+    });
+
     $('#formMateri').on('submit', function(e) {
         e.preventDefault();
+        if(document.getElementById('aksiMateri').value==='create_materi' && !document.querySelector('.kelas-materi:checked')){
+            Swal.fire('Pilih Kelas','Pilih minimal satu kelas yang menerima materi.','warning');
+            return;
+        }
         let formData = new FormData(this);
 
         $.ajax({
@@ -313,6 +349,9 @@ $(document).ready(function() {
 function editMateri(data){
     document.getElementById('materiId').value=data.id;
     document.getElementById('aksiMateri').value='update_materi';
+    document.getElementById('pilihanGabunganMateri').classList.add('d-none');
+    document.getElementById('pilihanTunggalMateri').classList.remove('d-none');
+    document.getElementById('pengajaranMateri').required=true;
     document.getElementById('pengajaranMateri').value=data.pengajaran_id;
     document.getElementById('pertemuanMateri').value=data.pertemuan_ke;
     document.getElementById('judulMateri').value=data.judul;
@@ -328,6 +367,9 @@ function resetFormMateri(){
     document.getElementById('formMateri').reset();
     document.getElementById('materiId').value='';
     document.getElementById('aksiMateri').value='create_materi';
+    document.getElementById('pilihanGabunganMateri').classList.remove('d-none');
+    document.getElementById('pilihanTunggalMateri').classList.add('d-none');
+    document.getElementById('pengajaranMateri').required=false;
     document.getElementById('fileMateri').required=true;
     document.getElementById('judulFormMateri').innerHTML='<i class="fa-solid fa-file-circle-plus me-2 text-primary"></i>Upload Materi Baru';
     document.getElementById('tombolMateri').innerHTML='<i class="fa-solid fa-cloud-arrow-up me-2"></i>Publikasikan Materi';

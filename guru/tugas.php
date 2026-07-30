@@ -59,6 +59,17 @@ function simpan_lampiran_tugas(array $file): ?string
     return $nama;
 }
 
+function salin_lampiran_tugas(string $nama_sumber): string
+{
+    $folder = __DIR__ . '/../assets/upload/tugas/';
+    $ekstensi = strtolower(pathinfo($nama_sumber, PATHINFO_EXTENSION));
+    $nama_baru = 'tugas_' . bin2hex(random_bytes(12)) . '.' . $ekstensi;
+    if (!copy($folder . basename($nama_sumber), $folder . $nama_baru)) {
+        throw new RuntimeException('Lampiran gagal disalin untuk kelas lainnya.');
+    }
+    return $nama_baru;
+}
+
 function data_pertanyaan_tugas(array $post, string $jenis): array
 {
     if (!in_array($jenis, ['esai', 'pilihan_ganda'], true)) return [];
@@ -106,10 +117,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $aksi = $_POST['action'] ?? '';
     $lampiran_baru = null;
+    $lampiran_dibuat = [];
     try {
         if ($aksi === 'create' || $aksi === 'update') {
             $id = (int)($_POST['id'] ?? 0);
             $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
+            $pengajaran_ids = $aksi === 'create' && is_array($_POST['pengajaran_ids'] ?? null)
+                ? array_values(array_unique(array_filter(
+                    array_map('intval', $_POST['pengajaran_ids']),
+                    static fn(int $id): bool => $id > 0
+                )))
+                : array_filter([$pengajaran_id]);
             $pertemuan_ke = (int)($_POST['pertemuan_ke'] ?? 0);
             $judul = trim($_POST['judul'] ?? '');
             $deskripsi = trim($_POST['deskripsi'] ?? '');
@@ -117,29 +135,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $deadline_raw = trim($_POST['deadline'] ?? '');
             $deadline_obj = DateTime::createFromFormat('Y-m-d\TH:i', $deadline_raw);
 
-            if ($pengajaran_id < 1 || $pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || !$deadline_obj || !in_array($jenis_tugas, ['portofolio','esai','pilihan_ganda','merangkum','video'], true)) {
+            if (!$pengajaran_ids || $pertemuan_ke < 1 || $pertemuan_ke > 20 || $judul === '' || !$deadline_obj || !in_array($jenis_tugas, ['portofolio','esai','pilihan_ganda','merangkum','video'], true)) {
                 throw new RuntimeException('Kelas, pertemuan 1–20, judul, dan tenggat wajib diisi dengan benar.');
             }
             if (mb_strlen($judul) > 200) {
                 throw new RuntimeException('Judul tugas maksimal 200 karakter.');
             }
 
-            $milik = $db->prepare('SELECT id FROM pengajaran WHERE id = ? AND guru_id = ?');
-            $milik->execute([$pengajaran_id, $guru_id]);
-            if (!$milik->fetchColumn()) {
-                throw new RuntimeException('Kelas atau mata pelajaran bukan pengajaran Anda.');
+            $placeholder_pengajaran = implode(',', array_fill(0, count($pengajaran_ids), '?'));
+            $milik = $db->prepare("SELECT id,mapel_id,tahun_ajaran,semester FROM pengajaran WHERE id IN ($placeholder_pengajaran) AND guru_id=?");
+            $milik->execute([...$pengajaran_ids, $guru_id]);
+            $pengajaran_valid = $milik->fetchAll();
+            if (count($pengajaran_valid) !== count($pengajaran_ids)) {
+                throw new RuntimeException('Salah satu kelas atau mata pelajaran bukan pengajaran Anda.');
+            }
+            $kelompok_valid = array_unique(array_map(
+                static fn(array $item): string => $item['mapel_id'] . '|' . $item['tahun_ajaran'] . '|' . $item['semester'],
+                $pengajaran_valid
+            ));
+            if (count($kelompok_valid) !== 1) {
+                throw new RuntimeException('Kelas gabungan harus berasal dari mapel, semester, dan tahun ajaran yang sama.');
             }
 
             $pertanyaan = data_pertanyaan_tugas($_POST, $jenis_tugas);
             $lampiran_baru = simpan_lampiran_tugas($_FILES['file_lampiran'] ?? []);
             if ($aksi === 'create') {
+                if ($lampiran_baru) $lampiran_dibuat[] = $lampiran_baru;
                 $db->beginTransaction();
                 $sql = 'INSERT INTO tugas (pengajaran_id, pertemuan_ke, judul, deskripsi, jenis_tugas, deadline, file_lampiran) VALUES (?, ?, ?, ?, ?, ?, ?)';
-                $db->prepare($sql)->execute([$pengajaran_id, $pertemuan_ke, $judul, $deskripsi ?: null, $jenis_tugas, $deadline_obj->format('Y-m-d H:i:s'), $lampiran_baru]);
-                simpan_pertanyaan_tugas($db, (int)$db->lastInsertId(), $pertanyaan);
+                $buat_tugas = $db->prepare($sql);
+                foreach ($pengajaran_ids as $index => $id_pengajaran) {
+                    $lampiran_kelas = $lampiran_baru;
+                    if ($lampiran_baru && $index > 0) {
+                        $lampiran_kelas = salin_lampiran_tugas($lampiran_baru);
+                        $lampiran_dibuat[] = $lampiran_kelas;
+                    }
+                    $buat_tugas->execute([$id_pengajaran, $pertemuan_ke, $judul, $deskripsi ?: null, $jenis_tugas, $deadline_obj->format('Y-m-d H:i:s'), $lampiran_kelas]);
+                    simpan_pertanyaan_tugas($db, (int)$db->lastInsertId(), $pertanyaan);
+                }
                 $db->commit();
-                catat_log($_SESSION['user_id'], "Membuat tugas: $judul");
-                kembali_tugas('success', 'Tugas berhasil dibuat dan dapat dilihat siswa.');
+                $jumlah_kelas = count($pengajaran_ids);
+                catat_log($_SESSION['user_id'], "Membuat tugas untuk $jumlah_kelas kelas: $judul");
+                kembali_tugas('success', "Tugas berhasil dibuat untuk $jumlah_kelas kelas dan dapat dilihat siswa.");
             }
 
             $cek = $db->prepare('SELECT t.file_lampiran,t.jenis_tugas,(SELECT COUNT(*) FROM pengumpulan_tugas pt WHERE pt.tugas_id=t.id) total_pengumpulan FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id WHERE t.id=? AND p.guru_id=?');
@@ -180,14 +217,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
     } catch (Throwable $e) {
         if ($db->inTransaction()) $db->rollBack();
-        if ($lampiran_baru) @unlink(__DIR__ . '/../assets/upload/tugas/' . basename($lampiran_baru));
+        $file_gagal = $lampiran_dibuat ?: array_filter([$lampiran_baru]);
+        foreach (array_unique($file_gagal) as $file) {
+            @unlink(__DIR__ . '/../assets/upload/tugas/' . basename($file));
+        }
         kembali_tugas('error', $e instanceof RuntimeException ? $e->getMessage() : 'Tugas gagal diproses. Silakan coba kembali.');
     }
 }
 
-$stmt = $db->prepare('SELECT p.id,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_ajaran FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? ORDER BY p.tahun_ajaran DESC,p.semester,m.nama_mapel,k.nama_kelas');
+$stmt = $db->prepare('SELECT p.id,p.mapel_id,p.kelas_id,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_ajaran FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? ORDER BY p.tahun_ajaran DESC,p.semester,m.nama_mapel,k.nama_kelas');
 $stmt->execute([$guru_id]);
 $pengajaran = $stmt->fetchAll();
+$kelompok_pengajaran = [];
+foreach ($pengajaran as $pengajaran_item) {
+    $kunci = $pengajaran_item['mapel_id'] . '|' . $pengajaran_item['tahun_ajaran'] . '|' . $pengajaran_item['semester'];
+    $kelompok_pengajaran[$kunci]['label'] = $pengajaran_item['nama_mapel']
+        . ' (' . $pengajaran_item['semester'] . ', ' . $pengajaran_item['tahun_ajaran'] . ')';
+    $kelompok_pengajaran[$kunci]['kelas'][] = $pengajaran_item;
+}
 
 $pengajaran_ids = array_map(static fn(array $item): int => (int)$item['id'], $pengajaran);
 $filter_pengajaran_id = (int)($_GET['pengajaran_id'] ?? 0);
@@ -276,6 +323,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
     #modalTugas .modal-footer { position:sticky; bottom:0; z-index:2; border-top:1px solid #e9edf3; }
     #modalTugas .form-label { font-size:.84rem; margin-bottom:.4rem; }
     #modalTugas .form-control,#modalTugas .form-select { min-height:44px; border-radius:10px; border-color:#dfe5ee; }
+    .task-class-list { max-height:220px; overflow-y:auto; }
     #modalTugas .modal-body .row { --bs-gutter-y:.8rem; }
     @media (hover:hover) { .teacher-task-card:hover { transform:translateY(-2px); box-shadow:0 10px 26px rgba(15,23,42,.1); } }
     @media (max-width:575.98px) {
@@ -358,7 +406,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
 
 <div class="modal fade" id="modalTugas" tabindex="-1"><div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable"><div class="modal-content border-0"><form method="post" enctype="multipart/form-data" id="formTugas"><div class="modal-header"><div><h5 class="modal-title fw-bold" id="judulModal">Buat Tugas Baru</h5><small class="text-muted">Lengkapi informasi tugas untuk siswa.</small></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body">
     <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" id="aksiTugas" value="create"><input type="hidden" name="id" id="idTugas">
-    <div class="row g-3"><div class="col-md-8"><label class="form-label fw-semibold">Mata Pelajaran & Kelas</label><select class="form-select" name="pengajaran_id" id="pengajaranTugas" required><option value="">Pilih pengajaran</option><?php foreach ($pengajaran as $p): ?><option value="<?= (int)$p['id'] ?>"><?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?> (<?= sanitize($p['semester']) ?>)</option><?php endforeach; ?></select></div><div class="col-md-4"><label class="form-label fw-semibold">Pertemuan</label><select class="form-select" name="pertemuan_ke" id="pertemuanTugas" required><?php for($i=1;$i<=20;$i++): ?><option value="<?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?></select></div>
+    <div class="row g-3"><div class="col-md-8"><div id="pilihanGabunganTugas"><label class="form-label fw-semibold">Mata Pelajaran & Kelas Tujuan</label><div class="task-class-list border rounded-3 p-2"><?php foreach($kelompok_pengajaran as $kunci_kelompok => $kelompok): ?><div class="small fw-bold text-primary px-2 pt-2"><?= sanitize($kelompok['label']) ?></div><?php foreach($kelompok['kelas'] as $p): $id_kelas_tugas='tugasKelas'.(int)$p['id']; ?><div class="form-check px-2 py-2 border-bottom"><input class="form-check-input ms-0 me-2 kelas-tugas" type="checkbox" name="pengajaran_ids[]" value="<?= (int)$p['id'] ?>" data-group="<?= sanitize($kunci_kelompok) ?>" id="<?= $id_kelas_tugas ?>"><label class="form-check-label" for="<?= $id_kelas_tugas ?>"><?= sanitize($p['nama_kelas']) ?></label></div><?php endforeach; ?><?php endforeach; ?></div><div class="form-text">Pilih satu atau beberapa kelas yang menerima tugas yang sama.</div></div><div id="pilihanTunggalTugas" class="d-none"><label class="form-label fw-semibold">Mata Pelajaran & Kelas</label><select class="form-select" name="pengajaran_id" id="pengajaranTugas" disabled><option value="">Pilih pengajaran</option><?php foreach ($pengajaran as $p): ?><option value="<?= (int)$p['id'] ?>"><?= sanitize($p['nama_mapel']) ?> — <?= sanitize($p['nama_kelas']) ?> (<?= sanitize($p['semester']) ?>)</option><?php endforeach; ?></select></div></div><div class="col-md-4"><label class="form-label fw-semibold">Pertemuan</label><select class="form-select" name="pertemuan_ke" id="pertemuanTugas" required><?php for($i=1;$i<=20;$i++): ?><option value="<?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?></select></div>
     <div class="col-12"><label class="form-label fw-semibold">Judul Tugas</label><input class="form-control" name="judul" id="namaTugas" maxlength="200" required></div><div class="col-12"><label class="form-label fw-semibold">Deskripsi / Instruksi</label><textarea class="form-control" name="deskripsi" id="deskripsiTugas" rows="4"></textarea></div>
     <div class="col-12"><label class="form-label fw-semibold">Jenis Tugas</label><select class="form-select" name="jenis_tugas" id="jenisTugas" required><option value="portofolio">Portofolio</option><option value="esai">Esai</option><option value="pilihan_ganda">Pilihan Ganda</option><option value="merangkum">Merangkum</option><option value="video">Pembuatan Video</option></select><small class="text-muted">Form jawaban siswa akan menyesuaikan jenis tugas.</small></div>
     <div class="col-12 d-none" id="areaPertanyaan"><div class="d-flex justify-content-between align-items-center mb-2"><label class="form-label fw-semibold mb-0">Daftar Pertanyaan</label><button type="button" class="btn btn-sm btn-outline-primary" id="tambahPertanyaan"><i class="fa-solid fa-plus me-1"></i>Pertanyaan</button></div><div id="daftarPertanyaan"></div></div>
@@ -368,6 +416,8 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 <script>
 const jenisTugas=document.getElementById('jenisTugas'),areaPertanyaan=document.getElementById('areaPertanyaan'),daftarPertanyaan=document.getElementById('daftarPertanyaan');
+const pengajaranTugas=document.getElementById('pengajaranTugas'),pilihanGabunganTugas=document.getElementById('pilihanGabunganTugas'),pilihanTunggalTugas=document.getElementById('pilihanTunggalTugas');
+document.querySelectorAll('.kelas-tugas').forEach(function(checkbox){checkbox.addEventListener('change',function(){if(!this.checked)return;const grup=this.dataset.group;document.querySelectorAll('.kelas-tugas:checked').forEach(function(pilihan){if(pilihan.dataset.group!==grup)pilihan.checked=false})})});
 let nomorPertanyaan=0;
 function tambahPertanyaan(data={}){
     const i=nomorPertanyaan++, pg=jenisTugas.value==='pilihan_ganda', kartu=document.createElement('div');
@@ -381,8 +431,9 @@ function escapeHtml(teks){const d=document.createElement('div');d.textContent=te
 function aturJenis(struktur=[]){const memakaiPertanyaan=['esai','pilihan_ganda'].includes(jenisTugas.value);areaPertanyaan.classList.toggle('d-none',!memakaiPertanyaan);daftarPertanyaan.innerHTML='';nomorPertanyaan=0;if(memakaiPertanyaan)(struktur.length?struktur:[{}]).forEach(tambahPertanyaan)}
 jenisTugas.addEventListener('change',()=>aturJenis());
 document.getElementById('tambahPertanyaan').addEventListener('click',()=>tambahPertanyaan());
-function tugasBaru(pengajaranId=0,pertemuan=0){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='create';document.getElementById('idTugas').value='';document.getElementById('judulModal').textContent='Buat Tugas Baru';document.getElementById('infoEdit').classList.add('d-none');jenisTugas.disabled=false;aturJenis();if(pengajaranId)document.getElementById('pengajaranTugas').value=String(pengajaranId);if(pertemuan)document.getElementById('pertemuanTugas').value=String(pertemuan)}
-function editTugas(d){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='update';document.getElementById('idTugas').value=d.id;document.getElementById('pengajaranTugas').value=d.pengajaran_id;document.getElementById('pertemuanTugas').value=d.pertemuan_ke;document.getElementById('namaTugas').value=d.judul;document.getElementById('deskripsiTugas').value=d.deskripsi||'';jenisTugas.value=d.jenis_tugas||'portofolio';jenisTugas.disabled=d.terkumpul>0;document.getElementById('deadlineTugas').value=d.deadline;document.getElementById('judulModal').textContent='Edit Tugas';document.getElementById('infoEdit').classList.remove('d-none');document.getElementById('infoEdit').textContent=d.terkumpul>0?'Jenis dan pertanyaan dikunci karena sudah ada jawaban siswa. Data umum masih dapat diubah.':'Kosongkan lampiran jika tidak ingin mengganti file lama.';aturJenis(d.struktur||[])}
+function tugasBaru(pengajaranId=0,pertemuan=0){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='create';document.getElementById('idTugas').value='';document.getElementById('judulModal').textContent='Buat Tugas Baru';document.getElementById('infoEdit').classList.add('d-none');pilihanGabunganTugas.classList.remove('d-none');pilihanTunggalTugas.classList.add('d-none');pengajaranTugas.disabled=true;pengajaranTugas.required=false;jenisTugas.disabled=false;aturJenis();if(pengajaranId){const pilihan=document.querySelector('.kelas-tugas[value="'+String(pengajaranId)+'"]');if(pilihan)pilihan.checked=true}if(pertemuan)document.getElementById('pertemuanTugas').value=String(pertemuan)}
+function editTugas(d){document.getElementById('formTugas').reset();document.getElementById('aksiTugas').value='update';document.getElementById('idTugas').value=d.id;pilihanGabunganTugas.classList.add('d-none');pilihanTunggalTugas.classList.remove('d-none');pengajaranTugas.disabled=false;pengajaranTugas.required=true;pengajaranTugas.value=d.pengajaran_id;document.getElementById('pertemuanTugas').value=d.pertemuan_ke;document.getElementById('namaTugas').value=d.judul;document.getElementById('deskripsiTugas').value=d.deskripsi||'';jenisTugas.value=d.jenis_tugas||'portofolio';jenisTugas.disabled=d.terkumpul>0;document.getElementById('deadlineTugas').value=d.deadline;document.getElementById('judulModal').textContent='Edit Tugas';document.getElementById('infoEdit').classList.remove('d-none');document.getElementById('infoEdit').textContent=d.terkumpul>0?'Jenis dan pertanyaan dikunci karena sudah ada jawaban siswa. Data umum masih dapat diubah.':'Kosongkan lampiran jika tidak ingin mengganti file lama.';aturJenis(d.struktur||[])}
+document.getElementById('formTugas').addEventListener('submit',function(event){if(document.getElementById('aksiTugas').value==='create'&&!document.querySelector('.kelas-tugas:checked')){event.preventDefault();Swal.fire({icon:'warning',title:'Pilih Kelas',text:'Pilih minimal satu kelas yang menerima tugas.'})}});
 <?php if ($buka_form_tugas): ?>
 document.addEventListener('DOMContentLoaded',function(){tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>);bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTugas')).show()});
 <?php endif; ?>
