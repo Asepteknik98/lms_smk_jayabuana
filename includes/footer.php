@@ -39,12 +39,14 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php if(in_array((int)($_SESSION['role_id']??0),[2,3],true)): ?><script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}))}
 let deferredPwaPrompt=null;
+<?php if((int)($_SESSION['role_id']??0)===2): ?>document.addEventListener('DOMContentLoaded',()=>{const header=document.querySelector('#page-content-wrapper > nav:first-child');if(!header||header.querySelector('[data-install-pwa]'))return;const button=document.createElement('button');button.type='button';button.className='btn btn-sm btn-outline-primary d-none ms-auto flex-shrink-0';button.setAttribute('data-install-pwa','');button.innerHTML='<i class="fa-solid fa-mobile-screen-button me-1"></i>Pasang Aplikasi';const target=header.querySelector(':scope > .d-flex')||header;target.appendChild(button)});
+<?php endif; ?>
 const pwaButtons=()=>document.querySelectorAll('[data-install-pwa]');
 const isStandalone=window.matchMedia('(display-mode: standalone)').matches||window.navigator.standalone===true;
 const isIos=/iphone|ipad|ipod/i.test(navigator.userAgent);
 function showPwaButtons(){if(!isStandalone)pwaButtons().forEach(button=>button.classList.remove('d-none'))}
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredPwaPrompt=event;showPwaButtons()});
-document.addEventListener('DOMContentLoaded',()=>{if(isIos)showPwaButtons();pwaButtons().forEach(button=>button.addEventListener('click',async()=>{if(deferredPwaPrompt){deferredPwaPrompt.prompt();await deferredPwaPrompt.userChoice;deferredPwaPrompt=null;button.classList.add('d-none')}else if(isIos){Swal.fire({icon:'info',title:'Pasang di iPhone',html:'Ketuk tombol <strong>Bagikan</strong> di Safari, lalu pilih <strong>Tambahkan ke Layar Utama</strong>.',confirmButtonColor:'#1769e0'})}else{Swal.fire({icon:'info',title:'Pasang LMS',text:'Buka menu browser lalu pilih “Instal aplikasi” atau “Tambahkan ke layar utama”.',confirmButtonColor:'#1769e0'})}}))});
+document.addEventListener('DOMContentLoaded',()=>{if(deferredPwaPrompt||isIos)showPwaButtons();pwaButtons().forEach(button=>button.addEventListener('click',async()=>{if(deferredPwaPrompt){deferredPwaPrompt.prompt();await deferredPwaPrompt.userChoice;deferredPwaPrompt=null;button.classList.add('d-none')}else if(isIos){Swal.fire({icon:'info',title:'Pasang di iPhone',html:'Ketuk tombol <strong>Bagikan</strong> di Safari, lalu pilih <strong>Tambahkan ke Layar Utama</strong>.',confirmButtonColor:'#1769e0'})}else{Swal.fire({icon:'info',title:'Pasang LMS',text:'Buka menu browser lalu pilih “Instal aplikasi” atau “Tambahkan ke layar utama”.',confirmButtonColor:'#1769e0'})}}))});
 </script><?php endif ?>
 </body>
 </html>
