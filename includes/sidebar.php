@@ -325,6 +325,9 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_nilai.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-chart-column me-2"></i> Rekap Nilai
         </a>
+        <button type="button" class="list-group-item list-group-item-action d-none" data-install-pwa>
+            <i class="fa-solid fa-mobile-screen-button me-2"></i> Pasang Aplikasi
+        </button>
         <?php elseif ($role_id === 3): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page === 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i> Dashboard Siswa

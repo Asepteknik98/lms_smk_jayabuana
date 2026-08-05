@@ -36,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
 <?php if(!empty($needs_datatables)): ?><script src="https://cdn.datatables.net/1.13.7/js/jquery.dataTables.min.js"></script>
 <script src="https://cdn.datatables.net/1.13.7/js/dataTables.bootstrap5.min.js"></script><?php endif; ?>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-<?php if((int)($_SESSION['role_id']??0)===3): ?><script>
+<?php if(in_array((int)($_SESSION['role_id']??0),[2,3],true)): ?><script>
 if('serviceWorker' in navigator){window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js',{scope:'/'}).catch(()=>{}))}
 let deferredPwaPrompt=null;
 const pwaButtons=()=>document.querySelectorAll('[data-install-pwa]');
