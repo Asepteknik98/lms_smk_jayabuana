@@ -58,7 +58,6 @@ $stmt_materi = $db->prepare(
     'SELECT mat.id, mat.pertemuan_ke, mat.judul, mat.deskripsi, mat.video_url, mat.file_path, mat.created_at,
             CASE WHEN md.materi_id IS NULL THEN 1 ELSE 0 END AS is_baru,
             CASE WHEN md.materi_id IS NULL THEN 0 ELSE 1 END AS sudah_direview,
-            CASE WHEN mu.materi_id IS NULL THEN 0 ELSE 1 END AS sudah_diunduh,
             COALESCE(ap.status, \'Dikunci\') AS status_akses,
             (SELECT COUNT(*) FROM tugas t
              WHERE t.pengajaran_id = mat.pengajaran_id
@@ -72,7 +71,6 @@ $stmt_materi = $db->prepare(
      LEFT JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id
                                  AND ap.pertemuan_ke=mat.pertemuan_ke
      LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id='.(int)($siswa['id']??0).'
-     LEFT JOIN materi_siswa_diunduh mu ON mu.materi_id=mat.id AND mu.siswa_id='.(int)($siswa['id']??0).'
      WHERE p.kelas_id = ?' . $filter_pengajaran . $filter_pertemuan . '
      ORDER BY mat.created_at DESC, mat.id DESC'
 );
@@ -147,29 +145,22 @@ $materi_groups=[];foreach($materi_list as $materi){$key=(int)$materi['pengajaran
                             $meetingNew=count(array_filter($meetingMaterials,static fn($item)=>(int)$item['is_baru']===1));
                             $meetingComplete=count($meetingMaterials)>0&&$meetingNew===0;
                             $meetingTaskCount=array_sum(array_map(static fn($item)=>(int)$item['jumlah_tugas'],$meetingMaterials));
-                            $meetingHasFile=count(array_filter($meetingMaterials,static fn($item)=>!empty($item['file_path'])))>0;
-                            $meetingTaskReady=$meetingTaskCount>0&&count(array_filter($meetingMaterials,static fn($item)=>(int)$item['jumlah_tugas']>0&&($item['status_akses']!=='Dibuka'||empty($item['sudah_direview'])||($item['file_path']&&!$item['sudah_diunduh']))))===0;
+                            $meetingTaskReady=$meetingTaskCount>0&&count(array_filter($meetingMaterials,static fn($item)=>(int)$item['jumlah_tugas']>0&&($item['status_akses']!=='Dibuka'||empty($item['sudah_direview']))))===0;
                         ?>
                         <section class="accordion-item meeting-item <?= $meetingComplete?'is-complete':'' ?>">
-                            <h3 class="accordion-header"><button class="accordion-button meeting-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $meetingCollapseId ?>" aria-expanded="false"><span class="meeting-number me-2"><i class="fa-solid fa-layer-group"></i></span><span class="flex-grow-1"><strong class="d-block">Pertemuan <?= $meetingNumber ?></strong><small class="text-muted"><?= count($meetingMaterials) ?> materi</small><?php if($meetingTaskCount>0): ?><?php if($meetingTaskReady): ?><small class="meeting-task-ready"><i class="fa-solid fa-circle-check me-1"></i>Materi sudah dipelajari, tugas dapat dibuka.</small><?php else: ?><small class="meeting-task-notice"><i class="fa-solid fa-triangle-exclamation me-1"></i>Untuk membuka tugas: baca<?= $meetingHasFile?', unduh,':'' ?> dan review materi dahulu.</small><?php endif; ?><?php endif; ?></span><?php if($meetingNew): ?><span class="badge bg-danger me-2"><?= $meetingNew ?> baru</span><?php endif; ?></button></h3>
+                            <h3 class="accordion-header"><button class="accordion-button meeting-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#<?= $meetingCollapseId ?>" aria-expanded="false"><span class="meeting-number me-2"><i class="fa-solid fa-layer-group"></i></span><span class="flex-grow-1"><strong class="d-block">Pertemuan <?= $meetingNumber ?></strong><small class="text-muted"><?= count($meetingMaterials) ?> materi</small><?php if($meetingTaskCount>0): ?><?php if($meetingTaskReady): ?><small class="meeting-task-ready"><i class="fa-solid fa-circle-check me-1"></i>Materi sudah dibuka, tugas dapat dikerjakan.</small><?php else: ?><small class="meeting-task-notice"><i class="fa-solid fa-triangle-exclamation me-1"></i>Buka materi terlebih dahulu agar tugas tersedia.</small><?php endif; ?><?php endif; ?></span><?php if($meetingNew): ?><span class="badge bg-danger me-2"><?= $meetingNew ?> baru</span><?php endif; ?></button></h3>
                             <div id="<?= $meetingCollapseId ?>" class="accordion-collapse collapse" data-bs-parent="#meetingGroup<?= (int)$groupIndex ?>"><div class="accordion-body meeting-body">
-                        <?php foreach($meetingMaterials as $materi): $aksesDibuka=$materi['status_akses']==='Dibuka'; $youtubeId=$aksesDibuka?youtube_video_id($materi['video_url']??null):null; $siapTugas=$aksesDibuka&&!empty($materi['sudah_direview'])&&(!$materi['file_path']||!empty($materi['sudah_diunduh'])); ?><article class="material-row <?= $aksesDibuka?'':'is-locked' ?>"><div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><span><?php if($materi['is_baru']): ?><span class="badge bg-danger">Baru</span><?php endif ?> <span class="badge <?= $aksesDibuka?'bg-success':'bg-secondary' ?>"><i class="fa-solid <?= $aksesDibuka?'fa-lock-open':'fa-lock' ?> me-1"></i><?= $aksesDibuka?'Dibuka':'Terkunci' ?></span></span><small class="text-muted"><i class="fa-regular fa-clock me-1"></i><?= date('d/m/Y H:i',strtotime($materi['created_at'])) ?></small></div><h4 class="h6 fw-bold material-title mb-2"><?= sanitize($materi['judul']) ?></h4><?php if($aksesDibuka&&$materi['deskripsi']): ?><div class="material-description text-secondary small mb-3"><?= nl2br(sanitize($materi['deskripsi'])) ?></div><?php endif ?>
+                        <?php foreach($meetingMaterials as $materi): $aksesDibuka=$materi['status_akses']==='Dibuka'; $youtubeId=$aksesDibuka?youtube_video_id($materi['video_url']??null):null; $siapTugas=$aksesDibuka&&!empty($materi['sudah_direview']); ?><article class="material-row <?= $aksesDibuka?'':'is-locked' ?>"><div class="d-flex flex-wrap justify-content-between align-items-start gap-2 mb-2"><span><?php if($materi['is_baru']): ?><span class="badge bg-danger">Baru</span><?php endif ?> <span class="badge <?= $aksesDibuka?'bg-success':'bg-secondary' ?>"><i class="fa-solid <?= $aksesDibuka?'fa-lock-open':'fa-lock' ?> me-1"></i><?= $aksesDibuka?'Dibuka':'Terkunci' ?></span></span><small class="text-muted"><i class="fa-regular fa-clock me-1"></i><?= date('d/m/Y H:i',strtotime($materi['created_at'])) ?></small></div><h4 class="h6 fw-bold material-title mb-2"><?= sanitize($materi['judul']) ?></h4><?php if($aksesDibuka&&$materi['deskripsi']): ?><div class="material-description text-secondary small mb-3"><?= nl2br(sanitize($materi['deskripsi'])) ?></div><?php endif ?>
                             <?php if (!$aksesDibuka): ?>
                                 <div class="material-lock-notice p-3 small"><i class="fa-solid fa-lock me-2"></i>Guru belum membuka akses materi ini.</div>
                             <?php else: ?>
                             <?php if($youtubeId): ?><div class="material-video mb-3"><iframe src="https://www.youtube-nocookie.com/embed/<?= sanitize($youtubeId) ?>" title="Video: <?= sanitize($materi['judul']) ?>" loading="lazy" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div><?php endif; ?>
                             <div class="d-flex flex-wrap gap-2">
-                                <?php if ($materi['file_path']): ?>
-                                    <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=preview" target="_blank" rel="noopener" class="btn btn-primary btn-sm"><i class="fa-solid fa-folder-open me-1"></i>Buka Materi</a>
-                                    <a href="file_pembelajaran.php?jenis=materi&amp;id=<?= (int)$materi['id'] ?>&amp;mode=download" class="btn btn-success btn-sm"><i class="fa-solid fa-download me-1"></i>Unduh Materi</a>
-                                <?php else: ?>
-                                    <button type="button" class="btn btn-light border btn-sm text-muted" disabled title="Materi tidak memiliki lampiran"><i class="fa-solid fa-folder-open me-1"></i>Buka Materi</button>
-                                <?php endif; ?>
-                                <a href="materi_review.php?id=<?= (int)$materi['id'] ?>" class="btn btn-outline-primary btn-sm"><i class="fa-solid fa-book-open-reader me-1"></i>Review Materi</a>
+                                <a href="materi_review.php?id=<?= (int)$materi['id'] ?>" class="btn btn-primary btn-sm"><i class="fa-solid fa-folder-open me-1"></i>Buka Materi</a>
                                 <?php if ($siapTugas): ?>
                                     <a href="tugas.php?pengajaran_id=<?= (int)$materi['pengajaran_id'] ?>&amp;pertemuan=<?= (int)$materi['pertemuan_ke'] ?>" class="btn btn-outline-warning text-dark btn-sm"><i class="fa-solid fa-list-check me-1"></i>Tugas<?php if ((int)$materi['jumlah_tugas'] > 0): ?> <span class="badge bg-warning text-dark ms-1"><?= (int)$materi['jumlah_tugas'] ?></span><?php endif; ?></a>
                                 <?php else: ?>
-                                    <button type="button" class="btn btn-light border btn-sm text-muted" disabled><i class="fa-solid fa-lock me-1"></i><?= empty($materi['sudah_direview']) ? 'Review Dahulu' : 'Unduh Dahulu' ?></button>
+                                    <button type="button" class="btn btn-light border btn-sm text-muted" disabled title="Buka dan pelajari materi terlebih dahulu"><i class="fa-solid fa-lock me-1"></i>Tugas<?php if ((int)$materi['jumlah_tugas'] > 0): ?> <span class="badge bg-secondary ms-1"><?= (int)$materi['jumlah_tugas'] ?></span><?php endif; ?></button>
                                 <?php endif; ?>
                             </div>
                             <?php endif; ?>

@@ -18,8 +18,8 @@ if ($jenis === 'materi') {
     $stmt->execute([$id, $siswa['kelas_id']]);
     $folder_nama = 'materi';
 } elseif ($jenis === 'tugas') {
-    $stmt = $db->prepare("SELECT t.file_lampiran FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka' WHERE t.id=? AND p.kelas_id=? AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) OR (EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_dibaca msb ON msb.materi_id=mat.id AND msb.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke AND mat.file_path IS NOT NULL) OR EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_diunduh msu ON msu.materi_id=mat.id AND msu.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke))))");
-    $stmt->execute([$id, $siswa['kelas_id'], $siswa['id'], $siswa['id']]);
+    $stmt = $db->prepare("SELECT t.file_lampiran FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka' WHERE t.id=? AND p.kelas_id=? AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke) OR EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_dibaca msb ON msb.materi_id=mat.id AND msb.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke))");
+    $stmt->execute([$id, $siswa['kelas_id'], $siswa['id']]);
     $folder_nama = 'tugas';
 } elseif ($jenis === 'jawaban') {
     $stmt = $db->prepare('SELECT file_tugas FROM pengumpulan_tugas WHERE id=? AND siswa_id=?');

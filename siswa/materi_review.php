@@ -51,12 +51,7 @@ if ($materi && $siswa) {
          ON DUPLICATE KEY UPDATE dibaca_pada = VALUES(dibaca_pada)'
     )->execute([$materi_id, (int)$siswa['id']]);
 
-    $materi_siap_tugas = empty($materi['file_path']);
-    if (!$materi_siap_tugas) {
-        $stmt_unduh = $db->prepare('SELECT COUNT(*) FROM materi_siswa_diunduh WHERE materi_id=? AND siswa_id=?');
-        $stmt_unduh->execute([$materi_id, (int)$siswa['id']]);
-        $materi_siap_tugas = (bool)$stmt_unduh->fetchColumn();
-    }
+    $materi_siap_tugas = true;
 
     if ($materi_siap_tugas) {
         $stmt_tugas = $db->prepare(
