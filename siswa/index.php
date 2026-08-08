@@ -24,6 +24,19 @@ $siswa = $stmt_siswa->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 $kelas_id = $siswa['kelas_id'] ?? 0;
 
+// Kredit Aktivitas Siswa dihitung terhadap target akhir tiga tahun (X+XI+XII).
+$stmt_kredit = $db->prepare('SELECT COALESCE(SUM(poin),0) FROM kak_aktivitas_siswa WHERE siswa_id=?');
+$stmt_kredit->execute([$siswa_id]);
+$total_poin_kredit = (int)$stmt_kredit->fetchColumn();
+$target_kredit_per_tingkat = ['X'=>0,'XI'=>0,'XII'=>0];
+foreach ($db->query('SELECT tingkat,target_poin FROM kak_target_tingkat')->fetchAll() as $target_kredit) {
+    $target_kredit_per_tingkat[$target_kredit['tingkat']] = (int)$target_kredit['target_poin'];
+}
+$target_kredit_kumulatif = array_sum($target_kredit_per_tingkat);
+$persentase_kredit = $target_kredit_kumulatif > 0
+    ? min(100, (int)round($total_poin_kredit / $target_kredit_kumulatif * 100))
+    : 0;
+
 // Materi yang belum pernah dibuka siswa.
 $stmt_materi_baru=$db->prepare("SELECT COUNT(*) FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status='Dibuka' LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id=? WHERE p.kelas_id=? AND md.materi_id IS NULL");
 $stmt_materi_baru->execute([$siswa_id,$kelas_id]);$materi_baru=(int)$stmt_materi_baru->fetchColumn();
@@ -211,7 +224,7 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
                 <div><small class="opacity-75">Selamat datang 👋</small>
                 <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
                 <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div></div>
-                <a href="kak.php" class="student-credit-link flex-shrink-0"><span class="student-credit-icon"><i class="fa-solid fa-medal"></i></span><span class="student-credit-copy"><strong>Kredit Aktivitas Siswa</strong><small>Lihat poin dan riwayat aktivitas</small></span><i class="fa-solid fa-chevron-right ms-auto small"></i></a>
+                <a href="kak.php" class="student-credit-link flex-shrink-0"><span class="student-credit-icon"><i class="fa-solid fa-medal"></i></span><span class="student-credit-copy"><strong>Kredit Aktivitas Siswa</strong><small><b><?= $total_poin_kredit ?> poin</b><?php if($target_kredit_kumulatif > 0): ?> · <?= $persentase_kredit ?>% target kelas X–XII<?php else: ?> · target belum ditetapkan<?php endif; ?></small></span><i class="fa-solid fa-chevron-right ms-auto small"></i></a>
             </div>
         </section>
 
