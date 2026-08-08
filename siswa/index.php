@@ -198,9 +198,12 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     <main class="student-main p-3 p-md-4">
         <?php if($absensi_menunggu): ?><a href="absensi.php" class="alert alert-warning border-warning d-flex align-items-center gap-3 text-decoration-none text-dark shadow-sm"><span class="quick-icon bg-warning text-dark flex-shrink-0"><i class="fa-solid fa-bell fa-shake"></i></span><span class="flex-grow-1"><strong class="d-block">Absensi sedang dibuka!</strong><small>Anda memiliki <?= $absensi_menunggu ?> sesi yang belum di-check-in. Ketuk di sini sebelum waktunya berakhir.</small></span><i class="fa-solid fa-chevron-right"></i></a><?php endif; ?>
         <section class="welcome-card p-4 mb-3">
-            <small class="opacity-75">Selamat datang 👋</small>
-            <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
-            <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div>
+            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+                <div><small class="opacity-75">Selamat datang 👋</small>
+                <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
+                <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div></div>
+                <a href="kak.php" class="btn btn-light text-primary fw-semibold flex-shrink-0"><i class="fa-solid fa-medal me-2"></i>Lihat KAK Saya</a>
+            </div>
         </section>
 
         <section class="mb-4" aria-labelledby="menuCepat"><h2 class="h6 fw-bold mb-3" id="menuCepat">Mau belajar apa hari ini?</h2><div class="row g-2">
