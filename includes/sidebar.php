@@ -325,7 +325,7 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_nilai.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-chart-column me-2"></i> Rekap Nilai
         </a>
-        <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> KAK Siswa</a>
+        <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> Kredit Aktivitas Siswa</a>
         <?php elseif ($role_id === 3): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page === 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i> Dashboard Siswa
@@ -356,7 +356,7 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="ujian.php" class="list-group-item list-group-item-action <?= in_array($current_page,['ujian.php','ujian_kerjakan.php'],true) ? 'active' : '' ?>">
             <i class="fa-solid fa-file-pen me-2"></i> Ulangan Harian
         </a>
-        <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> KAK Saya</a>
+        <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> Kredit Aktivitas Siswa</a>
         <?php endif; ?>
         <a href="../logout.php" class="list-group-item list-group-item-action text-danger mt-4">
             <i class="fa-solid fa-right-from-bracket me-2"></i> Keluar

@@ -159,6 +159,12 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     }
     .welcome-card::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(15,23,42,.18),transparent 70%); pointer-events:none; }
     .welcome-card > * { position:relative; z-index:1; }
+    .student-credit-link { min-height:58px; padding:9px 16px 9px 10px; border:1px solid rgba(255,255,255,.8); border-radius:15px; background:rgba(255,255,255,.96); color:#1d4ed8; text-decoration:none; display:flex; align-items:center; gap:11px; box-shadow:0 10px 24px rgba(15,23,42,.18); transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
+    .student-credit-link:hover { color:#1d4ed8; background:#fff; transform:translateY(-2px); box-shadow:0 14px 28px rgba(15,23,42,.24); }
+    .student-credit-icon { width:40px; height:40px; flex:0 0 40px; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 5px 12px rgba(37,99,235,.3); }
+    .student-credit-copy { min-width:0; line-height:1.25; }
+    .student-credit-copy strong { display:block; font-size:.91rem; white-space:nowrap; }
+    .student-credit-copy small { display:block; margin-top:2px; color:#64748b; font-size:.7rem; }
     .quick-link { min-height:108px; border:1px solid #e8edf5; border-radius:16px; background:#fff; color:#172033; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-weight:650; box-shadow:0 5px 18px rgba(15,23,42,.05); transition:.2s ease; }
     .quick-link:active { transform:scale(.98); }
     .quick-icon { width:43px; height:43px; border-radius:13px; display:grid; place-items:center; font-size:1.1rem; }
@@ -177,6 +183,9 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
         .welcome-card { min-height:132px; border-radius:17px; padding:18px!important; background-position:center; }
         .welcome-card h1 { font-size:1.18rem; line-height:1.35; }
         .welcome-meta { font-size:.78rem; }
+        .student-credit-link { width:100%; min-height:54px; justify-content:flex-start; padding:8px 13px 8px 9px; border-radius:13px; }
+        .student-credit-icon { width:38px; height:38px; flex-basis:38px; border-radius:10px; }
+        .student-credit-copy strong { white-space:normal; }
         .quick-link { min-height:94px; border-radius:14px; font-size:.88rem; }
         .section-card { border-radius:16px; }
         .section-card .card-body { padding:17px!important; }
@@ -202,7 +211,7 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
                 <div><small class="opacity-75">Selamat datang 👋</small>
                 <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
                 <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div></div>
-                <a href="kak.php" class="btn btn-light text-primary fw-semibold flex-shrink-0"><i class="fa-solid fa-medal me-2"></i>Lihat KAK Saya</a>
+                <a href="kak.php" class="student-credit-link flex-shrink-0"><span class="student-credit-icon"><i class="fa-solid fa-medal"></i></span><span class="student-credit-copy"><strong>Kredit Aktivitas Siswa</strong><small>Lihat poin dan riwayat aktivitas</small></span><i class="fa-solid fa-chevron-right ms-auto small"></i></a>
             </div>
         </section>
 
