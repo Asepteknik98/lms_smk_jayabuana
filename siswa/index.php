@@ -172,12 +172,14 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     }
     .welcome-card::after { content:""; position:absolute; inset:0; background:linear-gradient(90deg,rgba(15,23,42,.18),transparent 70%); pointer-events:none; }
     .welcome-card > * { position:relative; z-index:1; }
-    .student-credit-link { min-height:58px; padding:9px 16px 9px 10px; border:1px solid rgba(255,255,255,.8); border-radius:15px; background:rgba(255,255,255,.96); color:#1d4ed8; text-decoration:none; display:flex; align-items:center; gap:11px; box-shadow:0 10px 24px rgba(15,23,42,.18); transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
+    .student-credit-link { width:min(410px,44%); min-width:370px; min-height:82px; padding:12px 18px 12px 12px; border:1px solid rgba(255,255,255,.85); border-radius:20px; background:rgba(255,255,255,.97); color:#1d4ed8; text-decoration:none; display:flex; align-items:center; gap:14px; box-shadow:0 14px 30px rgba(15,23,42,.22); transition:transform .18s ease,box-shadow .18s ease,background .18s ease; }
     .student-credit-link:hover { color:#1d4ed8; background:#fff; transform:translateY(-2px); box-shadow:0 14px 28px rgba(15,23,42,.24); }
-    .student-credit-icon { width:40px; height:40px; flex:0 0 40px; border-radius:12px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 5px 12px rgba(37,99,235,.3); }
+    .student-credit-score { width:56px; height:56px; flex:0 0 56px; padding:4px; border-radius:16px; display:grid; place-items:center; color:#fff; background:linear-gradient(135deg,#2563eb,#1d4ed8); box-shadow:0 7px 16px rgba(37,99,235,.34); font-size:1.65rem; line-height:1; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-.04em; }
+    .student-credit-score.is-long { font-size:1.15rem; }
     .student-credit-copy { min-width:0; line-height:1.25; }
-    .student-credit-copy strong { display:block; font-size:.91rem; white-space:nowrap; }
-    .student-credit-copy small { display:block; margin-top:2px; color:#64748b; font-size:.7rem; }
+    .student-credit-copy strong { display:block; font-size:1.08rem; line-height:1.3; white-space:nowrap; }
+    .student-credit-copy small { display:block; margin-top:5px; color:#64748b; font-size:.82rem; line-height:1.35; }
+    .student-credit-copy small b { color:#1e40af; font-size:.92rem; }
     .quick-link { min-height:108px; border:1px solid #e8edf5; border-radius:16px; background:#fff; color:#172033; text-decoration:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; font-weight:650; box-shadow:0 5px 18px rgba(15,23,42,.05); transition:.2s ease; }
     .quick-link:active { transform:scale(.98); }
     .quick-icon { width:43px; height:43px; border-radius:13px; display:grid; place-items:center; font-size:1.1rem; }
@@ -196,9 +198,11 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
         .welcome-card { min-height:132px; border-radius:17px; padding:18px!important; background-position:center; }
         .welcome-card h1 { font-size:1.18rem; line-height:1.35; }
         .welcome-meta { font-size:.78rem; }
-        .student-credit-link { width:100%; min-height:54px; justify-content:flex-start; padding:8px 13px 8px 9px; border-radius:13px; }
-        .student-credit-icon { width:38px; height:38px; flex-basis:38px; border-radius:10px; }
-        .student-credit-copy strong { white-space:normal; }
+        .student-credit-link { width:100%; min-width:0; min-height:76px; justify-content:flex-start; padding:10px 13px 10px 10px; border-radius:16px; gap:11px; }
+        .student-credit-score { width:50px; height:50px; flex-basis:50px; border-radius:14px; font-size:1.5rem; }
+        .student-credit-score.is-long { font-size:1.05rem; }
+        .student-credit-copy strong { white-space:normal; font-size:1rem; }
+        .student-credit-copy small { font-size:.78rem; }
         .quick-link { min-height:94px; border-radius:14px; font-size:.88rem; }
         .section-card { border-radius:16px; }
         .section-card .card-body { padding:17px!important; }
@@ -220,11 +224,11 @@ $tugas_terdekat = $stmt_tugas_dekat->fetchAll();
     <main class="student-main p-3 p-md-4">
         <?php if($absensi_menunggu): ?><a href="absensi.php" class="alert alert-warning border-warning d-flex align-items-center gap-3 text-decoration-none text-dark shadow-sm"><span class="quick-icon bg-warning text-dark flex-shrink-0"><i class="fa-solid fa-bell fa-shake"></i></span><span class="flex-grow-1"><strong class="d-block">Absensi sedang dibuka!</strong><small>Anda memiliki <?= $absensi_menunggu ?> sesi yang belum di-check-in. Ketuk di sini sebelum waktunya berakhir.</small></span><i class="fa-solid fa-chevron-right"></i></a><?php endif; ?>
         <section class="welcome-card p-4 mb-3">
-            <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
+            <div class="d-flex flex-column flex-md-row flex-wrap justify-content-between align-items-md-center gap-3">
                 <div><small class="opacity-75">Selamat datang 👋</small>
                 <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
                 <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div></div>
-                <a href="kak.php" class="student-credit-link flex-shrink-0"><span class="student-credit-icon"><i class="fa-solid fa-medal"></i></span><span class="student-credit-copy"><strong>Kredit Aktivitas Siswa</strong><small><b><?= $total_poin_kredit ?> poin</b><?php if($target_kredit_kumulatif > 0): ?> · <?= $persentase_kredit ?>% target kelas X–XII<?php else: ?> · target belum ditetapkan<?php endif; ?></small></span><i class="fa-solid fa-chevron-right ms-auto small"></i></a>
+                <a href="kak.php" class="student-credit-link flex-shrink-0"><span class="student-credit-score <?= strlen((string)$total_poin_kredit) > 3 ? 'is-long' : '' ?>" aria-label="Total <?= $total_poin_kredit ?> poin"><?= $total_poin_kredit ?></span><span class="student-credit-copy"><strong>Kredit Aktivitas Siswa</strong><small><?php if($target_kredit_kumulatif > 0): ?><b><?= $persentase_kredit ?>%</b> target kelas X–XII<?php else: ?>Target kelas X–XII belum ditetapkan<?php endif; ?></small></span><i class="fa-solid fa-chevron-right ms-auto small"></i></a>
             </div>
         </section>
 
