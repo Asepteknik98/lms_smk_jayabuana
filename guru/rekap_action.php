@@ -6,7 +6,7 @@ $stmt=$db->prepare('SELECT p.kelas_id,m.nama_mapel,k.nama_kelas,g.nama_lengkap n
 $stmt=$db->prepare('SELECT id,nama_komponen,bobot FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$pid]);$components=$stmt->fetchAll();if(abs(array_sum(array_column($components,'bobot'))-100)>.001){$_SESSION['flash_error']='Total bobot wajib tepat 100% sebelum rekap diunduh.';header('Location: rekap_nilai.php?pengajaran_id='.$pid);exit;}
 $stmt=$db->prepare("SELECT s.id,s.nisn,s.nama_lengkap,
  COALESCE((SELECT AVG(COALESCE(nu.nilai_total,0)) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=s.id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW()),0) nilai_ulangan,
- COALESCE((SELECT (SUM(COALESCE(pt.nilai,0))+COALESCE((SELECT nm.nilai FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0))/NULLIF(COUNT(*)+EXISTS(SELECT 1 FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
+ COALESCE((SELECT (SUM(COALESCE(pt.nilai,0))+COALESCE((SELECT SUM(nm.nilai) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0))/NULLIF(COUNT(*)+(SELECT COUNT(*) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
  COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Sakit','Izin') THEN 100 ELSE 0 END)
            FROM sesi_absensi sa
            LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=s.id

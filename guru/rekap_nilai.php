@@ -7,7 +7,7 @@ if($selected){$stmt=$db->prepare('SELECT p.id,p.kelas_id,p.kkm,m.nama_mapel,k.na
 $stmt=$db->prepare('SELECT id,nama_komponen,bobot FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$selected]);$komponen=$stmt->fetchAll();$totalBobot=array_sum(array_column($komponen,'bobot'));
 $stmt=$db->prepare("SELECT s.id,s.nisn,s.nama_lengkap,
  COALESCE((SELECT AVG(COALESCE(nu.nilai_total,0)) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=s.id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW()),0) nilai_ulangan,
- COALESCE((SELECT (SUM(COALESCE(pt.nilai,0))+COALESCE((SELECT nm.nilai FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0))/NULLIF(COUNT(*)+EXISTS(SELECT 1 FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
+ COALESCE((SELECT (SUM(COALESCE(pt.nilai,0))+COALESCE((SELECT SUM(nm.nilai) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0))/NULLIF(COUNT(*)+(SELECT COUNT(*) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
  (SELECT COUNT(*) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW() AND pt.id IS NULL) tugas_belum,
  (SELECT COUNT(*) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=s.id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW() AND nu.id IS NULL) ujian_belum,
  COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Sakit','Izin') THEN 100 ELSE 0 END)
@@ -18,7 +18,7 @@ $stmt=$db->prepare("SELECT s.id,s.nisn,s.nama_lengkap,
 $stmt->execute([$selected,$selected,$selected,$selected,$selected,$selected,$selected,$info['kelas_id']]);$siswa=$stmt->fetchAll();
 $stmt=$db->prepare("SELECT
  (SELECT COUNT(*) FROM sesi_absensi WHERE pengajaran_id=? AND status='Ditutup') absensi,
- ((SELECT COUNT(*) FROM tugas WHERE pengajaran_id=? AND deadline<=NOW())+EXISTS(SELECT 1 FROM nilai_tugas_manual WHERE pengajaran_id=?)) tugas,
+ ((SELECT COUNT(*) FROM tugas WHERE pengajaran_id=? AND deadline<=NOW())+(SELECT COUNT(DISTINCT pertemuan_ke) FROM nilai_tugas_manual WHERE pengajaran_id=?)) tugas,
  (SELECT COUNT(*) FROM ujian WHERE pengajaran_id=? AND jenis_ujian='Kuis' AND waktu_selesai<=NOW()) ulangan");
 $stmt->execute([$selected,$selected,$selected,$selected]);$aktivitas=$stmt->fetch()?:$aktivitas;
 $stmt=$db->prepare('SELECT siswa_id,catatan FROM catatan_siswa_pengajaran WHERE pengajaran_id=?');$stmt->execute([$selected]);foreach($stmt->fetchAll() as $c)$catatan[$c['siswa_id']]=$c['catatan'];
