@@ -25,7 +25,7 @@ $stmt_t = $db->prepare("
     JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id
                            AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka'
     LEFT JOIN pengumpulan_tugas pt ON (pt.tugas_id = t.id AND pt.siswa_id = ?)
-    WHERE p.kelas_id = ?
+    WHERE p.kelas_id = ? AND t.metode_pengumpulan='online'
     AND (NOT EXISTS(
         SELECT 1 FROM materi mat
         WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke

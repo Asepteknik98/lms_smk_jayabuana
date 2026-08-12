@@ -19,7 +19,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $nilai = filter_var($_POST['nilai'] ?? null, FILTER_VALIDATE_FLOAT);
         $catatan_guru = trim($_POST['catatan_guru'] ?? '');
         $tugas_id = (int)($_POST['tugas_id'] ?? 0);
-        $cek = $db->prepare('SELECT pt.id,s.nama_lengkap,t.judul FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id JOIN pengajaran p ON p.id=t.pengajaran_id JOIN siswa s ON s.id=pt.siswa_id WHERE pt.id=? AND p.guru_id=?');
+        $cek = $db->prepare("SELECT pt.id,s.nama_lengkap,t.judul FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id JOIN pengajaran p ON p.id=t.pengajaran_id JOIN siswa s ON s.id=pt.siswa_id WHERE pt.id=? AND p.guru_id=? AND t.metode_pengumpulan='online'");
         $cek->execute([$pengumpulan_id, $guru_id]);
         $data = $cek->fetch();
         if (!$data || $nilai === false || $nilai < 0 || $nilai > 100) {
@@ -34,7 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     exit;
 }
 
-$stmt = $db->prepare('SELECT t.id,t.judul,m.nama_mapel,k.nama_kelas,t.deadline FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? ORDER BY t.deadline DESC');
+$stmt = $db->prepare("SELECT t.id,t.judul,m.nama_mapel,k.nama_kelas,t.deadline FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? AND t.metode_pengumpulan='online' ORDER BY t.deadline DESC");
 $stmt->execute([$guru_id]);
 $pilihan_tugas = $stmt->fetchAll();
 if (!$tugas_id && $fokus_id) {
@@ -46,7 +46,7 @@ if (!$tugas_id && $pilihan_tugas) $tugas_id = (int)$pilihan_tugas[0]['id'];
 
 $info_tugas = null; $daftar_siswa = []; $jawaban_formulir = [];
 if ($tugas_id) {
-    $stmt = $db->prepare('SELECT t.*,p.kelas_id,m.nama_mapel,k.nama_kelas FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE t.id=? AND p.guru_id=?');
+    $stmt = $db->prepare("SELECT t.*,p.kelas_id,m.nama_mapel,k.nama_kelas FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE t.id=? AND p.guru_id=? AND t.metode_pengumpulan='online'");
     $stmt->execute([$tugas_id, $guru_id]);
     $info_tugas = $stmt->fetch();
     if ($info_tugas) {

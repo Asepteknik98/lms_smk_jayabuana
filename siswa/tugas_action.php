@@ -65,6 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit();
     }
 
+    $stmt_metode = $db->prepare('SELECT metode_pengumpulan FROM tugas WHERE id=?');
+    $stmt_metode->execute([$tugas_id]);
+    if (($stmt_metode->fetchColumn() ?: 'online') !== 'online') {
+        echo json_encode(['status' => 'error', 'message' => 'Tugas offline dinilai langsung oleh guru dan tidak dapat dikirim melalui LMS.']);
+        exit();
+    }
+
     if (strtotime(date('Y-m-d H:i:s')) > strtotime($tugas['deadline'])) {
         echo json_encode(['status' => 'error', 'message' => 'Batas waktu (deadline) pengumpulan tugas telah lewat!']);
         exit();
