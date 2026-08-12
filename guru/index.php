@@ -79,6 +79,10 @@ $stmt_mapel_kelas = $db->prepare("
 ");
 $stmt_mapel_kelas->execute([$guru_id]);
 $daftar_pengajaran = $stmt_mapel_kelas->fetchAll();
+$pengajaran_per_mapel = [];
+foreach ($daftar_pengajaran as $pengajaran_item) {
+    $pengajaran_per_mapel[$pengajaran_item['nama_mapel']][] = $pengajaran_item;
+}
 
 // 4. Ambil 5 Pengumpulan Tugas Terbaru yang Membutuhkan Penilaian
 $stmt_recent_sub = $db->prepare("
@@ -136,7 +140,30 @@ $recent_submissions = $stmt_recent_sub->fetchAll();
     .teacher-dashboard-nav { min-height:72px; }
     .teacher-dashboard-nav .teacher-nip { white-space:nowrap; }
     .teacher-panel .table > :not(caption) > * > * { padding:.85rem .75rem; }
-    @media (hover:hover) { .teacher-quick:hover,.teacher-stat:hover { transform:translateY(-3px); box-shadow:0 10px 25px rgba(15,23,42,.09); border-color:#dbe5f2; } }
+    .meeting-summary { border-color:#edf1f5; box-shadow:0 3px 14px rgba(15,23,42,.035); }
+    .meeting-summary .card-body { padding:20px!important; }
+    .meeting-summary-head { padding-bottom:13px; border-bottom:1px solid #eef2f6; }
+    .meeting-summary-icon { width:34px; height:34px; border-radius:10px; display:grid; place-items:center; flex:0 0 34px; font-size:.82rem; }
+    .meeting-summary-eyebrow { font-size:.65rem; letter-spacing:.07em; }
+    .meeting-groups { display:grid; gap:8px; }
+    .meeting-group { border:1px solid #e8edf3; border-radius:12px; background:#fff; overflow:hidden; }
+    .meeting-group summary { min-width:0; padding:12px 13px; cursor:pointer; list-style:none; display:flex; align-items:center; justify-content:space-between; gap:12px; user-select:none; }
+    .meeting-group summary::-webkit-details-marker { display:none; }
+    .meeting-group summary::after { content:"+"; width:24px; height:24px; border-radius:7px; background:#f1f5f9; color:#64748b; display:grid; place-items:center; flex:0 0 24px; font-size:.9rem; font-weight:600; }
+    .meeting-group[open] summary::after { content:"−"; }
+    .meeting-group-title { min-width:0; flex:1; }
+    .meeting-group-title strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#334155; font-size:.8rem; }
+    .meeting-group-title small { display:block; margin-top:2px; color:#94a3b8; font-size:.68rem; }
+    .meeting-group-list { padding:0 12px 10px; border-top:1px solid #f1f4f7; }
+    .meeting-item { min-width:0; padding:9px 2px; border-bottom:1px solid #f1f4f7; color:#1e293b; text-decoration:none; display:flex; align-items:center; justify-content:space-between; gap:10px; transition:color .18s ease; }
+    .meeting-item:last-child { border-bottom:0; }
+    .meeting-item-copy { min-width:0; }
+    .meeting-item-subject { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.78rem; font-weight:700; color:#334155; }
+    .meeting-item-class { display:block; margin-top:2px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:.7rem; color:#94a3b8; }
+    .meeting-item-count { min-width:42px; padding-left:10px; border-left:1px solid #edf1f5; text-align:center; flex:0 0 auto; }
+    .meeting-item-count strong { display:block; color:#15803d; font-size:1.05rem; line-height:1; }
+    .meeting-item-count small { display:block; margin-top:3px; color:#94a3b8; font-size:.56rem; text-transform:uppercase; letter-spacing:.04em; }
+    @media (hover:hover) { .teacher-quick:hover,.teacher-stat:hover { transform:translateY(-3px); box-shadow:0 10px 25px rgba(15,23,42,.09); border-color:#dbe5f2; } .meeting-item:hover { color:#166534; } .meeting-group summary:hover { background:#fafcfd; } }
     @media (min-width:1400px) {
         .teacher-main { padding:32px 40px!important; }
         .teacher-content-primary { flex:0 0 66.666667%; max-width:66.666667%; }
@@ -168,6 +195,14 @@ $recent_submissions = $stmt_recent_sub->fetchAll();
         .grading-item { align-items:flex-start!important; }
         .grading-item .btn { min-width:58px; }
         .dropdown-menu { max-width:calc(100vw - 30px); }
+        .meeting-summary .card-body { padding:15px!important; }
+        .meeting-summary-head { margin-bottom:10px!important; padding-bottom:11px; }
+        .meeting-groups { gap:6px; }
+        .meeting-group summary { padding:10px 11px; }
+        .meeting-group-list { padding:0 10px 7px; }
+        .meeting-item { padding:8px 1px; }
+        .meeting-item-subject { font-size:.75rem; }
+        .meeting-item-count strong { font-size:1rem; }
     }
 </style>
 <div id="page-content-wrapper" class="teacher-dashboard">
@@ -189,7 +224,7 @@ $recent_submissions = $stmt_recent_sub->fetchAll();
             <div class="col-6 col-lg-3"><a href="#antrean-penilaian" class="card teacher-stat h-100"><div class="card-body d-flex align-items-center gap-2"><span class="stat-icon bg-warning-subtle text-warning"><i class="fa-solid fa-pen-ruler"></i></span><div><h3 class="fw-bold mb-0"><?= (int)$tugas_belum_dinilai ?></h3><small class="text-muted">Perlu Dinilai</small></div></div></a></div>
         </div>
 
-        <section class="card teacher-panel mb-4" aria-labelledby="totalPertemuanGuru"><div class="card-body p-3 p-md-4"><div class="d-flex align-items-center gap-2 mb-3"><span class="teacher-quick-icon bg-success-subtle text-success"><i class="fa-solid fa-calendar-check"></i></span><div><small class="text-success fw-semibold">REKAP PEMBELAJARAN</small><h2 class="h6 fw-bold mb-0" id="totalPertemuanGuru">Pertemuan per Mapel & Kelas</h2></div></div><?php if(!$daftar_pengajaran): ?><p class="small text-muted mb-0">Belum ada pengajaran dari admin.</p><?php else: ?><div class="row g-2"><?php foreach($daftar_pengajaran as $p): $jumlah_pertemuan=$pertemuan_per_pengajaran[(int)$p['pengajaran_id']]??0; ?><div class="col-12 col-sm-6 col-xl-4"><a href="materi.php?pengajaran_id=<?= (int)$p['pengajaran_id'] ?>" class="card teacher-stat h-100"><div class="card-body d-flex align-items-center justify-content-between gap-2"><div class="item-copy"><strong class="d-block"><?= sanitize($p['nama_mapel']) ?></strong><small class="text-muted d-block"><?= sanitize($p['nama_kelas']) ?></small></div><div class="text-end flex-shrink-0"><h3 class="fw-bold text-success mb-0"><?= $jumlah_pertemuan ?></h3><small class="text-muted">Pertemuan</small></div></div></a></div><?php endforeach ?></div><?php endif ?></div></section>
+        <section class="card teacher-panel meeting-summary mb-4" aria-labelledby="totalPertemuanGuru"><div class="card-body"><div class="meeting-summary-head d-flex align-items-center gap-2 mb-3"><span class="meeting-summary-icon bg-success-subtle text-success"><i class="fa-solid fa-calendar-check"></i></span><div><small class="meeting-summary-eyebrow text-success fw-semibold">REKAP PEMBELAJARAN</small><h2 class="h6 fw-bold mb-0" id="totalPertemuanGuru">Pertemuan per Mapel & Kelas</h2></div></div><?php if(!$pengajaran_per_mapel): ?><p class="small text-muted mb-0">Belum ada pengajaran dari admin.</p><?php else: ?><div class="meeting-groups"><?php foreach($pengajaran_per_mapel as $nama_mapel=>$daftar_kelas): ?><details class="meeting-group"><summary><span class="meeting-group-title"><strong><?= sanitize($nama_mapel) ?></strong><small><?= count($daftar_kelas) ?> kelas · ketuk untuk melihat rincian</small></span></summary><div class="meeting-group-list"><?php foreach($daftar_kelas as $p): $jumlah_pertemuan=$pertemuan_per_pengajaran[(int)$p['pengajaran_id']]??0; ?><a href="materi.php?pengajaran_id=<?= (int)$p['pengajaran_id'] ?>" class="meeting-item"><span class="meeting-item-copy"><span class="meeting-item-class"><?= sanitize($p['nama_kelas']) ?></span></span><span class="meeting-item-count"><strong><?= $jumlah_pertemuan ?></strong><small>Pertemuan</small></span></a><?php endforeach ?></div></details><?php endforeach ?></div><?php endif ?></div></section>
 
         <div class="row g-3">
             <div class="col-lg-7 teacher-content-primary" id="pengajaran-saya"><section class="card teacher-panel h-100"><div class="card-body p-4"><h2 class="h6 fw-bold mb-3"><i class="fa-solid fa-book-open text-primary me-2"></i>Pengajaran Saya</h2>
