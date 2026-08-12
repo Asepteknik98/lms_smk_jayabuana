@@ -299,6 +299,9 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="tugas.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['tugas.php', 'tugas_penilaian.php'], true) ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check me-2"></i> Tugas
         </a>
+        <a href="nilai_manual.php" class="list-group-item list-group-item-action <?= ($current_page === 'nilai_manual.php') ? 'active' : '' ?>">
+            <i class="fa-solid fa-pen-to-square me-2"></i> Input Nilai Manual
+        </a>
         <?php $sidebar_absensi_aktif = in_array($current_page, ['absensi.php', 'absensi_manual.php', 'riwayat_absensi.php', 'rekap_absensi.php'], true); ?>
         <a href="#sidebarAbsensiGuru" class="list-group-item list-group-item-action <?= $sidebar_absensi_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" role="button" aria-expanded="<?= $sidebar_absensi_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAbsensiGuru">
             <i class="fa-solid fa-clipboard-user me-2"></i>
