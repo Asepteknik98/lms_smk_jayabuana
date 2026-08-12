@@ -9,6 +9,31 @@ check_access([3]); // Khusus Siswa
 
 $db = Database::getInstance();
 
+function is_duplicate_submission(Throwable $error): bool {
+    return $error instanceof PDOException
+        && isset($error->errorInfo[1])
+        && (int)$error->errorInfo[1] === 1062;
+}
+
+function catat_log_pengumpulan_aman(int $user_id, int $tugas_id): void {
+    try {
+        catat_log($user_id, "Mengirimkan jawaban tugas ID: $tugas_id");
+    } catch (Throwable $error) {
+        // Kegagalan audit log tidak boleh mengubah pengumpulan yang sudah berhasil menjadi gagal.
+        error_log('Log pengumpulan tugas gagal: ' . $error->getMessage());
+    }
+}
+
+function kirim_error_pengumpulan(Throwable $error, string $konteks): void {
+    error_log($konteks . ': ' . $error->getMessage());
+    echo json_encode([
+        'status' => 'error',
+        'message' => is_duplicate_submission($error)
+            ? 'Tugas ini sudah pernah dikumpulkan. Jawaban tidak dapat dikirim ulang.'
+            : 'Jawaban gagal disimpan. Silakan coba kembali atau hubungi admin.'
+    ]);
+}
+
 // Dapatkan ID Siswa
 $stmt_s = $db->prepare("SELECT id, kelas_id FROM siswa WHERE user_id = ?");
 $stmt_s->execute([$_SESSION['user_id']]);
@@ -95,12 +120,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 }
             }
             $db->commit();
-            catat_log($_SESSION['user_id'], "Mengirimkan jawaban tugas ID: $tugas_id");
+            catat_log_pengumpulan_aman((int)$_SESSION['user_id'], $tugas_id);
             echo json_encode(['status'=>'success','message'=>$jenis==='pilihan_ganda'?'Jawaban berhasil dikirim dan dinilai otomatis.':'Jawaban esai berhasil dikirim.']);
         } catch (Throwable $e) {
             if ($db->inTransaction()) $db->rollBack();
-            error_log('Pengumpulan tugas teks gagal: '.$e->getMessage());
-            echo json_encode(['status'=>'error','message'=>'Jawaban gagal disimpan atau sudah pernah dikumpulkan.']);
+            kirim_error_pengumpulan($e, 'Pengumpulan tugas teks gagal');
         }
         exit;
     }
@@ -116,10 +140,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
         try {
             $db->prepare('INSERT INTO pengumpulan_tugas (tugas_id,siswa_id,file_tugas,catatan) VALUES (?,?,NULL,?)')->execute([$tugas_id,$siswa_id,$catatan]);
-            catat_log($_SESSION['user_id'], "Mengirimkan jawaban tugas ID: $tugas_id");
+            catat_log_pengumpulan_aman((int)$_SESSION['user_id'], $tugas_id);
             echo json_encode(['status'=>'success','message'=>'Tugas berhasil dikumpulkan.']);
-        } catch (PDOException $e) {
-            echo json_encode(['status'=>'error','message'=>'Jawaban gagal disimpan atau sudah pernah dikumpulkan.']);
+        } catch (Throwable $e) {
+            kirim_error_pengumpulan($e, 'Pengumpulan tugas tautan/ringkasan gagal');
         }
         exit;
     }
@@ -161,17 +185,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $namaAsli=mb_substr(basename($fileName),0,255);
             $stmt_ins = $db->prepare("INSERT INTO pengumpulan_tugas (tugas_id, siswa_id, file_tugas, nama_file_asli, ukuran_file, catatan) VALUES (?, ?, ?, ?, ?, NULL)");
             $stmt_ins->execute([$tugas_id, $siswa_id, $newFileName, $namaAsli, $fileSize]);
-            catat_log($_SESSION['user_id'], "Mengirimkan jawaban tugas ID: $tugas_id");
+            catat_log_pengumpulan_aman((int)$_SESSION['user_id'], $tugas_id);
             echo json_encode(['status' => 'success', 'message' => 'Tugas berhasil dikumpulkan. Jawaban tidak dapat diubah atau dikirim ulang.']);
-        } catch (PDOException $e) {
+        } catch (Throwable $e) {
             @unlink($uploadDir . $newFileName);
-            error_log('Pengumpulan tugas gagal: ' . $e->getMessage());
-            echo json_encode([
-                'status' => 'error',
-                'message' => $e->getCode() === '23000'
-                    ? 'Tugas ini sudah pernah dikumpulkan. Jawaban tidak dapat dikirim ulang.'
-                    : 'Jawaban gagal disimpan. Silakan coba kembali.'
-            ]);
+            kirim_error_pengumpulan($e, 'Pengumpulan tugas berkas gagal');
         }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Gagal mengunggah file jawaban!']);
