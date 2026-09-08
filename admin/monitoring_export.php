@@ -10,14 +10,29 @@ $format = $_GET['format'] ?? '';
 $id = filter_input(INPUT_GET, 'id', FILTER_VALIDATE_INT) ?: 0;
 $scope = $_GET['scope'] ?? 'siswa';
 
-if (!in_array($jenis, ['guru', 'siswa', 'absensi'], true) || !in_array($format, ['pdf', 'excel'], true)) {
+if (!in_array($jenis, ['guru', 'siswa', 'absensi', 'aktivitas'], true) || !in_array($format, ['pdf', 'excel'], true)) {
     http_response_code(400); exit('Permintaan ekspor tidak valid.');
 }
 
 $judul = ''; $headers = []; $rows = [];
 $namaFile = 'rekap-' . $jenis . '-' . date('Ymd-His');
 
-if ($jenis === 'guru') {
+if ($jenis === 'aktivitas') {
+    require_once __DIR__ . '/../includes/monitoring_activity.php';
+    try {
+        $activityDate = monitoringActivityDate($_GET['tanggal'] ?? date('Y-m-d'));
+    } catch (InvalidArgumentException $e) {
+        http_response_code(400);
+        exit($e->getMessage());
+    }
+    $data = monitoringDailyActivities($db, $activityDate);
+    $judul = 'Rekap Harian Aktivitas Guru - ' . $activityDate->format('d/m/Y');
+    $namaFile = 'rekap-aktivitas-guru-' . $activityDate->format('Y-m-d');
+    $headers = ['No', 'Jenis', 'Aktivitas', 'Mata Pelajaran', 'Guru', 'Kelas', 'Waktu'];
+    foreach ($data as $i => $r) {
+        $rows[] = [$i + 1, $r['jenis'], $r['aktivitas'], $r['nama_mapel'], $r['pelaku'], $r['nama_kelas'], date('d/m/Y H:i:s', strtotime($r['waktu']))];
+    }
+} elseif ($jenis === 'guru') {
     if ($id > 0) {
         $stmt = $db->prepare("SELECT g.nama_lengkap,g.nip,g.email,u.username,IF(u.is_active=1,'Aktif','Nonaktif') status_akun,COALESCE(m.nama_mapel,'-') nama_mapel,COALESCE(k.nama_kelas,'-') nama_kelas,COALESCE(p.semester,'-') semester,COALESCE(p.tahun_ajaran,'-') tahun_ajaran FROM guru g JOIN users u ON u.id=g.user_id LEFT JOIN pengajaran p ON p.guru_id=g.id LEFT JOIN mapel m ON m.id=p.mapel_id LEFT JOIN kelas k ON k.id=p.kelas_id WHERE g.id=? ORDER BY p.tahun_ajaran DESC,p.semester,m.nama_mapel");
         $stmt->execute([$id]); $data = $stmt->fetchAll();
@@ -54,6 +69,24 @@ if ($jenis === 'guru') {
 }
 
 function exportEscape($value) { return htmlspecialchars((string)$value, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8'); }
+if ($jenis === 'aktivitas' && $format === 'excel') {
+    header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="'.$namaFile.'.xls"');
+    header('Cache-Control: no-store, no-cache, must-revalidate');
+    $xml = static function ($value) {
+        $value = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/', '', (string)$value);
+        return htmlspecialchars($value, ENT_QUOTES | ENT_XML1 | ENT_SUBSTITUTE, 'UTF-8');
+    };
+    echo '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?>';
+    echo '<Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Worksheet ss:Name="Aktivitas Harian"><Table>';
+    foreach (array_merge([[$judul], ['Dicetak: '.date('d/m/Y H:i:s')], $headers], $rows ?: [['Tidak ada data.']]) as $row) {
+        echo '<Row>';
+        foreach ($row as $cell) echo '<Cell><Data ss:Type="String">'.$xml($cell).'</Data></Cell>';
+        echo '</Row>';
+    }
+    echo '</Table></Worksheet></Workbook>';
+    exit;
+}
 if ($format === 'excel') {
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
     header('Content-Disposition: attachment; filename="'.$namaFile.'.xls"');
@@ -70,7 +103,16 @@ function pdfEscape($text) {
     return str_replace(['\\','(',')',"\r","\n"],['\\\\','\\(','\\)',' ',' '],$text);
 }
 $lines = [$judul,'Dicetak: '.date('d/m/Y H:i'),str_repeat('-',118),implode(' | ',$headers),str_repeat('-',118)];
-foreach ($rows as $row) foreach (str_split(implode(' | ',array_map('strval',$row)),118) as $part) $lines[] = $part;
+foreach ($rows as $row) {
+    $line = implode(' | ', array_map('strval', $row));
+    if ($jenis === 'aktivitas') {
+        // Keep UTF-8 characters intact before converting them for the PDF font.
+        preg_match_all('/.{1,118}/us', str_replace(["\r", "\n"], ' ', $line), $parts);
+        foreach ($parts[0] as $part) $lines[] = $part;
+    } else {
+        foreach (str_split($line, 118) as $part) $lines[] = $part;
+    }
+}
 if (!$rows) $lines[] = 'Tidak ada data.';
 $pages = array_chunk($lines,48); $objects = [1=>'<< /Type /Catalog /Pages 2 0 R >>']; $kids=[]; $next=4;
 foreach ($pages as $pageLines) {

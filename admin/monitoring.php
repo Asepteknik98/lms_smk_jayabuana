@@ -1,4 +1,14 @@
 <?php
+require_once __DIR__ . '/../config/session.php';
+require_once __DIR__ . '/../config/auth.php';
+require_once __DIR__ . '/../includes/monitoring_activity.php';
+check_access([1]);
+try {
+    $activityDate = monitoringActivityDate($_GET['tanggal'] ?? date('Y-m-d'));
+} catch (InvalidArgumentException $e) {
+    http_response_code(400);
+    exit($e->getMessage());
+}
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/database.php';
 
@@ -41,31 +51,7 @@ $siswa_list = $db->query(
      ORDER BY k.nama_kelas, s.nama_lengkap"
 )->fetchAll();
 
-$aktivitas_pembelajaran = $db->query(
-    "SELECT 'Materi' AS jenis, mat.judul AS aktivitas, mat.created_at AS waktu,
-            g.nama_lengkap AS pelaku, m.nama_mapel, k.nama_kelas
-     FROM materi mat
-     JOIN pengajaran p ON p.id = mat.pengajaran_id
-     JOIN guru g ON g.id = p.guru_id
-     JOIN mapel m ON m.id = p.mapel_id
-     JOIN kelas k ON k.id = p.kelas_id
-     UNION ALL
-     SELECT 'Tugas', t.judul, t.created_at, g.nama_lengkap, m.nama_mapel, k.nama_kelas
-     FROM tugas t
-     JOIN pengajaran p ON p.id = t.pengajaran_id
-     JOIN guru g ON g.id = p.guru_id
-     JOIN mapel m ON m.id = p.mapel_id
-     JOIN kelas k ON k.id = p.kelas_id
-     UNION ALL
-     SELECT 'Ulangan Harian', uj.nama_ujian, uj.created_at, g.nama_lengkap, m.nama_mapel, k.nama_kelas
-     FROM ujian uj
-     JOIN pengajaran p ON p.id = uj.pengajaran_id
-     JOIN guru g ON g.id = p.guru_id
-     JOIN mapel m ON m.id = p.mapel_id
-     JOIN kelas k ON k.id = p.kelas_id
-     ORDER BY waktu DESC
-     LIMIT 20"
-)->fetchAll();
+$aktivitas_pembelajaran = monitoringDailyActivities($db, $activityDate);
 
 $sesi_absensi = $db->query(
     "SELECT sa.id, sa.pertemuan_ke, sa.tanggal, sa.status,
@@ -251,9 +237,18 @@ if ($siswa_id > 0) {
         </div>
 
         <div class="row g-4">
-            <div class="col-xl-6 monitor-panel" data-panel="aktivitas"><div class="card content-card p-4 h-100"><h6 class="fw-bold mb-3">Aktivitas Pembelajaran Terbaru</h6><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Jenis</th><th>Aktivitas</th><th>Guru/Kelas</th><th>Waktu</th></tr></thead><tbody>
+            <div class="col-xl-6 monitor-panel" data-panel="aktivitas"><div class="card content-card p-4 h-100"><h6 class="fw-bold mb-3">Rekap Harian Aktivitas Guru</h6>
+                <form method="get" action="monitoring.php" class="d-flex flex-wrap align-items-end gap-2 mb-3">
+                    <input type="hidden" name="tab" value="aktivitas">
+                    <div><label for="tanggalAktivitas" class="form-label">Tanggal rekap</label><input type="date" id="tanggalAktivitas" name="tanggal" class="form-control" value="<?= $activityDate->format('Y-m-d') ?>" min="1000-01-01" max="9999-12-30" required></div>
+                    <button type="submit" class="btn btn-primary">Tampilkan</button>
+                    <button type="submit" formaction="monitoring_export.php" name="format" value="excel" class="btn btn-success"><i class="fa-solid fa-file-excel me-1"></i> Download Excel</button>
+                    <button type="submit" formaction="monitoring_export.php" name="format" value="pdf" class="btn btn-danger"><i class="fa-solid fa-file-pdf me-1"></i> Download PDF</button>
+                    <input type="hidden" name="jenis" value="aktivitas">
+                </form>
+                <p class="text-muted small">Tanggal <?= $activityDate->format('d/m/Y') ?> &middot; <?= count($aktivitas_pembelajaran) ?> aktivitas (Materi, Tugas, dan Ulangan Harian).</p><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Jenis</th><th>Aktivitas</th><th>Guru/Kelas</th><th>Waktu</th></tr></thead><tbody>
                 <?php foreach ($aktivitas_pembelajaran as $item): ?><tr><td><span class="badge bg-secondary"><?= sanitize($item['jenis']) ?></span></td><td><?= sanitize($item['aktivitas']) ?><br><small><?= sanitize($item['nama_mapel']) ?></small></td><td><?= sanitize($item['pelaku']) ?><br><small><?= sanitize($item['nama_kelas']) ?></small></td><td><small><?= date('d/m/Y H:i', strtotime($item['waktu'])) ?></small></td></tr><?php endforeach; ?>
-            </tbody></table></div><?php if (!$aktivitas_pembelajaran): ?><p class="text-muted text-center">Belum ada aktivitas.</p><?php endif; ?></div></div>
+            </tbody></table></div><?php if (!$aktivitas_pembelajaran): ?><p class="text-muted text-center">Tidak ada aktivitas pada tanggal yang dipilih.</p><?php endif; ?></div></div>
 
             <div class="col-xl-6 monitor-panel" data-panel="absensi"><div class="card content-card p-4 h-100"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><h6 class="fw-bold mb-0">Monitoring Absensi Terbaru</h6><div class="export-actions"><a href="monitoring_export.php?jenis=absensi&amp;format=pdf" class="btn btn-sm btn-danger"><i class="fa-solid fa-file-pdf me-1"></i> Semua PDF</a><a href="monitoring_export.php?jenis=absensi&amp;format=excel" class="btn btn-sm btn-success"><i class="fa-solid fa-file-excel me-1"></i> Semua Excel</a></div></div><div class="table-responsive"><table class="table table-sm align-middle"><thead><tr><th>Pembelajaran</th><th>Status</th><th>Rekap</th></tr></thead><tbody>
                 <?php foreach ($sesi_absensi as $sesi): ?><tr><td><strong><?= sanitize($sesi['nama_mapel']) ?></strong><br><small><?= sanitize($sesi['nama_kelas']) ?> · Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> · <?= sanitize($sesi['nama_guru']) ?></small></td><td><span class="badge bg-<?= $sesi['status'] === 'Dibuka' ? 'success' : 'secondary' ?>"><?= sanitize($sesi['status']) ?></span></td><td><small>H <?= (int)$sesi['hadir'] ?> · S <?= (int)$sesi['sakit'] ?> · I <?= (int)$sesi['izin'] ?> · A <?= (int)$sesi['alpa'] ?></small></td></tr><?php endforeach; ?>
@@ -274,5 +269,8 @@ $(function () {
         $('.monitor-panel[data-panel="' + target + '"]').addClass('active');
         $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
     });
+    if (new URLSearchParams(window.location.search).get('tab') === 'aktivitas') {
+        $('.monitor-tab[data-target="aktivitas"]').trigger('click');
+    }
 });
 </script>
