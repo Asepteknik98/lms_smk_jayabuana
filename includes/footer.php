@@ -70,7 +70,10 @@ $halaman_dashboard_pengumuman = preg_match('~/(guru|siswa)/index\.php$~', str_re
             </div>
             <div class="modal-footer justify-content-between">
                 <small class="text-muted" id="noticeCaption" aria-live="polite">1 / 3 — Utamakan keselamatan dan kesehatan</small>
-                <button type="button" class="btn btn-primary px-4" id="noticeUnderstand"><i class="fa-solid fa-check me-1"></i>Saya Mengerti</button>
+                <div class="d-flex flex-wrap gap-2">
+                    <a href="https://whatsapp.com/channel/0029VaavIAl7Noa3wxlyXP24" class="btn btn-success d-none" id="noticeChannel" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp me-1"></i>Cek Saluran</a>
+                    <button type="button" class="btn btn-primary px-4" id="noticeUnderstand"><i class="fa-solid fa-check me-1"></i>Saya Mengerti</button>
+                </div>
             </div>
         </div>
     </div>
@@ -92,6 +95,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const noticeImage = modalElement.querySelector('.volcanic-notice-image');
     const noticeTitle = document.getElementById('noticeTitleText');
     const noticeCaption = document.getElementById('noticeCaption');
+    const noticeChannel = document.getElementById('noticeChannel');
     const notices = [
         { src: noticeImage.getAttribute('src'), alt: noticeImage.alt, title: 'Waspada Abu Vulkanik', caption: 'Utamakan keselamatan dan kesehatan' },
         { src: '../assets/pengumuman/panduan.jpg', alt: 'Panduan penggunaan LMS SMK Jaya Buana untuk siswa: absen online, membuka materi, mengirim tugas, melihat riwayat absensi, semua materi, dan nilai.', title: 'Panduan Penggunaan LMS', caption: 'Pelajari panduan penggunaan LMS SMK Jaya Buana' },
@@ -104,6 +108,7 @@ document.addEventListener('DOMContentLoaded', function () {
         noticeImage.src = notice.src;
         noticeImage.alt = notice.alt;
         noticeTitle.textContent = notice.title;
+        noticeChannel.classList.toggle('d-none', notice.src !== '../assets/pengumuman/saluran.jpg');
         noticeCaption.textContent = (noticeIndex + 1) + ' / ' + notices.length + ' — ' + notice.caption;
         modalElement.querySelector('.modal-body').scrollTop = 0;
     }
