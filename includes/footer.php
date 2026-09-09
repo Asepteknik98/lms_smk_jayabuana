@@ -59,19 +59,18 @@ $halaman_dashboard_pengumuman = preg_match('~/(guru|siswa)/index\.php$~', str_re
     }
 </style>
 
-<div class="modal fade volcanic-notice-modal" id="volcanicAshNotice" tabindex="-1" aria-labelledby="volcanicAshNoticeTitle" aria-hidden="true">
+<div class="modal fade volcanic-notice-modal" id="volcanicAshNotice" tabindex="-1" aria-labelledby="volcanicAshNoticeTitle" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content shadow-lg">
             <div class="modal-header">
-                <h2 class="modal-title h5 fw-bold" id="volcanicAshNoticeTitle"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i>Waspada Abu Vulkanik</h2>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button>
+                <h2 class="modal-title h5 fw-bold" id="volcanicAshNoticeTitle" aria-live="polite"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i><span id="noticeTitleText">Waspada Abu Vulkanik</span></h2>
             </div>
             <div class="modal-body p-0">
                 <img src="../assets/pengumuman/informasi.jpeg" class="volcanic-notice-image" alt="Imbauan kewaspadaan abu vulkanik: gunakan masker, kurangi aktivitas luar ruangan, tutup pintu dan jendela, hindari menggosok mata, serta basahi abu sebelum dibersihkan.">
             </div>
             <div class="modal-footer justify-content-between">
-                <small class="text-muted"><i class="fa-solid fa-shield-heart me-1"></i>Utamakan keselamatan dan kesehatan</small>
-                <button type="button" class="btn btn-primary px-4" data-bs-dismiss="modal"><i class="fa-solid fa-check me-1"></i>Saya Mengerti</button>
+                <small class="text-muted" id="noticeCaption" aria-live="polite">1 / 2 — Utamakan keselamatan dan kesehatan</small>
+                <button type="button" class="btn btn-primary px-4" id="noticeUnderstand"><i class="fa-solid fa-check me-1"></i>Saya Mengerti</button>
             </div>
         </div>
     </div>
@@ -89,7 +88,41 @@ document.addEventListener('DOMContentLoaded', function () {
     const modalElement = document.getElementById('volcanicAshNotice');
     if (!modalElement || typeof bootstrap === 'undefined') return;
 
-    const noticeModal = bootstrap.Modal.getOrCreateInstance(modalElement);
+    const noticeModal = bootstrap.Modal.getOrCreateInstance(modalElement, { backdrop: 'static', keyboard: false });
+    const noticeImage = modalElement.querySelector('.volcanic-notice-image');
+    const noticeTitle = document.getElementById('noticeTitleText');
+    const noticeCaption = document.getElementById('noticeCaption');
+    const notices = [
+        { src: noticeImage.getAttribute('src'), alt: noticeImage.alt, title: 'Waspada Abu Vulkanik', caption: 'Utamakan keselamatan dan kesehatan' },
+        { src: '../assets/pengumuman/panduan.jpg', alt: 'Panduan penggunaan LMS SMK Jaya Buana untuk siswa: absen online, membuka materi, mengirim tugas, melihat riwayat absensi, semua materi, dan nilai.', title: 'Panduan Penggunaan LMS', caption: 'Pelajari panduan penggunaan LMS SMK Jaya Buana' }
+    ];
+    let noticeIndex = 0;
+    let noticesCompleted = false;
+    function renderNotice() {
+        const notice = notices[noticeIndex];
+        noticeImage.src = notice.src;
+        noticeImage.alt = notice.alt;
+        noticeTitle.textContent = notice.title;
+        noticeCaption.textContent = (noticeIndex + 1) + ' / ' + notices.length + ' — ' + notice.caption;
+        modalElement.querySelector('.modal-body').scrollTop = 0;
+    }
+    modalElement.addEventListener('show.bs.modal', function () {
+        noticeIndex = 0;
+        noticesCompleted = false;
+        renderNotice();
+    });
+    document.getElementById('noticeUnderstand').addEventListener('click', function () {
+        if (noticeIndex < notices.length - 1) {
+            noticeIndex++;
+            renderNotice();
+            return;
+        }
+        noticesCompleted = true;
+        noticeModal.hide();
+    });
+    modalElement.addEventListener('hide.bs.modal', function (event) {
+        if (!noticesCompleted) event.preventDefault();
+    });
     const now = new Date();
     const dateKey = [now.getFullYear(), String(now.getMonth() + 1).padStart(2, '0'), String(now.getDate()).padStart(2, '0')].join('-');
     const storageKey = 'lms_volcanic_ash_notice_<?= (int)($_SESSION['user_id'] ?? 0) ?>';
@@ -99,8 +132,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (dashboardMain && !dashboardMain.querySelector('[data-volcanic-notice-open]')) {
         const banner = document.createElement('aside');
         banner.className = 'volcanic-alert-banner';
-        banner.setAttribute('aria-label', 'Pengumuman kewaspadaan abu vulkanik');
-        banner.innerHTML = '<span class="alert-icon"><i class="fa-solid fa-mask-face"></i></span><span class="alert-copy"><strong>Waspada Abu Vulkanik</strong><small>Gunakan masker saat beraktivitas dan utamakan keselamatan serta kesehatan.</small></span><button type="button" class="btn btn-sm btn-warning fw-semibold" data-volcanic-notice-open><i class="fa-solid fa-image me-1"></i>Lihat Imbauan</button>';
+        banner.setAttribute('aria-label', 'Imbauan dan panduan penggunaan LMS');
+        banner.innerHTML = '<span class="alert-icon"><i class="fa-solid fa-mask-face"></i></span><span class="alert-copy"><strong>Imbauan dan Panduan LMS</strong><small>Lihat imbauan abu vulkanik dan panduan penggunaan LMS.</small></span><button type="button" class="btn btn-sm btn-warning fw-semibold" data-volcanic-notice-open><i class="fa-solid fa-image me-1"></i>Lihat Pengumuman</button>';
         dashboardMain.prepend(banner);
         banner.querySelector('[data-volcanic-notice-open]').addEventListener('click', function () { noticeModal.show(); });
     }
@@ -111,7 +144,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (lastSeen !== dateKey) noticeModal.show();
 
     modalElement.addEventListener('hidden.bs.modal', function () {
-        try { localStorage.setItem(storageKey, dateKey); } catch (error) {}
+        if (noticesCompleted) {
+            try { localStorage.setItem(storageKey, dateKey); } catch (error) {}
+        }
     });
 });
 </script><?php endif; ?>
