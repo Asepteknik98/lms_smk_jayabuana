@@ -69,7 +69,7 @@ $halaman_dashboard_pengumuman = preg_match('~/(guru|siswa)/index\.php$~', str_re
                 <img src="../assets/pengumuman/informasi.jpeg" class="volcanic-notice-image" alt="Imbauan kewaspadaan abu vulkanik: gunakan masker, kurangi aktivitas luar ruangan, tutup pintu dan jendela, hindari menggosok mata, serta basahi abu sebelum dibersihkan.">
             </div>
             <div class="modal-footer justify-content-between">
-                <small class="text-muted" id="noticeCaption" aria-live="polite">1 / 2 — Utamakan keselamatan dan kesehatan</small>
+                <small class="text-muted" id="noticeCaption" aria-live="polite">1 / 3 — Utamakan keselamatan dan kesehatan</small>
                 <button type="button" class="btn btn-primary px-4" id="noticeUnderstand"><i class="fa-solid fa-check me-1"></i>Saya Mengerti</button>
             </div>
         </div>
@@ -94,7 +94,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const noticeCaption = document.getElementById('noticeCaption');
     const notices = [
         { src: noticeImage.getAttribute('src'), alt: noticeImage.alt, title: 'Waspada Abu Vulkanik', caption: 'Utamakan keselamatan dan kesehatan' },
-        { src: '../assets/pengumuman/panduan.jpg', alt: 'Panduan penggunaan LMS SMK Jaya Buana untuk siswa: absen online, membuka materi, mengirim tugas, melihat riwayat absensi, semua materi, dan nilai.', title: 'Panduan Penggunaan LMS', caption: 'Pelajari panduan penggunaan LMS SMK Jaya Buana' }
+        { src: '../assets/pengumuman/panduan.jpg', alt: 'Panduan penggunaan LMS SMK Jaya Buana untuk siswa: absen online, membuka materi, mengirim tugas, melihat riwayat absensi, semua materi, dan nilai.', title: 'Panduan Penggunaan LMS', caption: 'Pelajari panduan penggunaan LMS SMK Jaya Buana' },
+        { src: '../assets/pengumuman/saluran.jpg', alt: 'Ajakan mengikuti Saluran WhatsApp SMK Jaya Buana untuk informasi kegiatan sekolah, jadwal dan agenda, pengumuman penting, serta berita terbaru.', title: 'Saluran WhatsApp SMK Jaya Buana', caption: 'Ikuti saluran WhatsApp sekolah untuk mendapatkan informasi terbaru' }
     ];
     let noticeIndex = 0;
     let noticesCompleted = false;
@@ -132,8 +133,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (dashboardMain && !dashboardMain.querySelector('[data-volcanic-notice-open]')) {
         const banner = document.createElement('aside');
         banner.className = 'volcanic-alert-banner';
-        banner.setAttribute('aria-label', 'Imbauan dan panduan penggunaan LMS');
-        banner.innerHTML = '<span class="alert-icon"><i class="fa-solid fa-mask-face"></i></span><span class="alert-copy"><strong>Imbauan dan Panduan LMS</strong><small>Lihat imbauan abu vulkanik dan panduan penggunaan LMS.</small></span><button type="button" class="btn btn-sm btn-warning fw-semibold" data-volcanic-notice-open><i class="fa-solid fa-image me-1"></i>Lihat Pengumuman</button>';
+        banner.setAttribute('aria-label', 'Imbauan, panduan LMS, dan saluran WhatsApp sekolah');
+        banner.innerHTML = '<span class="alert-icon"><i class="fa-solid fa-mask-face"></i></span><span class="alert-copy"><strong>Pengumuman Sekolah</strong><small>Lihat imbauan abu vulkanik, panduan LMS, dan saluran WhatsApp sekolah.</small></span><button type="button" class="btn btn-sm btn-warning fw-semibold" data-volcanic-notice-open><i class="fa-solid fa-image me-1"></i>Lihat Pengumuman</button>';
         dashboardMain.prepend(banner);
         banner.querySelector('[data-volcanic-notice-open]').addEventListener('click', function () { noticeModal.show(); });
     }
