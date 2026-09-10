@@ -65,12 +65,12 @@ if ($ready) {
     $people = ks_people($db);
     $stmt = $db->prepare('SELECT h.*,k.tanggal,k.nama kegiatan FROM kegiatan_kehadiran h JOIN kegiatan_sekolah k ON k.id=h.kegiatan_id WHERE k.tanggal BETWEEN ? AND ? ORDER BY h.nama_lengkap,k.tanggal,k.id');
     $stmt->execute([$week,$end->format('Y-m-d')]); $records = $stmt->fetchAll();
-    foreach ($people as $key=>$person) $summary[$key]=$person+['hadir'=>0,'tidak'=>0,'tercatat'=>0];
+    foreach ($people as $key=>$person) $summary[$key]=$person+['hadir'=>0,'tercatat'=>0];
     foreach ($records as $r) {
         $key=$r['peserta'];
-        if (!isset($summary[$key])) $summary[$key]=$r+['tidak'=>0,'tercatat'=>0];
+        if (!isset($summary[$key])) $summary[$key]=$r+['tercatat'=>0];
         if ($summary[$key]['tercatat']===0) $summary[$key]['hadir']=0;
-        $summary[$key]['hadir']+=(int)$r['hadir']; $summary[$key]['tidak']+=1-(int)$r['hadir']; $summary[$key]['tercatat']++;
+        $summary[$key]['hadir']+=(int)$r['hadir']; $summary[$key]['tercatat']++;
         if ((int)$r['kegiatan_id']===$selected) { $attendance[$key]=$r; $people[$key] ??= $r; }
     }
     if (($_GET['format'] ?? '') === 'excel') {
@@ -78,8 +78,8 @@ if ($ready) {
         header('Content-Disposition: attachment; filename="Rekap_Kegiatan_'.$week.'.xls"');
         header('Cache-Control: no-store');
         echo "\xEF\xBB\xBF".'<html><meta charset="UTF-8"><h2>Rekap Kegiatan Guru/Staf</h2><p>'.$esc($week.' s.d. '.$end->format('Y-m-d')).'</p><table border="1"><tr><th>Tanggal</th><th>Kegiatan</th><th>Nama</th><th>Jenis</th><th>Kehadiran</th></tr>';
-        foreach ($records as $r) { echo '<tr>'; foreach ([$r['tanggal'],$r['kegiatan'],$r['nama_lengkap'],$r['jenis'],$r['hadir']?'Hadir':'Tidak hadir'] as $cell) echo '<td style="mso-number-format:\@">'.$esc($cell).'</td>'; echo '</tr>'; }
-        echo '</table><p>Kegiatan yang belum disimpan tidak dihitung sebagai ketidakhadiran.</p></html>'; exit;
+        foreach ($records as $r) { echo '<tr>'; foreach ([$r['tanggal'],$r['kegiatan'],$r['nama_lengkap'],$r['jenis'],$r['hadir']?'Hadir':'-'] as $cell) echo '<td style="mso-number-format:\@">'.$esc($cell).'</td>'; echo '</tr>'; }
+        echo '</table><p>Hadir = dicentang. Tanda - = tidak dicentang. Hanya kehadiran yang dijumlahkan.</p></html>'; exit;
     }
 }
 $success = $_SESSION['ks_success'] ?? ''; unset($_SESSION['ks_success']);
@@ -142,7 +142,7 @@ require_once __DIR__.'/../includes/sidebar.php';
 </form>
 <?php if ($current): ?>
 <div class="d-flex flex-wrap justify-content-between gap-2"><h2 class="h5 mb-0">Daftar Guru &amp; Staf</h2><span class="small text-muted"><?= $current['disimpan_pada']?'Kehadiran sudah tersimpan':'Kehadiran belum diisi' ?></span></div>
-<p class="small text-muted mt-2 mb-0">Centang guru/staf yang hadir.</p>
+<p class="small text-muted mt-2 mb-0">Centang guru/staf yang hadir. Yang tidak dicentang ditampilkan sebagai &quot;-&quot;.</p>
 <form method="post" id="ks-form"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="kegiatan_id" value="<?= $selected ?>"><input type="hidden" name="versi" value="<?= (int)$current['versi'] ?>">
 <div class="ks-toolbar"><div class="ks-search"><label class="visually-hidden" for="ks-search">Cari nama guru atau staf</label><input id="ks-search" type="search" class="form-control" placeholder="Cari nama..."></div><label class="small d-flex align-items-center gap-2"><input type="checkbox" id="ks-all" class="form-check-input mt-0">Pilih semua hasil pencarian</label></div>
 <div class="ks-attendance-list" role="region" aria-label="Daftar kehadiran guru dan staf, gulir untuk melihat peserta lainnya" tabindex="0"><ul class="ks-people" aria-label="Guru dan staf">
@@ -159,10 +159,10 @@ require_once __DIR__.'/../includes/sidebar.php';
 <section id="ks-staff-panel" class="ks-action-panel mt-3" aria-labelledby="ks-staff-title" hidden><h2 id="ks-staff-title" class="h6">Tambah staf</h2><p class="small text-muted mt-2">Seluruh guru dari Data Guru otomatis tersedia. Tambahkan staf yang belum terdaftar sebagai guru.</p><form method="post"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="staff"><label class="form-label" for="staf-nama">Nama lengkap staf</label><input id="staf-nama" class="form-control mb-2" name="nama" maxlength="100" required><label class="form-label" for="staf-nip">NIP / identitas (opsional)</label><input id="staf-nip" class="form-control mb-2" name="nip" maxlength="30"><button class="btn btn-primary">Tambah staf</button></form></section>
 </div>
 <details class="ks-summary ks-extra p-3 p-md-4"><summary class="ks-summary-heading"><span class="fw-semibold">Rekap mingguan guru &amp; staf</span><span class="ks-summary-period text-muted"><?= $start->format('d/m/Y') ?> &ndash; <?= $end->format('d/m/Y') ?></span></summary>
-<div class="ks-summary-body mt-3"><p class="small text-muted mb-3">Kegiatan yang belum diisi tidak dihitung sebagai ketidakhadiran.</p>
-<div class="ks-summary-scroll" role="region" aria-label="Rekap mingguan guru dan staf" tabindex="0"><table class="table ks-summary-table mb-0"><thead><tr><th scope="col">Nama</th><th scope="col">Hadir</th><th scope="col">Tidak hadir</th><th scope="col">Belum tercatat</th></tr></thead><tbody>
-<?php foreach ($summary as $r): ?><tr><td><?= $esc($r['nama_lengkap']) ?><?php if ($r['jenis'] !== 'Guru'): ?> <span class="ks-person-type"><?= $esc($r['jenis']) ?></span><?php endif ?></td><td><?= (int)$r['hadir'] ?></td><td><?= (int)$r['tidak'] ?></td><td><?= count($events)-(int)$r['tercatat'] ?></td></tr><?php endforeach ?>
-<?php if (!$summary): ?><tr><td colspan="4" class="text-muted">Belum ada guru/staf untuk ditampilkan.</td></tr><?php endif ?>
+<div class="ks-summary-body mt-3"><p class="small text-muted mb-3">Hanya kehadiran yang dijumlahkan. Tanda &quot;-&quot; berarti belum ada kehadiran yang dicentang.</p>
+<div class="ks-summary-scroll" role="region" aria-label="Rekap mingguan guru dan staf" tabindex="0"><table class="table ks-summary-table mb-0"><thead><tr><th scope="col">Nama</th><th scope="col">Hadir</th><th scope="col">Belum tercatat</th></tr></thead><tbody>
+<?php foreach ($summary as $r): ?><tr><td><?= $esc($r['nama_lengkap']) ?><?php if ($r['jenis'] !== 'Guru'): ?> <span class="ks-person-type"><?= $esc($r['jenis']) ?></span><?php endif ?></td><td><?= (int)$r['hadir'] > 0 ? (int)$r['hadir'] : '-' ?></td><td><?= count($events)-(int)$r['tercatat'] ?></td></tr><?php endforeach ?>
+<?php if (!$summary): ?><tr><td colspan="3" class="text-muted">Belum ada guru/staf untuk ditampilkan.</td></tr><?php endif ?>
 </tbody></table></div></div></details>
 <?php endif ?>
 </main></div>
