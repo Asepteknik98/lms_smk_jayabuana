@@ -19,7 +19,8 @@ function ks_schedule(int $day): array {
     return isset($special[$day]) ? $special[$day] + [
         'menyambut_pagi' => 'Menyambut Siswa — Pagi',
         'menyambut_siang' => 'Menyambut Siswa — Siang',
-        'piket' => 'Guru Piket',
+        'piket_pagi' => 'Guru Piket — Pagi',
+        'piket_siang' => 'Guru Piket — Siang',
     ] : [];
 }
 

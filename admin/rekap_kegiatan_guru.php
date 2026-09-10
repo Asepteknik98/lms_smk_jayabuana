@@ -54,6 +54,10 @@ if ($ready) {
     for ($i=0;$i<7;$i++) foreach (ks_schedule($i+1) as $code=>$name) $seed->execute([$start->modify("+$i days")->format('Y-m-d'),$code,$name]);
     $stmt = $db->prepare('SELECT k.*,COUNT(h.peserta) jumlah,SUM(h.hadir=1) hadir FROM kegiatan_sekolah k LEFT JOIN kegiatan_kehadiran h ON h.kegiatan_id=k.id WHERE k.tanggal BETWEEN ? AND ? GROUP BY k.id ORDER BY k.tanggal,k.id');
     $stmt->execute([$week,$end->format('Y-m-d')]); $events = $stmt->fetchAll();
+    // Jadwal piket lama yang kosong digantikan dua sesi; riwayat tersimpan tetap tampil.
+    $events = array_values(array_filter($events, static fn($event) =>
+        $event['kode'] !== 'piket' || !empty($event['disimpan_pada']) || (int)$event['jumlah'] > 0
+    ));
     foreach ($events as $event) { $byDate[$event['tanggal']][]=$event; if ((int)$event['id']===$selected) $current=$event; }
     // Keep old weekly activity links working; new filters only show the chosen date.
     if ($current && !isset($_GET['tanggal'])) $date = ks_date($current['tanggal']);
@@ -77,9 +81,27 @@ if ($ready) {
         header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
         header('Content-Disposition: attachment; filename="Rekap_Kegiatan_'.$week.'.xls"');
         header('Cache-Control: no-store');
-        echo "\xEF\xBB\xBF".'<html><meta charset="UTF-8"><h2>Rekap Kegiatan Guru/Staf</h2><p>'.$esc($week.' s.d. '.$end->format('Y-m-d')).'</p><table border="1"><tr><th>Tanggal</th><th>Kegiatan</th><th>Nama</th><th>Jenis</th><th>Kehadiran</th></tr>';
-        foreach ($records as $r) { echo '<tr>'; foreach ([$r['tanggal'],$r['kegiatan'],$r['nama_lengkap'],$r['jenis'],$r['hadir']?'Hadir':'-'] as $cell) echo '<td style="mso-number-format:\@">'.$esc($cell).'</td>'; echo '</tr>'; }
-        echo '</table><p>Hadir = dicentang. Tanda - = tidak dicentang. Hanya kehadiran yang dijumlahkan.</p></html>'; exit;
+        $matrix = [];
+        foreach ($records as $record) $matrix[$record['peserta']][(int)$record['kegiatan_id']] = (int)$record['hadir'];
+        $exportPeople = $summary;
+        uasort($exportPeople, static fn($a, $b) => strnatcasecmp($a['nama_lengkap'], $b['nama_lengkap']));
+        echo "\xEF\xBB\xBF".'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}th{background:#edf2f7}th,td{padding:8px;vertical-align:middle}th{white-space:normal}</style></head><body><h2>Rekap Kegiatan Guru/Staf</h2><p>Periode: '.$esc($start->format('d/m/Y').' s.d. '.$end->format('d/m/Y')).'</p><p>Hadir = dicentang; - = tidak dicentang atau belum diisi.</p><table border="1"><thead><tr><th>Nama guru/staf</th>';
+        foreach ($events as $event) {
+            echo '<th>'.$esc(ks_date($event['tanggal'])->format('d/m')).'<br>'.$esc($event['nama']).'</th>';
+        }
+        echo '<th>Jumlah kegiatan dihadiri</th></tr></thead><tbody>';
+        foreach ($exportPeople as $key => $person) {
+            echo '<tr><td style="mso-number-format:\@">'.$esc($person['nama_lengkap']).'</td>';
+            $total = 0;
+            foreach ($events as $event) {
+                $present = ($matrix[$key][(int)$event['id']] ?? 0) === 1;
+                $total += (int)$present;
+                echo '<td style="text-align:center">'.($present ? 'Hadir' : '-').'</td>';
+            }
+            echo '<td style="text-align:center">'.($total > 0 ? $total : '-').'</td></tr>';
+        }
+        if (!$exportPeople) echo '<tr><td colspan="'.(count($events) + 2).'">Belum ada guru/staf untuk ditampilkan.</td></tr>';
+        echo '</tbody></table></body></html>'; exit;
     }
 }
 $success = $_SESSION['ks_success'] ?? ''; unset($_SESSION['ks_success']);
