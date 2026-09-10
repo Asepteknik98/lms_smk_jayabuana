@@ -12,6 +12,7 @@ $days = ['Sunday'=>'Minggu','Monday'=>'Senin','Tuesday'=>'Selasa','Wednesday'=>'
 
 function rm_month_valid(string $value): bool { return (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $value); }
 function rm_number(mixed $value): string { return number_format((float)$value, 0, ',', '.'); }
+
 function rm_pdf_escape(mixed $value): string {
     $value = iconv('UTF-8', 'Windows-1252//TRANSLIT//IGNORE', (string)$value);
     return str_replace(['\\','(',')'], ['\\\\','\\(','\\)'], (string)$value);
