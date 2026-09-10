@@ -11,6 +11,17 @@ catch (InvalidArgumentException $e) { $date = new DateTimeImmutable('today'); $e
 $start = $date->modify('-'.((int)$date->format('N')-1).' days');
 $end = $start->modify('+6 days');
 $week = $start->format('Y-m-d');
+$reportMode = ($_GET['rekap'] ?? '') === 'bulanan' ? 'bulanan' : 'mingguan';
+$reportMonth = $date->modify('first day of this month');
+try {
+    $monthInput = $_GET['bulan'] ?? $date->format('Y-m');
+    if (!is_string($monthInput) || !preg_match('/^[1-9][0-9]{3}-[0-9]{2}$/', $monthInput)) throw new InvalidArgumentException('Bulan rekap tidak valid.');
+    $reportMonth = ks_date($monthInput.'-01');
+} catch (InvalidArgumentException $e) { $error = $e->getMessage(); }
+$reportStart = $reportMode === 'bulanan' ? $reportMonth : $start;
+$reportEnd = $reportMode === 'bulanan' ? $reportMonth->modify('last day of this month') : $end;
+$reportQuery = '&rekap='.$reportMode.'&bulan='.$reportMonth->format('Y-m');
+
 $url = 'rekap_kegiatan_guru.php?tanggal='.$date->format('Y-m-d');
 $selected = max(0, (int)($_GET['kegiatan'] ?? 0));
 $ready = true;
@@ -42,7 +53,7 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $db->prepare('INSERT INTO kegiatan_staf(nama_lengkap,nip) VALUES(?,?)')->execute([$name,$nip]);
             $_SESSION['ks_success'] = 'Staf ditambahkan ke daftar peserta seluruh kegiatan.';
         } else { throw new InvalidArgumentException('Aksi tidak valid.'); }
-        redirect($url.'&kegiatan='.$selected);
+        redirect($url.'&kegiatan='.$selected.$reportQuery);
     } catch (InvalidArgumentException $e) { $error = $e->getMessage(); }
     catch (PDOException $e) { error_log($e->getMessage()); $error = 'Data gagal disimpan. Periksa duplikasi identitas staf atau koneksi database.'; }
 }
@@ -51,12 +62,20 @@ $events = []; $byDate = []; $people = []; $attendance = []; $current = null; $su
 if ($ready) {
     // Jadwal tanggal lain tidak dihapus ketika admin berpindah minggu.
     $seed = $db->prepare('INSERT INTO kegiatan_sekolah(tanggal,kode,nama) VALUES(?,?,?) ON DUPLICATE KEY UPDATE id=id');
-    for ($i=0;$i<7;$i++) foreach (ks_schedule($i+1) as $code=>$name) $seed->execute([$start->modify("+$i days")->format('Y-m-d'),$code,$name]);
-    $stmt = $db->prepare('SELECT k.*,COUNT(h.peserta) jumlah,SUM(h.hadir=1) hadir FROM kegiatan_sekolah k LEFT JOIN kegiatan_kehadiran h ON h.kegiatan_id=k.id WHERE k.tanggal BETWEEN ? AND ? GROUP BY k.id ORDER BY k.tanggal,k.id');
-    $stmt->execute([$week,$end->format('Y-m-d')]); $events = $stmt->fetchAll();
+    foreach ([[$start, $end], [$reportStart, $reportEnd]] as [$seedStart, $seedEnd]) {
+        for ($day = $seedStart; $day <= $seedEnd; $day = $day->modify('+1 day')) {
+            foreach (ks_schedule((int)$day->format('N')) as $code => $name) $seed->execute([$day->format('Y-m-d'), $code, $name]);
+        }
+    }
+    $rangeParams = [$week, $end->format('Y-m-d'), $reportStart->format('Y-m-d'), $reportEnd->format('Y-m-d')];
+    $stmt = $db->prepare('SELECT k.*,COUNT(h.peserta) jumlah,SUM(h.hadir=1) hadir FROM kegiatan_sekolah k LEFT JOIN kegiatan_kehadiran h ON h.kegiatan_id=k.id WHERE (k.tanggal BETWEEN ? AND ? OR k.tanggal BETWEEN ? AND ?) GROUP BY k.id ORDER BY k.tanggal,k.id');
+    $stmt->execute($rangeParams); $events = $stmt->fetchAll();
     // Jadwal piket lama yang kosong digantikan dua sesi; riwayat tersimpan tetap tampil.
     $events = array_values(array_filter($events, static fn($event) =>
         $event['kode'] !== 'piket' || !empty($event['disimpan_pada']) || (int)$event['jumlah'] > 0
+    ));
+    $reportEvents = array_values(array_filter($events, static fn($event) =>
+        $event['tanggal'] >= $reportStart->format('Y-m-d') && $event['tanggal'] <= $reportEnd->format('Y-m-d')
     ));
     foreach ($events as $event) { $byDate[$event['tanggal']][]=$event; if ((int)$event['id']===$selected) $current=$event; }
     // Keep old weekly activity links working; new filters only show the chosen date.
@@ -67,40 +86,41 @@ if ($ready) {
     }
     $url = 'rekap_kegiatan_guru.php?tanggal='.$date->format('Y-m-d');
     $people = ks_people($db);
-    $stmt = $db->prepare('SELECT h.*,k.tanggal,k.nama kegiatan FROM kegiatan_kehadiran h JOIN kegiatan_sekolah k ON k.id=h.kegiatan_id WHERE k.tanggal BETWEEN ? AND ? ORDER BY h.nama_lengkap,k.tanggal,k.id');
-    $stmt->execute([$week,$end->format('Y-m-d')]); $records = $stmt->fetchAll();
+    $stmt = $db->prepare('SELECT h.*,k.tanggal,k.nama kegiatan FROM kegiatan_kehadiran h JOIN kegiatan_sekolah k ON k.id=h.kegiatan_id WHERE (k.tanggal BETWEEN ? AND ? OR k.tanggal BETWEEN ? AND ?) ORDER BY h.nama_lengkap,k.tanggal,k.id');
+    $stmt->execute($rangeParams); $records = $stmt->fetchAll();
     foreach ($people as $key=>$person) $summary[$key]=$person+['hadir'=>0,'tercatat'=>0];
     foreach ($records as $r) {
         $key=$r['peserta'];
+        if ((int)$r['kegiatan_id']===$selected) { $attendance[$key]=$r; $people[$key] ??= $r; }
+        if ($r['tanggal'] < $reportStart->format('Y-m-d') || $r['tanggal'] > $reportEnd->format('Y-m-d')) continue;
         if (!isset($summary[$key])) $summary[$key]=$r+['tercatat'=>0];
         if ($summary[$key]['tercatat']===0) $summary[$key]['hadir']=0;
         $summary[$key]['hadir']+=(int)$r['hadir']; $summary[$key]['tercatat']++;
-        if ((int)$r['kegiatan_id']===$selected) { $attendance[$key]=$r; $people[$key] ??= $r; }
     }
     if (($_GET['format'] ?? '') === 'excel') {
         header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-        header('Content-Disposition: attachment; filename="Rekap_Kegiatan_'.$week.'.xls"');
+        header('Content-Disposition: attachment; filename="Rekap_Kegiatan_'.$reportMode.'_'.($reportMode === 'bulanan' ? $reportMonth->format('Y-m') : $week).'.xls"');
         header('Cache-Control: no-store');
         $matrix = [];
         foreach ($records as $record) $matrix[$record['peserta']][(int)$record['kegiatan_id']] = (int)$record['hadir'];
         $exportPeople = $summary;
         uasort($exportPeople, static fn($a, $b) => strnatcasecmp($a['nama_lengkap'], $b['nama_lengkap']));
-        echo "\xEF\xBB\xBF".'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}th{background:#edf2f7}th,td{padding:8px;vertical-align:middle}th{white-space:normal}</style></head><body><h2>Rekap Kegiatan Guru/Staf</h2><p>Periode: '.$esc($start->format('d/m/Y').' s.d. '.$end->format('d/m/Y')).'</p><p>Hadir = dicentang; - = tidak dicentang atau belum diisi.</p><table border="1"><thead><tr><th>Nama guru/staf</th>';
-        foreach ($events as $event) {
+        echo "\xEF\xBB\xBF".'<!DOCTYPE html><html><head><meta charset="UTF-8"><style>body{font-family:Arial,sans-serif}th{background:#edf2f7}th,td{padding:8px;vertical-align:middle}th{white-space:normal}</style></head><body><h2>Rekap Kegiatan Guru/Staf</h2><p>Periode: '.$esc($reportStart->format('d/m/Y').' s.d. '.$reportEnd->format('d/m/Y')).'</p><p>Hadir = dicentang; - = tidak dicentang atau belum diisi.</p><table border="1"><thead><tr><th>Nama guru/staf</th>';
+        foreach ($reportEvents as $event) {
             echo '<th>'.$esc(ks_date($event['tanggal'])->format('d/m')).'<br>'.$esc($event['nama']).'</th>';
         }
         echo '<th>Jumlah kegiatan dihadiri</th></tr></thead><tbody>';
         foreach ($exportPeople as $key => $person) {
             echo '<tr><td style="mso-number-format:\@">'.$esc($person['nama_lengkap']).'</td>';
             $total = 0;
-            foreach ($events as $event) {
+            foreach ($reportEvents as $event) {
                 $present = ($matrix[$key][(int)$event['id']] ?? 0) === 1;
                 $total += (int)$present;
                 echo '<td style="text-align:center">'.($present ? 'Hadir' : '-').'</td>';
             }
             echo '<td style="text-align:center">'.($total > 0 ? $total : '-').'</td></tr>';
         }
-        if (!$exportPeople) echo '<tr><td colspan="'.(count($events) + 2).'">Belum ada guru/staf untuk ditampilkan.</td></tr>';
+        if (!$exportPeople) echo '<tr><td colspan="'.(count($reportEvents) + 2).'">Belum ada guru/staf untuk ditampilkan.</td></tr>';
         echo '</tbody></table></body></html>'; exit;
     }
 }
@@ -151,11 +171,12 @@ require_once __DIR__.'/../includes/sidebar.php';
 <?php if ($success): ?><div class="alert alert-success" role="status"><?= $esc($success) ?></div><?php endif ?>
 <div class="ks-heading">
 <div><h1 class="h4 mb-2">Rekap Kegiatan Guru</h1><p class="text-muted mb-0">Pilih tanggal dan kegiatan, lalu isi kehadiran.</p></div>
-<?php if ($ready): ?><details class="ks-export ks-controls"><summary class="btn btn-outline-secondary">Ekspor &#9662;</summary><div class="ks-export-menu"><p class="small text-muted mb-1">Rekap mingguan<br><?= $start->format('d/m/Y') ?> &ndash; <?= $end->format('d/m/Y') ?></p><a href="<?= $esc($url) ?>&amp;format=excel">Unduh Excel</a><button type="button" id="ks-print">Cetak / PDF</button></div></details><?php endif ?>
+<?php if ($ready): ?><details class="ks-export ks-controls"><summary class="btn btn-outline-secondary">Ekspor &#9662;</summary><div class="ks-export-menu"><p class="small text-muted mb-1">Rekap <?= $esc($reportMode) ?><br><?= $reportStart->format('d/m/Y') ?> &ndash; <?= $reportEnd->format('d/m/Y') ?></p><a href="<?= $esc($url.$reportQuery) ?>&amp;format=excel">Unduh Excel</a><button type="button" id="ks-print">Cetak / PDF</button></div></details><?php endif ?>
 </div>
 <?php if ($ready): ?>
 <section class="ks-panel ks-editor" id="kehadiran">
 <form method="get" class="ks-filters" id="ks-filter">
+<input type="hidden" name="rekap" value="<?= $esc($reportMode) ?>"><input type="hidden" name="bulan" value="<?= $reportMonth->format('Y-m') ?>">
 <div><label class="form-label" for="ks-date">Tanggal</label><input id="ks-date" type="date" name="tanggal" value="<?= $date->format('Y-m-d') ?>" class="form-control" required></div>
 <div><label class="form-label" for="ks-event">Kegiatan</label><select id="ks-event" name="kegiatan" class="form-select" <?= empty($byDate[$date->format('Y-m-d')])?'disabled':'' ?>>
 <?php foreach ($byDate[$date->format('Y-m-d')] ?? [] as $event): ?><option value="<?= (int)$event['id'] ?>" <?= (int)$event['id']===$selected?'selected':'' ?>><?= $esc($event['nama']) ?></option><?php endforeach ?>
@@ -180,15 +201,31 @@ require_once __DIR__.'/../includes/sidebar.php';
 <section id="ks-meeting-panel" class="ks-action-panel mt-3" aria-labelledby="ks-meeting-title" hidden><h2 id="ks-meeting-title" class="h6">Tambah rapat</h2><form method="post" class="mt-3"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="meeting"><label class="form-label" for="rapat-tanggal">Tanggal rapat</label><input id="rapat-tanggal" class="form-control mb-2" type="date" name="tanggal" min="<?= $week ?>" max="<?= $end->format('Y-m-d') ?>" value="<?= $date->format('Y-m-d') ?>" required><label class="form-label" for="rapat-nama">Nama / agenda rapat</label><input id="rapat-nama" class="form-control mb-2" name="nama" maxlength="140" required><button class="btn btn-primary">Tambah rapat</button></form></section>
 <section id="ks-staff-panel" class="ks-action-panel mt-3" aria-labelledby="ks-staff-title" hidden><h2 id="ks-staff-title" class="h6">Tambah staf</h2><p class="small text-muted mt-2">Seluruh guru dari Data Guru otomatis tersedia. Tambahkan staf yang belum terdaftar sebagai guru.</p><form method="post"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="staff"><label class="form-label" for="staf-nama">Nama lengkap staf</label><input id="staf-nama" class="form-control mb-2" name="nama" maxlength="100" required><label class="form-label" for="staf-nip">NIP / identitas (opsional)</label><input id="staf-nip" class="form-control mb-2" name="nip" maxlength="30"><button class="btn btn-primary">Tambah staf</button></form></section>
 </div>
-<details class="ks-summary ks-extra p-3 p-md-4"><summary class="ks-summary-heading"><span class="fw-semibold">Rekap mingguan guru &amp; staf</span><span class="ks-summary-period text-muted"><?= $start->format('d/m/Y') ?> &ndash; <?= $end->format('d/m/Y') ?></span></summary>
+<form method="get" class="ks-controls d-flex flex-wrap align-items-end gap-3 mb-3" action="rekap_kegiatan_guru.php#ks-report">
+<input type="hidden" name="tanggal" value="<?= $date->format('Y-m-d') ?>"><input type="hidden" name="kegiatan" value="<?= $selected ?>">
+<div><label class="form-label" for="ks-report-mode">Periode rekap</label><select class="form-select" name="rekap" id="ks-report-mode"><option value="mingguan" <?= $reportMode === 'mingguan' ? 'selected' : '' ?>>Mingguan</option><option value="bulanan" <?= $reportMode === 'bulanan' ? 'selected' : '' ?>>Bulanan</option></select></div>
+<div id="ks-month-field"><label class="form-label" for="ks-report-month">Bulan dan tahun</label><input class="form-control" type="month" id="ks-report-month" name="bulan" value="<?= $reportMonth->format('Y-m') ?>" required></div>
+<button class="btn btn-outline-secondary" type="submit">Tampilkan rekap</button>
+</form>
+<details id="ks-report" class="ks-summary ks-extra p-3 p-md-4" <?= isset($_GET['rekap']) ? 'open' : '' ?>><summary class="ks-summary-heading"><span class="fw-semibold">Rekap <?= $esc($reportMode) ?> guru &amp; staf</span><span class="ks-summary-period text-muted"><?= $reportStart->format('d/m/Y') ?> &ndash; <?= $reportEnd->format('d/m/Y') ?></span></summary>
 <div class="ks-summary-body mt-3"><p class="small text-muted mb-3">Hanya kehadiran yang dijumlahkan. Tanda &quot;-&quot; berarti belum ada kehadiran yang dicentang.</p>
-<div class="ks-summary-scroll" role="region" aria-label="Rekap mingguan guru dan staf" tabindex="0"><table class="table ks-summary-table mb-0"><thead><tr><th scope="col">Nama</th><th scope="col">Hadir</th><th scope="col">Belum tercatat</th></tr></thead><tbody>
-<?php foreach ($summary as $r): ?><tr><td><?= $esc($r['nama_lengkap']) ?><?php if ($r['jenis'] !== 'Guru'): ?> <span class="ks-person-type"><?= $esc($r['jenis']) ?></span><?php endif ?></td><td><?= (int)$r['hadir'] > 0 ? (int)$r['hadir'] : '-' ?></td><td><?= count($events)-(int)$r['tercatat'] ?></td></tr><?php endforeach ?>
+<div class="ks-summary-scroll" role="region" aria-label="Rekap <?= $esc($reportMode) ?> guru dan staf" tabindex="0"><table class="table ks-summary-table mb-0"><thead><tr><th scope="col">Nama</th><th scope="col">Jumlah kegiatan dihadiri</th><th scope="col">Belum tercatat</th></tr></thead><tbody>
+<?php foreach ($summary as $r): ?><tr><td><?= $esc($r['nama_lengkap']) ?><?php if ($r['jenis'] !== 'Guru'): ?> <span class="ks-person-type"><?= $esc($r['jenis']) ?></span><?php endif ?></td><td><?= (int)$r['hadir'] > 0 ? (int)$r['hadir'] : '-' ?></td><td><?= count($reportEvents)-(int)$r['tercatat'] ?></td></tr><?php endforeach ?>
 <?php if (!$summary): ?><tr><td colspan="3" class="text-muted">Belum ada guru/staf untuk ditampilkan.</td></tr><?php endif ?>
 </tbody></table></div></div></details>
 <?php endif ?>
 </main></div>
 <script>
+const reportMode = document.getElementById('ks-report-mode');
+if (reportMode) {
+    const syncReportMonth = () => {
+        const monthly = reportMode.value === 'bulanan';
+        document.getElementById('ks-month-field').hidden = !monthly;
+        document.getElementById('ks-report-month').disabled = !monthly;
+    };
+    reportMode.addEventListener('change', syncReportMonth);
+    syncReportMonth();
+}
 const panelButtons = [...document.querySelectorAll('[data-ks-panel]')];
 panelButtons.forEach(button => button.addEventListener('click', () => {
     const open = button.getAttribute('aria-expanded') !== 'true';
