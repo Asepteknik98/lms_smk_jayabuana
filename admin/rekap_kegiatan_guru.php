@@ -58,7 +58,7 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
     catch (PDOException $e) { error_log($e->getMessage()); $error = 'Data gagal disimpan. Periksa duplikasi identitas staf atau koneksi database.'; }
 }
 $days = ['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
-$events = []; $byDate = []; $people = []; $attendance = []; $current = null; $summary = [];
+$events = []; $reportEvents = []; $byDate = []; $people = []; $attendance = []; $current = null; $summary = [];
 if ($ready) {
     // Jadwal tanggal lain tidak dihapus ketika admin berpindah minggu.
     $seed = $db->prepare('INSERT INTO kegiatan_sekolah(tanggal,kode,nama) VALUES(?,?,?) ON DUPLICATE KEY UPDATE id=id');
