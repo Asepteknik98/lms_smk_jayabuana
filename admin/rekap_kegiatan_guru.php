@@ -6,12 +6,12 @@ check_access([1]);
 $db = Database::getInstance();
 $esc = static fn($v) => htmlspecialchars((string)$v, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
 $error = '';
-try { $date = ks_date($_GET['minggu'] ?? date('Y-m-d')); }
+try { $date = ks_date($_GET['tanggal'] ?? $_GET['minggu'] ?? date('Y-m-d')); }
 catch (InvalidArgumentException $e) { $date = new DateTimeImmutable('today'); $error = $e->getMessage(); }
 $start = $date->modify('-'.((int)$date->format('N')-1).' days');
 $end = $start->modify('+6 days');
 $week = $start->format('Y-m-d');
-$url = 'rekap_kegiatan_guru.php?minggu='.$week;
+$url = 'rekap_kegiatan_guru.php?tanggal='.$date->format('Y-m-d');
 $selected = max(0, (int)($_GET['kegiatan'] ?? 0));
 $ready = true;
 try { $db->query('SELECT id FROM kegiatan_sekolah LIMIT 1'); $db->query('SELECT peserta FROM kegiatan_kehadiran LIMIT 1'); $db->query('SELECT id FROM kegiatan_staf LIMIT 1'); }
@@ -33,6 +33,7 @@ if ($ready && $_SERVER['REQUEST_METHOD'] === 'POST') {
             $stmt = $db->prepare('INSERT INTO kegiatan_sekolah(tanggal,kode,nama) VALUES(?,?,?)');
             $stmt->execute([$meetingDate->format('Y-m-d'),'rapat_'.bin2hex(random_bytes(12)),'Rapat: '.$title]);
             $selected = (int)$db->lastInsertId();
+            $url = 'rekap_kegiatan_guru.php?tanggal='.$meetingDate->format('Y-m-d');
             $_SESSION['ks_success'] = 'Rapat ditambahkan. Silakan isi kehadirannya.';
         } elseif ($action === 'staff') {
             $name = is_string($_POST['nama'] ?? null) ? trim($_POST['nama']) : '';
@@ -54,6 +55,13 @@ if ($ready) {
     $stmt = $db->prepare('SELECT k.*,COUNT(h.peserta) jumlah,SUM(h.hadir=1) hadir FROM kegiatan_sekolah k LEFT JOIN kegiatan_kehadiran h ON h.kegiatan_id=k.id WHERE k.tanggal BETWEEN ? AND ? GROUP BY k.id ORDER BY k.tanggal,k.id');
     $stmt->execute([$week,$end->format('Y-m-d')]); $events = $stmt->fetchAll();
     foreach ($events as $event) { $byDate[$event['tanggal']][]=$event; if ((int)$event['id']===$selected) $current=$event; }
+    // Keep old weekly activity links working; new filters only show the chosen date.
+    if ($current && !isset($_GET['tanggal'])) $date = ks_date($current['tanggal']);
+    if (!$current || $current['tanggal'] !== $date->format('Y-m-d')) {
+        $current = $byDate[$date->format('Y-m-d')][0] ?? null;
+        $selected = $current ? (int)$current['id'] : 0;
+    }
+    $url = 'rekap_kegiatan_guru.php?tanggal='.$date->format('Y-m-d');
     $people = ks_people($db);
     $stmt = $db->prepare('SELECT h.*,k.tanggal,k.nama kegiatan FROM kegiatan_kehadiran h JOIN kegiatan_sekolah k ON k.id=h.kegiatan_id WHERE k.tanggal BETWEEN ? AND ? ORDER BY h.nama_lengkap,k.tanggal,k.id');
     $stmt->execute([$week,$end->format('Y-m-d')]); $records = $stmt->fetchAll();
@@ -79,47 +87,133 @@ require_once __DIR__.'/../includes/header.php';
 require_once __DIR__.'/../includes/sidebar.php';
 ?>
 <div id="page-content-wrapper" class="bg-light">
-<nav class="navbar top-navbar px-4 py-3"><h5 class="fw-bold mb-0">Rekap Kegiatan Guru di Sekolah</h5></nav>
-<main class="container-fluid p-3 p-md-4">
-<style>.ks-week{display:grid;grid-template-columns:repeat(7,minmax(155px,1fr));gap:10px}.ks-day{background:white;border:1px solid #dee2e6;border-radius:12px;padding:12px}.ks-event{display:block;padding:9px;margin-top:8px;border:1px solid #dee2e6;border-radius:8px;text-decoration:none;font-size:.85rem}.ks-event.active{background:#e7f1ff;border-color:#0d6efd}.ks-scroll{overflow-x:auto}.ks-day.today{border:2px solid #0d6efd}@media print{#sidebar-wrapper,.top-navbar,.ks-controls,.ks-editor{display:none!important}#page-content-wrapper{margin:0!important;width:100%!important}.ks-week{grid-template-columns:repeat(7,1fr)}.ks-scroll{overflow:visible}.ks-event{font-size:9px}body{font-size:11px}}</style>
+<nav class="navbar top-navbar px-4 py-3"><span class="fw-bold">Rekap Kegiatan Guru di Sekolah</span></nav>
+<main class="container-fluid p-3 p-md-4 ks-page">
+<style>
+.ks-page{max-width:1100px;margin:auto;color:#253247}
+.ks-heading{display:flex;justify-content:space-between;align-items:start;gap:16px;margin-bottom:24px}
+.ks-panel{background:#fff;border:1px solid #e5e9ef;border-radius:12px;padding:24px;margin-bottom:20px}
+.ks-filters{display:grid;grid-template-columns:minmax(180px,1fr) minmax(240px,2fr) auto;gap:16px;align-items:end;padding-bottom:24px;border-bottom:1px solid #edf0f3;margin-bottom:24px}
+.ks-page .form-label{font-size:.875rem;font-weight:600}.ks-page .form-control,.ks-page .form-select{min-height:42px}
+.ks-toolbar{display:flex;align-items:center;justify-content:space-between;gap:16px;margin:20px 0 8px}.ks-search{max-width:340px;width:100%}
+.ks-page .table>:not(caption)>*>*{padding:12px 8px;border-bottom-color:#edf0f3}.ks-page th{font-size:.85rem;font-weight:600;color:#657185}.ks-page .form-check-input{width:20px;height:20px;cursor:pointer}
+.ks-attendance-list{max-height:420px;max-height:min(420px,50vh);overflow:auto;scrollbar-gutter:stable;margin-top:12px}
+.ks-attendance-list:focus-visible{outline:2px solid #0d6efd;outline-offset:2px}
+.ks-people{list-style:none;margin:0;padding:0;column-count:2;column-gap:24px;column-rule:1px solid #edf0f3}
+.ks-person{break-inside:avoid-column;border-bottom:1px solid #edf0f3}
+.ks-person[hidden]{display:none!important}
+@media(max-width:767px){.ks-people{column-count:1;column-rule:0}}
+.ks-person-label{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 8px;line-height:1.4;font-size:.9rem;cursor:pointer;margin:0}
+.ks-person-label:hover{background:#f7f9fc}.ks-person-label .ks-check{flex-shrink:0;margin:0}
+.ks-person-type{font-size:.75rem;color:#657185;background:#f1f4f8;border-radius:4px;padding:2px 6px;white-space:nowrap}
+.ks-person-name{min-width:0;overflow-wrap:anywhere}
+.ks-savebar{display:flex;align-items:center;justify-content:space-between;gap:16px;padding-top:16px;border-top:1px solid #edf0f3;background:white}
+.ks-extra{background:#fff;border:1px solid #e5e9ef;border-radius:10px}.ks-extra summary{cursor:pointer;font-size:.9rem}.ks-export{position:relative;flex-shrink:0}.ks-export summary{list-style:none}.ks-export summary::-webkit-details-marker{display:none}.ks-export-menu{position:absolute;right:0;top:100%;min-width:220px;padding:12px;background:white;border:1px solid #e5e9ef;border-radius:8px;box-shadow:0 6px 20px #25324712;z-index:10}.ks-export-menu a,.ks-export-menu button{display:block;width:100%;text-align:left;padding:8px;border:0;background:white;color:#253247;text-decoration:none}.ks-export-menu a:hover,.ks-export-menu button:hover{background:#f3f5f8}
+@media(max-width:600px){.ks-panel{padding:16px}.ks-filters{grid-template-columns:1fr;gap:12px}.ks-toolbar{align-items:stretch;flex-direction:column}.ks-search{max-width:none}.ks-heading h1{font-size:1.25rem}.ks-savebar{position:sticky;bottom:0;padding:12px 0}.ks-savebar .btn{white-space:nowrap}}
+@media print{#sidebar-wrapper,.top-navbar,.ks-controls,.ks-editor,.ks-heading{display:none!important}#page-content-wrapper{margin:0!important;width:100%!important}.ks-page{max-width:none}.ks-summary{border:0!important}.ks-summary>.ks-summary-body{display:block!important}.ks-summary>summary{list-style:none}body{font-size:11px}}
+.ks-action-panel{max-width:480px;padding:20px;background:#fff;border:1px solid #e5e9ef;border-radius:10px}
+.ks-summary-heading{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;list-style:none}
+.ks-summary-heading::-webkit-details-marker{display:none}.ks-summary-heading:before{content:'\25B8';color:#657185}.ks-summary[open]>.ks-summary-heading:before{content:'\25BE'}
+.ks-summary-period{margin-left:auto;font-size:.8rem;font-weight:400}
+.ks-summary-scroll{max-height:360px;overflow:auto;scrollbar-gutter:stable}
+.ks-summary-scroll:focus-visible{outline:2px solid #0d6efd;outline-offset:2px}
+.ks-page .ks-summary-table{font-size:.875rem;min-width:510px}
+.ks-page .ks-summary-table>:not(caption)>*>*{padding:9px 12px;vertical-align:middle;background:#fff;border-bottom:1px solid #edf0f3;box-shadow:none}
+.ks-summary-table thead th{position:sticky;top:0;z-index:1;font-size:.8rem;white-space:nowrap}
+.ks-summary-table th:not(:first-child),.ks-summary-table td:not(:first-child){text-align:center;width:110px;font-variant-numeric:tabular-nums}
+.ks-summary-table td:first-child{overflow-wrap:anywhere}
+@media(max-width:600px){.ks-summary-period{flex-basis:100%;margin-left:20px}.ks-action-panel{max-width:none}}
+@media print{.ks-summary-scroll{max-height:none!important;overflow:visible!important}.ks-page .ks-summary-table{min-width:0;font-size:10px}.ks-summary-table thead{display:table-header-group}.ks-summary-table thead th{position:static}.ks-summary-table tr{break-inside:avoid}.ks-summary-heading:before{display:none}}
+</style>
 <?php if ($error): ?><div class="alert alert-danger" role="alert"><?= $esc($error) ?></div><?php endif ?>
 <?php if ($success): ?><div class="alert alert-success" role="status"><?= $esc($success) ?></div><?php endif ?>
-<h1 class="h4">Kehadiran Kegiatan Guru &amp; Staf</h1>
-<p class="text-muted">Senin–Minggu · <?= $start->format('d/m/Y') ?> – <?= $end->format('d/m/Y') ?>. Pilih kegiatan untuk mengisi ceklis kehadiran.</p>
-<div class="ks-controls d-flex flex-wrap gap-2 mb-3 align-items-center">
-<a class="btn btn-outline-primary" href="?minggu=<?= $start->modify('-7 days')->format('Y-m-d') ?>">&larr; Minggu sebelumnya</a>
-<a class="btn btn-outline-primary" href="?minggu=<?= date('Y-m-d') ?>">Minggu ini</a>
-<a class="btn btn-outline-primary" href="?minggu=<?= $start->modify('+7 days')->format('Y-m-d') ?>">Minggu berikutnya &rarr;</a>
-<form method="get" class="d-flex gap-2"><label class="visually-hidden" for="minggu">Tanggal dalam minggu</label><input id="minggu" type="date" name="minggu" value="<?= $week ?>" class="form-control" required><button class="btn btn-primary">Tampilkan</button></form>
-<?php if ($ready): ?><a class="btn btn-success" href="<?= $esc($url) ?>&amp;format=excel">Unduh Excel</a><button class="btn btn-outline-secondary" onclick="window.print()">Cetak / PDF</button><?php endif ?>
+<div class="ks-heading">
+<div><h1 class="h4 mb-2">Rekap Kegiatan Guru</h1><p class="text-muted mb-0">Pilih tanggal dan kegiatan, lalu isi kehadiran.</p></div>
+<?php if ($ready): ?><details class="ks-export ks-controls"><summary class="btn btn-outline-secondary">Ekspor &#9662;</summary><div class="ks-export-menu"><p class="small text-muted mb-1">Rekap mingguan<br><?= $start->format('d/m/Y') ?> &ndash; <?= $end->format('d/m/Y') ?></p><a href="<?= $esc($url) ?>&amp;format=excel">Unduh Excel</a><button type="button" id="ks-print">Cetak / PDF</button></div></details><?php endif ?>
 </div>
 <?php if ($ready): ?>
-<div class="ks-scroll mb-4"><div class="ks-week">
-<?php for ($i=0;$i<7;$i++): $day=$start->modify("+$i days"); $key=$day->format('Y-m-d'); ?>
-<section class="ks-day <?= $key===date('Y-m-d')?'today':'' ?>"><h2 class="h6 fw-bold"><?= $days[$i] ?></h2><small class="text-muted"><?= $day->format('d/m/Y') ?></small>
-<?php foreach ($byDate[$key] ?? [] as $event): ?><a class="ks-event <?= (int)$event['id']===$selected?'active':'' ?>" href="<?= $esc($url) ?>&amp;kegiatan=<?= (int)$event['id'] ?>#kehadiran"><?= $esc($event['nama']) ?><small class="d-block mt-1 <?= $event['disimpan_pada']?'text-success':'text-muted' ?>"><?= $event['disimpan_pada']?(int)$event['hadir'].' / '.(int)$event['jumlah'].' hadir':'Belum diisi' ?></small></a><?php endforeach ?>
-<?php if (empty($byDate[$key])): ?><p class="small text-muted mt-3">Tidak ada kegiatan rutin. Rapat dapat ditambahkan.</p><?php endif ?></section>
-<?php endfor ?></div></div>
-<div class="ks-editor row g-3 mb-4">
-<div class="col-md-6"><details class="card p-3"><summary class="fw-bold">Tambah rapat (Senin–Minggu)</summary><form method="post" class="mt-3"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="meeting"><label class="form-label" for="rapat-tanggal">Tanggal rapat</label><input id="rapat-tanggal" class="form-control mb-2" type="date" name="tanggal" min="<?= $week ?>" max="<?= $end->format('Y-m-d') ?>" value="<?= $week ?>" required><label class="form-label" for="rapat-nama">Nama / agenda rapat</label><input id="rapat-nama" class="form-control mb-2" name="nama" maxlength="140" required><button class="btn btn-primary">Tambah rapat</button></form></details></div>
-<div class="col-md-6"><details class="card p-3"><summary class="fw-bold">Tambah staf ke daftar peserta</summary><p class="small text-muted mt-2">Seluruh guru dari Data Guru otomatis tersedia. Tambahkan staf yang belum terdaftar sebagai guru.</p><form method="post"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="staff"><label class="form-label" for="staf-nama">Nama lengkap staf</label><input id="staf-nama" class="form-control mb-2" name="nama" maxlength="100" required><label class="form-label" for="staf-nip">NIP / identitas (opsional)</label><input id="staf-nip" class="form-control mb-2" name="nip" maxlength="30"><button class="btn btn-primary">Tambah staf</button></form></details></div>
-</div>
+<section class="ks-panel ks-editor" id="kehadiran">
+<form method="get" class="ks-filters" id="ks-filter">
+<div><label class="form-label" for="ks-date">Tanggal</label><input id="ks-date" type="date" name="tanggal" value="<?= $date->format('Y-m-d') ?>" class="form-control" required></div>
+<div><label class="form-label" for="ks-event">Kegiatan</label><select id="ks-event" name="kegiatan" class="form-select" <?= empty($byDate[$date->format('Y-m-d')])?'disabled':'' ?>>
+<?php foreach ($byDate[$date->format('Y-m-d')] ?? [] as $event): ?><option value="<?= (int)$event['id'] ?>" <?= (int)$event['id']===$selected?'selected':'' ?>><?= $esc($event['nama']) ?></option><?php endforeach ?>
+<?php if (empty($byDate[$date->format('Y-m-d')])): ?><option>Tidak ada kegiatan</option><?php endif ?>
+</select></div><button class="btn btn-outline-secondary" type="submit">Tampilkan</button>
+</form>
 <?php if ($current): ?>
-<section id="kehadiran" class="card p-3 p-md-4 mb-4 ks-editor"><h2 class="h5"><?= $esc($current['nama']) ?> · <?= $esc($current['tanggal']) ?></h2><p class="text-muted small">Dicentang = hadir. Setelah disimpan, tidak dicentang = tidak hadir. Peserta baru belum tercatat sampai kehadiran disimpan kembali.</p>
+<div class="d-flex flex-wrap justify-content-between gap-2"><h2 class="h5 mb-0">Daftar Guru &amp; Staf</h2><span class="small text-muted"><?= $current['disimpan_pada']?'Kehadiran sudah tersimpan':'Kehadiran belum diisi' ?></span></div>
+<p class="small text-muted mt-2 mb-0">Centang guru/staf yang hadir.</p>
 <form method="post" id="ks-form"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="save"><input type="hidden" name="kegiatan_id" value="<?= $selected ?>"><input type="hidden" name="versi" value="<?= (int)$current['versi'] ?>">
-<label class="d-block mb-3"><input type="checkbox" id="ks-all" class="form-check-input me-2">Centang semua guru/staf</label>
-<div class="table-responsive"><table class="table align-middle"><thead><tr><th>Hadir</th><th>Nama guru/staf</th><th>Jenis</th><th>Catatan tersimpan</th></tr></thead><tbody>
-<?php foreach ($people as $key=>$person): ?><tr><td><input aria-label="Hadir: <?= $esc($person['nama_lengkap']) ?>" class="form-check-input ks-check" type="checkbox" name="hadir[]" value="<?= $esc($key) ?>" <?= !empty($attendance[$key]['hadir'])?'checked':'' ?>></td><td><?= $esc($person['nama_lengkap']) ?></td><td><?= $esc($person['jenis']) ?></td><td><?= isset($attendance[$key])?($attendance[$key]['hadir']?'Hadir':'Tidak hadir'):'Belum tercatat' ?></td></tr><?php endforeach ?>
-<?php if (!$people): ?><tr><td colspan="4">Belum ada guru/staf. Tambahkan peserta terlebih dahulu.</td></tr><?php endif ?>
-</tbody></table></div><input type="hidden" name="form_complete" value="1"><button class="btn btn-primary" <?= !$people?'disabled':'' ?>>Simpan kehadiran</button></form></section>
-<?php endif ?>
-<section class="card p-3 p-md-4"><h2 class="h5">Rekap mingguan seluruh guru/staf</h2><p class="small text-muted">Hanya kegiatan yang sudah diisi yang dihitung. Kegiatan belum diisi tidak dianggap tidak hadir.</p><div class="table-responsive"><table class="table table-striped"><thead><tr><th>Nama</th><th>Jenis</th><th>Hadir</th><th>Tidak hadir</th><th>Belum tercatat</th></tr></thead><tbody>
-<?php foreach ($summary as $r): ?><tr><td><?= $esc($r['nama_lengkap']) ?></td><td><?= $esc($r['jenis']) ?></td><td><?= (int)$r['hadir'] ?></td><td><?= (int)$r['tidak'] ?></td><td><?= count($events)-(int)$r['tercatat'] ?></td></tr><?php endforeach ?>
-</tbody></table></div></section>
+<div class="ks-toolbar"><div class="ks-search"><label class="visually-hidden" for="ks-search">Cari nama guru atau staf</label><input id="ks-search" type="search" class="form-control" placeholder="Cari nama..."></div><label class="small d-flex align-items-center gap-2"><input type="checkbox" id="ks-all" class="form-check-input mt-0">Pilih semua hasil pencarian</label></div>
+<div class="ks-attendance-list" role="region" aria-label="Daftar kehadiran guru dan staf, gulir untuk melihat peserta lainnya" tabindex="0"><ul class="ks-people" aria-label="Guru dan staf">
+<?php foreach ($people as $key=>$person): ?><li class="ks-person" data-name="<?= $esc($person['nama_lengkap']) ?>"><label class="ks-person-label" for="hadir-<?= $esc($key) ?>"><input id="hadir-<?= $esc($key) ?>" aria-label="Hadir: <?= $esc($person['nama_lengkap']) ?>" class="form-check-input ks-check" type="checkbox" name="hadir[]" value="<?= $esc($key) ?>" <?= !empty($attendance[$key]['hadir'])?'checked':'' ?>><span class="ks-person-name"><?= $esc($person['nama_lengkap']) ?></span><?php if ($person['jenis'] !== 'Guru'): ?><span class="ks-person-type"><?= $esc($person['jenis']) ?></span><?php endif ?></label></li><?php endforeach ?>
+</ul>
+<?php if (!$people): ?><p class="text-muted py-4 mb-0">Belum ada guru/staf. Tambahkan peserta terlebih dahulu.</p><?php endif ?>
+<p id="ks-no-results" class="text-muted py-4 mb-0" hidden>Nama tidak ditemukan.</p>
+</div><input type="hidden" name="form_complete" value="1"><div class="ks-savebar"><span id="ks-count" class="small text-muted" role="status"></span><button class="btn btn-primary" <?= !$people?'disabled':'' ?>>Simpan kehadiran</button></div></form>
+<?php else: ?><div class="text-center py-4"><h2 class="h5">Belum ada kegiatan pada tanggal ini</h2><p class="text-muted mb-0">Pilih tanggal lain atau tambahkan rapat melalui formulir di bawah.</p></div><?php endif ?>
+</section>
+<div class="ks-editor ks-actions mb-4">
+<div class="d-flex flex-wrap gap-2"><button type="button" class="btn btn-sm btn-outline-secondary" data-ks-panel="ks-meeting-panel" aria-controls="ks-meeting-panel" aria-expanded="false">+ Tambah rapat</button><button type="button" class="btn btn-sm btn-outline-secondary" data-ks-panel="ks-staff-panel" aria-controls="ks-staff-panel" aria-expanded="false">+ Tambah staf</button></div>
+<section id="ks-meeting-panel" class="ks-action-panel mt-3" aria-labelledby="ks-meeting-title" hidden><h2 id="ks-meeting-title" class="h6">Tambah rapat</h2><form method="post" class="mt-3"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="meeting"><label class="form-label" for="rapat-tanggal">Tanggal rapat</label><input id="rapat-tanggal" class="form-control mb-2" type="date" name="tanggal" min="<?= $week ?>" max="<?= $end->format('Y-m-d') ?>" value="<?= $date->format('Y-m-d') ?>" required><label class="form-label" for="rapat-nama">Nama / agenda rapat</label><input id="rapat-nama" class="form-control mb-2" name="nama" maxlength="140" required><button class="btn btn-primary">Tambah rapat</button></form></section>
+<section id="ks-staff-panel" class="ks-action-panel mt-3" aria-labelledby="ks-staff-title" hidden><h2 id="ks-staff-title" class="h6">Tambah staf</h2><p class="small text-muted mt-2">Seluruh guru dari Data Guru otomatis tersedia. Tambahkan staf yang belum terdaftar sebagai guru.</p><form method="post"><input type="hidden" name="csrf_token" value="<?= $esc($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="staff"><label class="form-label" for="staf-nama">Nama lengkap staf</label><input id="staf-nama" class="form-control mb-2" name="nama" maxlength="100" required><label class="form-label" for="staf-nip">NIP / identitas (opsional)</label><input id="staf-nip" class="form-control mb-2" name="nip" maxlength="30"><button class="btn btn-primary">Tambah staf</button></form></section>
+</div>
+<details class="ks-summary ks-extra p-3 p-md-4"><summary class="ks-summary-heading"><span class="fw-semibold">Rekap mingguan guru &amp; staf</span><span class="ks-summary-period text-muted"><?= $start->format('d/m/Y') ?> &ndash; <?= $end->format('d/m/Y') ?></span></summary>
+<div class="ks-summary-body mt-3"><p class="small text-muted mb-3">Kegiatan yang belum diisi tidak dihitung sebagai ketidakhadiran.</p>
+<div class="ks-summary-scroll" role="region" aria-label="Rekap mingguan guru dan staf" tabindex="0"><table class="table ks-summary-table mb-0"><thead><tr><th scope="col">Nama</th><th scope="col">Hadir</th><th scope="col">Tidak hadir</th><th scope="col">Belum tercatat</th></tr></thead><tbody>
+<?php foreach ($summary as $r): ?><tr><td><?= $esc($r['nama_lengkap']) ?><?php if ($r['jenis'] !== 'Guru'): ?> <span class="ks-person-type"><?= $esc($r['jenis']) ?></span><?php endif ?></td><td><?= (int)$r['hadir'] ?></td><td><?= (int)$r['tidak'] ?></td><td><?= count($events)-(int)$r['tercatat'] ?></td></tr><?php endforeach ?>
+<?php if (!$summary): ?><tr><td colspan="4" class="text-muted">Belum ada guru/staf untuk ditampilkan.</td></tr><?php endif ?>
+</tbody></table></div></div></details>
 <?php endif ?>
 </main></div>
 <script>
-const ksForm=document.getElementById('ks-form');
-if(ksForm){let dirty=false;const checks=[...ksForm.querySelectorAll('.ks-check')],all=document.getElementById('ks-all');const sync=()=>{all.checked=checks.length>0&&checks.every(c=>c.checked);all.indeterminate=checks.some(c=>c.checked)&&!all.checked;};all.addEventListener('change',()=>{checks.forEach(c=>c.checked=all.checked);dirty=true;sync();});checks.forEach(c=>c.addEventListener('change',()=>{dirty=true;sync();}));sync();ksForm.addEventListener('submit',()=>dirty=false);window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue='';}});}
+const panelButtons = [...document.querySelectorAll('[data-ks-panel]')];
+panelButtons.forEach(button => button.addEventListener('click', () => {
+    const open = button.getAttribute('aria-expanded') !== 'true';
+    panelButtons.forEach(other => {
+        const active = other === button && open;
+        other.setAttribute('aria-expanded', String(active));
+        document.getElementById(other.dataset.ksPanel).hidden = !active;
+    });
+}));
+const ksForm = document.getElementById('ks-form');
+if (ksForm) {
+    let dirty = false;
+    const checks = [...ksForm.querySelectorAll('.ks-check')];
+    const rows = [...ksForm.querySelectorAll('.ks-person')];
+    const all = document.getElementById('ks-all');
+    const search = document.getElementById('ks-search');
+    const visibleChecks = () => checks.filter(c => !c.closest('.ks-person').hidden);
+    const sync = () => {
+        const visible = visibleChecks();
+        all.checked = visible.length > 0 && visible.every(c => c.checked);
+        all.indeterminate = visible.some(c => c.checked) && !all.checked;
+        all.disabled = visible.length === 0;
+        document.getElementById('ks-count').textContent = checks.filter(c => c.checked).length + ' dari ' + checks.length + ' peserta hadir' + (dirty ? ' - Belum disimpan' : '');
+    };
+    search.addEventListener('input', () => {
+        const query = search.value.trim().toLocaleLowerCase('id');
+        ksForm.querySelector('.ks-attendance-list').scrollTop = 0;
+        rows.forEach(row => row.hidden = !row.dataset.name.toLocaleLowerCase('id').includes(query));
+        document.getElementById('ks-no-results').hidden = !rows.length || rows.some(row => !row.hidden);
+        sync();
+    });
+    all.addEventListener('change', () => { visibleChecks().forEach(c => c.checked = all.checked); dirty = true; sync(); });
+    checks.forEach(c => c.addEventListener('change', () => { dirty = true; sync(); }));
+    sync();
+    ksForm.addEventListener('submit', () => dirty = false);
+    window.addEventListener('beforeunload', e => { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+}
+const dateInput = document.getElementById('ks-date');
+if (dateInput) dateInput.addEventListener('change', () => {
+    if (dateInput.validity.valid) {
+        document.getElementById('ks-filter').requestSubmit();
+    }
+});
+const printButton = document.getElementById('ks-print');
+if (printButton) printButton.addEventListener('click', () => window.print());
+let summaryWasOpen = false;
+window.addEventListener('beforeprint', () => { const summary = document.querySelector('.ks-summary'); if (summary) { summaryWasOpen = summary.open; summary.open = true; } });
+window.addEventListener('afterprint', () => { const summary = document.querySelector('.ks-summary'); if (summary) summary.open = summaryWasOpen; });
 </script>
 <?php require_once __DIR__.'/../includes/footer.php'; ?>
