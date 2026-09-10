@@ -272,7 +272,7 @@ if ($role_id === 3 && class_exists('Database')) {
             <a href="monitoring_ujian.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_ujian.php' ? 'active' : '' ?>"><i class="fa-solid fa-file-circle-question me-2"></i><span class="sidebar-menu-label">Monitoring Ulangan</span></a>
             <a href="aktivitas_guru.php" class="list-group-item list-group-item-action <?= $current_page === 'aktivitas_guru.php' ? 'active' : '' ?>"><i class="fa-solid fa-person-chalkboard me-2"></i><span class="sidebar-menu-label">Aktivitas Guru</span></a>
         </div>
-        <?php $admin_laporan_aktif = in_array($current_page, ['rekap_absensi.php','rekap_nilai.php','rekap_guru_mengajar.php','pusat_laporan.php'], true); ?>
+        <?php $admin_laporan_aktif = in_array($current_page, ['rekap_absensi.php','rekap_nilai.php','rekap_guru_mengajar.php','rekap_kegiatan_guru.php','pusat_laporan.php'], true); ?>
         <a href="#sidebarAdminLaporan" class="list-group-item list-group-item-action <?= $admin_laporan_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_laporan_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminLaporan">
             <i class="fa-solid fa-chart-column me-2"></i><span class="sidebar-menu-label flex-grow-1">Rekap &amp; Laporan</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
@@ -280,6 +280,7 @@ if ($role_id === 3 && class_exists('Database')) {
             <a href="rekap_absensi.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_absensi.php' ? 'active' : '' ?>"><i class="fa-solid fa-clipboard-check me-2"></i><span class="sidebar-menu-label">Rekap Absensi</span></a>
             <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_nilai.php' ? 'active' : '' ?>"><i class="fa-solid fa-graduation-cap me-2"></i><span class="sidebar-menu-label">Rekap Nilai Akademik</span></a>
             <a href="rekap_guru_mengajar.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_guru_mengajar.php' ? 'active' : '' ?>"><i class="fa-solid fa-person-chalkboard me-2"></i><span class="sidebar-menu-label">Rekap Guru Mengajar</span></a>
+            <a href="rekap_kegiatan_guru.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_kegiatan_guru.php' ? 'active' : '' ?>"><i class="fa-solid fa-calendar-check me-2"></i><span class="sidebar-menu-label">Rekap Kegiatan Guru</span></a>
             <a href="pusat_laporan.php" class="list-group-item list-group-item-action <?= $current_page === 'pusat_laporan.php' ? 'active' : '' ?>"><i class="fa-solid fa-file-export me-2"></i><span class="sidebar-menu-label">Pusat Laporan</span></a>
         </div>
         <?php $admin_sistem_aktif = in_array($current_page, ['kontrol_operasional.php','log_aktivitas.php'], true); ?>
