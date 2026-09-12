@@ -32,7 +32,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
 <?php
 $role_id_pengumuman = (int)($_SESSION['role_id'] ?? 0);
-$tampilkan_pengumuman_abu = in_array($role_id_pengumuman, [2, 3], true);
+$dashboard_siswa_pengumuman = preg_match('~/siswa/(?:index\.php)?$~', str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '')) === 1;
+$tampilkan_pengumuman_abu = in_array($role_id_pengumuman, [2, 3], true) && !$dashboard_siswa_pengumuman;
 $halaman_dashboard_pengumuman = preg_match('~/(guru|siswa)/index\.php$~', str_replace('\\', '/', $_SERVER['SCRIPT_NAME'] ?? '')) === 1;
 ?>
 <?php if ($tampilkan_pengumuman_abu): ?>
