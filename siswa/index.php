@@ -27,6 +27,67 @@ if (!$siswa) {
 $siswa_id = $siswa['id'] ?? 0;
 $kelas_id = $siswa['kelas_id'] ?? 0;
 
+// Endpoint read-only lonceng, tetap melalui validasi session dan profil siswa di atas.
+if (($_GET['dashboard_notifications'] ?? '') === '1') {
+    header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: private, no-store');
+    $notifications = [];
+    $fetch_notice = static function(string $sql, array $params) use ($db): array {
+        $stmt = $db->prepare($sql); $stmt->execute($params); return $stmt->fetchAll();
+    };
+    $now_notice = time();
+    $attendance_notices = $fetch_notice("SELECT sa.id,m.nama_mapel,sa.waktu_tutup FROM sesi_absensi sa
+        JOIN pengajaran p ON p.id=sa.pengajaran_id JOIN mapel m ON m.id=p.mapel_id
+        WHERE p.kelas_id=? AND sa.status='Dibuka' AND NOW() BETWEEN sa.waktu_buka AND sa.waktu_tutup
+        AND NOT EXISTS(SELECT 1 FROM detail_absensi da WHERE da.sesi_absensi_id=sa.id AND da.siswa_id=?)
+        ORDER BY sa.waktu_tutup LIMIT 10", [$kelas_id,$siswa_id]);
+    foreach ($attendance_notices as $row) {
+        $end = strtotime($row['waktu_tutup']); $urgent = $end-$now_notice<=900;
+        $notifications[] = ['key'=>'absensi-'.$row['id'],'title'=>$urgent?'Absensi segera ditutup':'Absensi dibuka',
+            'detail'=>$row['nama_mapel'],'url'=>'absensi.php','expires'=>$end,'priority'=>$urgent?0:1,'icon'=>'fa-user-check'];
+    }
+    $task_notices = $fetch_notice("SELECT t.id,t.judul,m.nama_mapel,t.deadline FROM tugas t
+        JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id
+        JOIN akses_pertemuan ap ON ap.pengajaran_id=t.pengajaran_id AND ap.pertemuan_ke=t.pertemuan_ke AND ap.status='Dibuka'
+        WHERE p.kelas_id=? AND t.deadline BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 15 MINUTE)
+        AND NOT EXISTS(SELECT 1 FROM pengumpulan_tugas pt WHERE pt.tugas_id=t.id AND pt.siswa_id=?)
+        AND (NOT EXISTS(SELECT 1 FROM materi mat WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke)
+        OR EXISTS(SELECT 1 FROM materi mat JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id=? WHERE mat.pengajaran_id=t.pengajaran_id AND mat.pertemuan_ke=t.pertemuan_ke))
+        ORDER BY t.deadline LIMIT 10", [$kelas_id,$siswa_id,$siswa_id]);
+    foreach ($task_notices as $row) $notifications[] = ['key'=>'tugas-'.$row['id'],'title'=>'Deadline tugas hampir habis',
+        'detail'=>$row['nama_mapel'].' ? '.$row['judul'],'url'=>'tugas.php#tugas-'.(int)$row['id'],'expires'=>strtotime($row['deadline']),'priority'=>0,'icon'=>'fa-list-check'];
+    $exam_notices = $fetch_notice("SELECT u.id,u.nama_ujian,m.nama_mapel,u.waktu_mulai,
+        CASE WHEN su.status='Berlangsung' THEN LEAST(u.waktu_selesai,DATE_ADD(su.waktu_mulai, INTERVAL u.durasi_menit MINUTE)) ELSE u.waktu_selesai END AS batas
+        FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id JOIN mapel m ON m.id=p.mapel_id
+        LEFT JOIN sesi_ujian su ON su.ujian_id=u.id AND su.siswa_id=?
+        WHERE p.kelas_id=? AND (su.id IS NULL OR su.status<>'Selesai') AND u.waktu_selesai>=NOW()
+        HAVING batas>NOW() AND (waktu_mulai BETWEEN NOW() AND DATE_ADD(NOW(),INTERVAL 15 MINUTE) OR batas<=DATE_ADD(NOW(),INTERVAL 15 MINUTE))
+        ORDER BY batas LIMIT 10", [$siswa_id,$kelas_id]);
+    foreach ($exam_notices as $row) {
+        $starts = strtotime($row['waktu_mulai']); $soon = $starts>$now_notice;
+        $notifications[] = ['key'=>'ujian-'.$row['id'],'title'=>$soon?'Ulangan segera dimulai':'Waktu ulangan hampir habis',
+            'detail'=>$row['nama_mapel'].' ? '.$row['nama_ujian'],'url'=>$soon?'ujian.php':'ujian_kerjakan.php?id='.(int)$row['id'],
+            'expires'=>$soon?$starts:strtotime($row['batas']),'priority'=>$soon?1:0,'icon'=>'fa-file-pen'];
+    }
+    // Tidak ada waktu penilaian tugas: sebut nilai tersedia, bukan baru dinilai.
+    $grade_notices = $fetch_notice("SELECT * FROM (
+        SELECT pt.id,'tugas' AS jenis,t.judul AS nama,m.nama_mapel,pt.dikumpulkan_pada AS tanggal,t.id AS target
+        FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id JOIN pengajaran p ON p.id=t.pengajaran_id JOIN mapel m ON m.id=p.mapel_id
+        WHERE pt.siswa_id=? AND p.kelas_id=? AND pt.nilai IS NOT NULL
+        UNION ALL
+        SELECT nu.id,'ujian' AS jenis,u.nama_ujian AS nama,m.nama_mapel,nu.selesai_pada AS tanggal,u.id AS target
+        FROM nilai_ujian nu JOIN ujian u ON u.id=nu.ujian_id JOIN pengajaran p ON p.id=u.pengajaran_id JOIN mapel m ON m.id=p.mapel_id
+        WHERE nu.siswa_id=? AND p.kelas_id=? AND nu.nilai_total IS NOT NULL
+        AND EXISTS(SELECT 1 FROM sesi_ujian su WHERE su.ujian_id=nu.ujian_id AND su.siswa_id=nu.siswa_id AND su.status='Selesai')
+        ) grades ORDER BY tanggal DESC,jenis,id DESC LIMIT 5",[$siswa_id,$kelas_id,$siswa_id,$kelas_id]);
+    foreach ($grade_notices as $row) $notifications[] = ['key'=>'nilai-'.$row['jenis'].'-'.$row['id'],'title'=>'Nilai tersedia',
+        'detail'=>$row['nama_mapel'].' ? '.$row['nama'],'url'=>$row['jenis']==='tugas'?'tugas.php#tugas-'.(int)$row['target']:'ujian.php?status=selesai',
+        'expires'=>null,'priority'=>2,'icon'=>'fa-graduation-cap'];
+    usort($notifications,static fn($a,$b)=>($a['priority']<=>$b['priority']) ?: (($a['expires']??PHP_INT_MAX)<=>($b['expires']??PHP_INT_MAX)));
+    echo json_encode(['items'=>array_slice($notifications,0,20),'serverTime'=>$now_notice], JSON_THROW_ON_ERROR);
+    exit;
+}
+
 // Kredit Aktivitas Siswa dihitung terhadap target akhir tiga tahun (X+XI+XII).
 $stmt_kredit = $db->prepare('SELECT COALESCE(SUM(poin),0) FROM kak_aktivitas_siswa WHERE siswa_id=?');
 $stmt_kredit->execute([$siswa_id]);
@@ -389,6 +450,20 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
     @keyframes student-panel-in { from { opacity:.5; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
     @media(min-width:992px) { .student-dashboard .progress-orbit-grid { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); } }
     @media(prefers-reduced-motion:reduce) { .student-dashboard .tab-pane.active { animation:none; } .student-dashboard .orbit-hint i { transition:none; } }
+    .student-dashboard .student-notification { position:relative; }
+    .student-dashboard .notification-bell { position:relative; width:44px; height:44px; padding:10px; color:#334f7d; background:#f2f5fa; border:1px solid #e6edf7; border-radius:13px; font-size:1.15rem; }
+    .student-dashboard .notification-count { position:absolute; top:-4px; right:-4px; padding:2px 5px; border-radius:20px; background:#c7384b; color:white; border:2px solid white; font-size:.62rem; line-height:1.3; }
+    .student-dashboard .notification-panel { position:absolute; right:0; top:52px; width:360px; max-width:calc(100vw - 32px); border:1px solid #e3eaf5; border-radius:18px; background:#fff; box-shadow:0 16px 48px rgba(23,43,81,.18); overflow:hidden; z-index:100; }
+    .student-dashboard .notification-heading { display:flex; justify-content:space-between; align-items:center; padding:12px 16px 4px; }
+    .student-dashboard .notification-heading small { display:block; font-size:.72rem; color:#71819d; }
+    .student-dashboard .notification-list { max-height:min(420px,60vh); overflow-y:auto; overscroll-behavior:contain; }
+    .student-dashboard .notification-entry { display:flex; gap:10px; padding:13px 16px; color:#273b5b; text-decoration:none; border-top:1px solid #eef2f7; }
+    .student-dashboard .notification-entry:hover { background:#f6f9ff; }
+    .student-dashboard .notification-entry > i { padding-top:3px; color:#3868d9; }
+    .student-dashboard .notification-entry.is-urgent > i { color:#c7384b; }
+    .student-dashboard .notification-entry strong { display:block; font-size:.82rem; }
+    .student-dashboard .notification-entry small { display:block; font-size:.73rem; color:#66758d; margin-top:3px; overflow-wrap:anywhere; }
+    @media(max-width:575.98px) { .student-dashboard .notification-panel { position:fixed; top:78px; right:16px; left:16px; width:auto; max-width:none; } }
 </style>
 <div id="page-content-wrapper" class="student-dashboard">
     <nav class="student-topbar px-4 py-3">
@@ -396,7 +471,16 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
             <div class="d-flex align-items-center gap-2 min-w-0">
                 <div class="min-w-0"><strong class="d-block text-truncate">Dashboard Siswa</strong><small class="text-muted d-block text-truncate"><?= sanitize($siswa['nama_kelas'] ?? 'Kelas belum ditentukan') ?></small></div>
             </div>
-            <div class="d-flex align-items-center gap-2"><button type="button" class="btn btn-sm btn-outline-primary d-none" data-install-pwa><i class="fa-solid fa-mobile-screen-button me-1"></i>Pasang</button><img src="../assets/img/jb-mobile.png" width="38" height="38" class="object-fit-contain flex-shrink-0" alt="Logo sekolah"></div>
+            <div class="d-flex align-items-center gap-2">
+                <div class="student-notification">
+                    <button type="button" class="btn notification-bell" id="notificationBell" aria-label="Notifikasi siswa" aria-expanded="false" aria-controls="notificationPanel"><i class="fa-solid fa-bell" aria-hidden="true"></i><span class="notification-count" id="notificationCount" hidden></span></button>
+                    <section class="notification-panel" id="notificationPanel" aria-labelledby="notificationHeading" hidden>
+                        <div class="notification-heading"><div><strong id="notificationHeading">Notifikasi</strong><small>Pengingat belajar kamu</small></div><button type="button" class="btn" id="notificationClose" aria-label="Tutup notifikasi">&times;</button></div>
+                        <p class="small text-muted px-3 mb-2" id="notificationStatus" role="status">Memuat notifikasi?</p>
+                        <div class="notification-list" id="notificationList"></div>
+                    </section>
+                </div>
+                <button type="button" class="btn btn-sm btn-outline-primary d-none" data-install-pwa><i class="fa-solid fa-mobile-screen-button me-1"></i>Pasang</button><img src="../assets/img/jb-mobile.png" width="38" height="38" class="object-fit-contain flex-shrink-0" alt="Logo sekolah"></div>
         </div>
     </nav>
 
@@ -648,6 +732,80 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
             }
         }
     });
+})();
+</script>
+<script>
+(() => {
+    const bell = document.getElementById('notificationBell');
+    const panel = document.getElementById('notificationPanel');
+    const list = document.getElementById('notificationList');
+    const status = document.getElementById('notificationStatus');
+    const badge = document.getElementById('notificationCount');
+    let loading = false, items = [], clockOffset = 0;
+    const dismissedStorageKey = 'lms_student_notifications_clicked_<?= (int)$siswa_id ?>';
+    const notificationIdentity = item => JSON.stringify([item.key, item.title, item.expires]);
+    function readDismissed() {
+        try {
+            const saved = JSON.parse(localStorage.getItem(dismissedStorageKey) || '[]');
+            return new Set(Array.isArray(saved) ? saved.filter(value => typeof value === 'string') : []);
+        } catch (error) { return new Set(); }
+    }
+    let dismissed = readDismissed();
+    function dismiss(item) {
+        dismissed.add(notificationIdentity(item));
+        try { localStorage.setItem(dismissedStorageKey, JSON.stringify([...dismissed])); } catch (error) {}
+        render();
+    }
+    window.addEventListener('storage', event => {
+        if (event.key === dismissedStorageKey || event.key === null) { dismissed = readDismissed(); render(); }
+    });
+    function close() { panel.hidden = true; bell.setAttribute('aria-expanded','false'); }
+    function render() {
+        const now = Date.now()/1000 + clockOffset;
+        const active = items.filter(item => !dismissed.has(notificationIdentity(item)) && (item.expires === null || item.expires > now));
+        badge.hidden = active.length === 0;
+        badge.textContent = active.length;
+        bell.setAttribute('aria-label', 'Notifikasi siswa, ' + active.length + ' informasi tersedia');
+        list.replaceChildren();
+        active.forEach(item => {
+            const link = document.createElement('a');
+            link.className = 'notification-entry' + (item.priority === 0 ? ' is-urgent' : '');
+            link.href = item.url;
+            const icon = document.createElement('i'); icon.className = 'fa-solid ' + item.icon; icon.setAttribute('aria-hidden','true');
+            const copy = document.createElement('div');
+            const title = document.createElement('strong'); title.textContent = item.title;
+            const detail = document.createElement('small'); detail.textContent = item.detail;
+            copy.append(title,detail);
+            if (item.expires !== null) {
+                const time = document.createElement('small'); time.textContent = 'Sekitar ' + Math.max(1, Math.ceil((item.expires-now)/60)) + ' menit lagi'; copy.append(time);
+            }
+            link.addEventListener('click', () => dismiss(item));
+            link.addEventListener('auxclick', event => { if (event.button === 1) dismiss(item); });
+            link.append(icon,copy);list.append(link);
+        });
+        status.textContent = active.length ? 'Pengingat otomatis ? batas waktu 15 menit' : 'Belum ada notifikasi.';
+    }
+    async function refresh() {
+        if (loading || document.hidden) return;
+        loading = true;
+        const controller = new AbortController();
+        const timeout = setTimeout(()=>controller.abort(),15000);
+        try {
+            const url = new URL('index.php',location.href);url.searchParams.set('dashboard_notifications','1');
+            const response = await fetch(url,{credentials:'same-origin',cache:'no-store',signal:controller.signal});
+            if (!response.ok || response.redirected) throw new Error('Unavailable');
+            const data = await response.json();
+            if (!Array.isArray(data.items)) throw new Error('Invalid response');
+            items = data.items; clockOffset = data.serverTime-Date.now()/1000;render();
+        } catch(error) { render();status.textContent = 'Belum bisa memperbarui notifikasi. Akan dicoba kembali otomatis.'; }
+        finally { clearTimeout(timeout);loading=false; }
+    }
+    bell.addEventListener('click',()=>{panel.hidden=!panel.hidden;bell.setAttribute('aria-expanded',String(!panel.hidden));if(!panel.hidden)refresh();});
+    document.getElementById('notificationClose').addEventListener('click',()=>{close();bell.focus();});
+    document.addEventListener('click',event=>{if(!event.target.closest('.student-notification'))close();});
+    document.addEventListener('keydown',event=>{if(event.key==='Escape'&&!panel.hidden){close();bell.focus();}});
+    document.addEventListener('visibilitychange',()=>{if(!document.hidden)refresh();});
+    refresh();setInterval(refresh,60000);
 })();
 </script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
