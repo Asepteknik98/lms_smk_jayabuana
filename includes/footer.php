@@ -63,13 +63,13 @@ $halaman_dashboard_pengumuman = preg_match('~/(guru|siswa)/index\.php$~', str_re
     <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
         <div class="modal-content shadow-lg">
             <div class="modal-header">
-                <h2 class="modal-title h5 fw-bold" id="volcanicAshNoticeTitle" aria-live="polite"><i class="fa-solid fa-triangle-exclamation text-warning me-2"></i><span id="noticeTitleText">Waspada Abu Vulkanik</span></h2>
+                <h2 class="modal-title h5 fw-bold" id="volcanicAshNoticeTitle" aria-live="polite"><i class="fa-solid fa-circle-info text-primary me-2"></i><span id="noticeTitleText">Panduan Penggunaan LMS</span></h2>
             </div>
             <div class="modal-body p-0">
-                <img src="../assets/pengumuman/informasi.jpeg" class="volcanic-notice-image" alt="Imbauan kewaspadaan abu vulkanik: gunakan masker, kurangi aktivitas luar ruangan, tutup pintu dan jendela, hindari menggosok mata, serta basahi abu sebelum dibersihkan.">
+                <img src="../assets/pengumuman/panduan.jpg" class="volcanic-notice-image" alt="Panduan penggunaan LMS SMK Jaya Buana untuk siswa: absen online, membuka materi, mengirim tugas, melihat riwayat absensi, semua materi, dan nilai.">
             </div>
             <div class="modal-footer justify-content-between">
-                <small class="text-muted" id="noticeCaption" aria-live="polite">1 / 3 — Utamakan keselamatan dan kesehatan</small>
+                <small class="text-muted" id="noticeCaption" aria-live="polite">1 / 2 — Pelajari panduan penggunaan LMS SMK Jaya Buana</small>
                 <div class="d-flex flex-wrap gap-2">
                     <a href="https://whatsapp.com/channel/0029VaavIAl7Noa3wxlyXP24" class="btn btn-success d-none" id="noticeChannel" target="_blank" rel="noopener noreferrer"><i class="fa-brands fa-whatsapp me-1"></i>Cek Saluran</a>
                     <button type="button" class="btn btn-primary px-4" id="noticeUnderstand"><i class="fa-solid fa-check me-1"></i>Saya Mengerti</button>
@@ -97,7 +97,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const noticeCaption = document.getElementById('noticeCaption');
     const noticeChannel = document.getElementById('noticeChannel');
     const notices = [
-        { src: noticeImage.getAttribute('src'), alt: noticeImage.alt, title: 'Waspada Abu Vulkanik', caption: 'Utamakan keselamatan dan kesehatan' },
         { src: '../assets/pengumuman/panduan.jpg', alt: 'Panduan penggunaan LMS SMK Jaya Buana untuk siswa: absen online, membuka materi, mengirim tugas, melihat riwayat absensi, semua materi, dan nilai.', title: 'Panduan Penggunaan LMS', caption: 'Pelajari panduan penggunaan LMS SMK Jaya Buana' },
         { src: '../assets/pengumuman/saluran.jpg', alt: 'Ajakan mengikuti Saluran WhatsApp SMK Jaya Buana untuk informasi kegiatan sekolah, jadwal dan agenda, pengumuman penting, serta berita terbaru.', title: 'Saluran WhatsApp SMK Jaya Buana', caption: 'Ikuti saluran WhatsApp sekolah untuk mendapatkan informasi terbaru' }
     ];
@@ -138,8 +137,8 @@ document.addEventListener('DOMContentLoaded', function () {
     if (dashboardMain && !dashboardMain.querySelector('[data-volcanic-notice-open]')) {
         const banner = document.createElement('aside');
         banner.className = 'volcanic-alert-banner';
-        banner.setAttribute('aria-label', 'Imbauan, panduan LMS, dan saluran WhatsApp sekolah');
-        banner.innerHTML = '<span class="alert-icon"><i class="fa-solid fa-mask-face"></i></span><span class="alert-copy"><strong>Pengumuman Sekolah</strong><small>Lihat imbauan abu vulkanik, panduan LMS, dan saluran WhatsApp sekolah.</small></span><button type="button" class="btn btn-sm btn-warning fw-semibold" data-volcanic-notice-open><i class="fa-solid fa-image me-1"></i>Lihat Pengumuman</button>';
+        banner.setAttribute('aria-label', 'Panduan LMS dan saluran WhatsApp sekolah');
+        banner.innerHTML = '<span class="alert-icon"><i class="fa-solid fa-bullhorn"></i></span><span class="alert-copy"><strong>Pengumuman Sekolah</strong><small>Lihat panduan LMS dan saluran WhatsApp sekolah.</small></span><button type="button" class="btn btn-sm btn-warning fw-semibold" data-volcanic-notice-open><i class="fa-solid fa-image me-1"></i>Lihat Pengumuman</button>';
         dashboardMain.prepend(banner);
         banner.querySelector('[data-volcanic-notice-open]').addEventListener('click', function () { noticeModal.show(); });
     }
