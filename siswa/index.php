@@ -153,31 +153,9 @@ $stmt_progress_tugas = $db->prepare("
 $stmt_progress_tugas->execute([$siswa_id, $kelas_id, $siswa_id]);
 $progress_tugas = $stmt_progress_tugas->fetch();
 
-$stmt_progress_ulangan = $db->prepare("
-    SELECT COUNT(*) AS total, COALESCE(SUM(su.status='Selesai'),0) AS selesai
-    FROM ujian u
-    JOIN pengajaran p ON p.id=u.pengajaran_id
-    LEFT JOIN sesi_ujian su ON su.ujian_id=u.id AND su.siswa_id=?
-    WHERE p.kelas_id=? $filter_progress AND u.waktu_mulai<=NOW()
-");
-$stmt_progress_ulangan->execute([$siswa_id, $kelas_id]);
-$progress_ulangan = $stmt_progress_ulangan->fetch();
-
-$stmt_progress_kehadiran = $db->prepare("
-    SELECT COUNT(*) AS total, COALESCE(SUM(da.status='Hadir'),0) AS selesai
-    FROM detail_absensi da
-    JOIN sesi_absensi sa ON sa.id=da.sesi_absensi_id
-    JOIN pengajaran p ON p.id=sa.pengajaran_id
-    WHERE da.siswa_id=? AND p.kelas_id=? $filter_progress AND sa.tanggal<=?
-");
-$stmt_progress_kehadiran->execute([$siswa_id, $kelas_id, $tanggal_kehadiran]);
-$progress_kehadiran = $stmt_progress_kehadiran->fetch();
-
 $progress_belajar = [
     ['label'=>'Tugas', 'data'=>$progress_tugas, 'aksi'=>'dikumpulkan', 'catatan'=>'Tugas yang sudah dapat diakses', 'warna'=>'primary', 'ikon'=>'fa-list-check'],
     ['label'=>'Materi', 'data'=>$progress_materi, 'aksi'=>'dibuka', 'catatan'=>'Materi pada pertemuan terbuka', 'warna'=>'info', 'ikon'=>'fa-book-open-reader'],
-    ['label'=>'Ulangan', 'data'=>$progress_ulangan, 'aksi'=>'selesai', 'catatan'=>'Ulangan yang sudah memasuki waktu mulai', 'warna'=>'danger', 'ikon'=>'fa-file-pen'],
-    ['label'=>'Kehadiran', 'data'=>$progress_kehadiran, 'aksi'=>'sesi hadir', 'catatan'=>'Dari absensi yang sudah tercatat', 'warna'=>'success', 'ikon'=>'fa-user-check'],
 ];
 $progress_belajar = array_values(array_filter($progress_belajar, static fn($item) => (int)$item['data']['total'] > 0));
 
@@ -209,6 +187,8 @@ $stmt_nilai_terbaru = $db->prepare("
 ");
 $stmt_nilai_terbaru->execute([$siswa_id, $kelas_id, $siswa_id, $kelas_id]);
 $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
+
+
 
 
 
@@ -306,6 +286,109 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
     @media (prefers-reduced-motion:reduce) {
         .student-dashboard .quick-link,.student-dashboard .student-credit-link { transition:none; }
     }
+    .student-dashboard .student-tab-nav { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:4px; padding:8px; border-bottom:1px solid #e8edf5; }
+    .student-dashboard .student-tab-nav .nav-link { min-height:44px; padding:10px 4px; font-size:.88rem; font-weight:600; color:#64748b; border-radius:10px; }
+    .student-dashboard .student-tab-nav .nav-link.active { color:#fff; background:var(--student-blue); }
+    .student-dashboard .student-tab-nav .nav-link:hover:not(.active) { color:#1d4ed8; background:#eff6ff; }
+    .student-dashboard .student-learning-tabs,.student-dashboard .student-tab-section { min-width:0; }
+    .student-dashboard .student-empty-state { display:flex; align-items:center; gap:10px; padding:8px 0; }
+    .student-dashboard .student-empty-state > i { flex-shrink:0; }
+    @media (max-width:575.98px) {
+        .student-dashboard .welcome-card { min-height:0; padding:16px!important; }
+        .student-dashboard .welcome-layout { gap:12px; }
+        .student-dashboard .welcome-card h1 { margin-top:3px; margin-bottom:4px!important; font-size:1.1rem; }
+        .student-dashboard .student-credit-link { min-height:60px; padding:10px; gap:10px; }
+        .student-dashboard .student-credit-score { width:40px; height:40px; flex-basis:40px; font-size:1.25rem; }
+        .student-dashboard .student-credit-copy strong { font-size:.85rem; }
+        .student-dashboard .student-credit-copy small { font-size:.72rem; margin-top:2px; }
+        .student-dashboard .quick-link { min-height:74px; padding:10px 8px; gap:6px; font-size:.8rem; }
+        .student-dashboard .quick-link .quick-icon { width:32px; height:32px; flex-basis:32px; font-size:.95rem; border-radius:10px; }
+        .student-dashboard .student-main > .mb-4 { margin-bottom:16px!important; }
+        .student-dashboard .student-tab-section > .card-body { padding:16px!important; }
+        .student-dashboard .student-tab-section .row.g-4 { --bs-gutter-y:16px; }
+        .student-dashboard .student-tab-nav .nav-link { font-size:.8rem; }
+    }
+    /* Penyelarasan visual dashboard: biru sekolah, permukaan ringan, dan ruang lega. */
+    .student-dashboard { --student-blue:#2459c4; --student-bg:#f5f7fb; --student-radius:20px; --student-shadow:0 6px 24px rgba(24,45,86,.035); color:#24324b; }
+    .student-dashboard .student-main { max-width:1120px; }
+    .student-dashboard .student-topbar { background:rgba(255,255,255,.92); border-color:#edf1f7; }
+    .student-dashboard .welcome-card { min-height:170px; padding:28px!important; border:1px solid rgba(255,255,255,.12); background-image:linear-gradient(110deg,rgba(16,34,70,.98),rgba(28,65,131,.94) 60%,rgba(36,89,196,.88)),url('../assets/img/batikjb.webp'); box-shadow:0 10px 26px rgba(29,61,121,.12); }
+    .student-dashboard .welcome-card::after { background:radial-gradient(ellipse at top right,rgba(161,193,255,.18),transparent 65%); }
+    .student-dashboard .welcome-card h1 { font-size:1.65rem; font-weight:700!important; letter-spacing:-.035em; }
+    .student-dashboard .welcome-meta { font-size:.8rem; }
+    .student-dashboard .student-credit-link { flex:0 1 340px; min-height:76px; padding:14px; background:rgba(255,255,255,.09); border-color:rgba(255,255,255,.22); color:#fff; box-shadow:none; border-radius:16px; }
+    .student-dashboard .student-credit-link:hover { color:#fff; background:rgba(255,255,255,.15); box-shadow:none; }
+    .student-dashboard .student-credit-score { background:#fff; color:#2459c4; border-radius:12px; width:46px; height:46px; flex-basis:46px; }
+    .student-dashboard .student-credit-copy strong { font-size:.9rem; }
+    .student-dashboard .student-credit-copy small,.student-dashboard .student-credit-copy small b { color:#dbe7ff; }
+    .student-dashboard .quick-link { flex-direction:row; justify-content:flex-start; min-height:86px; padding:18px; gap:14px; text-align:left; border-color:#e9edf5; border-radius:16px; box-shadow:0 2px 6px rgba(24,45,86,.02); }
+    .student-dashboard .quick-link:hover { background:#fff; border-color:#b5c8ed; box-shadow:0 6px 16px rgba(24,45,86,.055); }
+    .student-dashboard .quick-link > span:last-child { min-width:0; line-height:1.4; }
+    .student-dashboard .quick-link > span:last-child small { display:block; font-size:.72rem; margin-top:2px; }
+    .student-dashboard #menuCepat { font-size:.82rem; color:#627189; font-weight:600!important; }
+    .student-dashboard .section-card { border-color:#e9edf5; }
+    .student-dashboard .attendance-summary { background:#fbfcff; border-radius:16px; box-shadow:none; }
+    .student-dashboard .attendance-summary h2 { font-size:.9rem; }
+    .student-dashboard .attendance-summary .badge { font-weight:600; border-radius:8px; }
+    .student-dashboard .student-learning-tabs { padding:8px; border-radius:22px; }
+    .student-dashboard .student-tab-nav { border:0; border-radius:14px; background:#f2f5fa; margin:4px; padding:5px; gap:4px; }
+    .student-dashboard .student-tab-nav .nav-link { color:#627189; border-radius:10px; min-height:44px; font-size:.85rem; }
+    .student-dashboard .student-tab-nav .nav-link.active { background:#fff; color:#2459c4; box-shadow:0 2px 7px rgba(24,45,86,.08); }
+    .student-dashboard .student-tab-section > .card-body { padding:24px!important; }
+    .student-dashboard .student-tab-section h2 { font-size:1rem; letter-spacing:-.015em; }
+    .student-dashboard .student-tab-section .form-select { border-color:#e1e7f0; background-color:#fbfcff; border-radius:10px; min-height:44px; font-size:.85rem; }
+    .student-dashboard .student-tab-section .progress { background:#edf1f7; height:6px; }
+    .student-dashboard .student-tab-section .progress-bar { border-radius:6px; }
+    .student-dashboard .student-empty-state { padding:12px 0; color:#64748b; }
+    .student-dashboard .student-grade-card { background:#fbfcff; border-radius:16px; border-color:#e9edf5; }
+    @media (max-width:767.98px) {
+        .student-dashboard .student-credit-link { flex-basis:100%; max-width:none; }
+        .student-dashboard .welcome-layout { gap:18px; }
+    }
+    @media (max-width:575.98px) {
+        .student-dashboard .student-main { padding:18px 16px 24px!important; }
+        .student-dashboard .welcome-card { min-height:0; padding:20px!important; border-radius:20px; }
+        .student-dashboard .welcome-card h1 { font-size:1.35rem; margin-top:5px; }
+        .student-dashboard .welcome-profile > small { font-size:.75rem; }
+        .student-dashboard .student-credit-link { min-height:64px; padding:10px 12px; gap:12px; }
+        .student-dashboard .student-credit-score { width:40px; height:40px; flex-basis:40px; }
+        .student-dashboard .student-credit-copy strong { font-size:.82rem; }
+        .student-dashboard .student-credit-copy small { font-size:.72rem; line-height:1.45; }
+        .student-dashboard .quick-link { min-height:72px; padding:12px 10px; gap:10px; font-size:.78rem; border-radius:14px; }
+        .student-dashboard .quick-link .quick-icon { width:34px; height:34px; flex-basis:34px; font-size:.95rem; }
+        .student-dashboard .student-main > .mb-4 { margin-bottom:20px!important; }
+        .student-dashboard .student-learning-tabs { padding:5px; border-radius:18px; }
+        .student-dashboard .student-tab-section > .card-body { padding:18px 14px!important; }
+        .student-dashboard .student-tab-nav .nav-link { font-size:.78rem; }
+    }
+    .student-dashboard .progress-eyebrow { display:block; font-size:.62rem; letter-spacing:.14em; color:#71819d; font-weight:700; margin-bottom:8px; }
+    .student-dashboard .progress-identity { display:flex; align-items:center; gap:12px; padding:12px; background:#f4f7fc; border-radius:12px; }
+    .student-dashboard .progress-identity > div { min-width:0; overflow-wrap:anywhere; }
+    .student-dashboard .progress-identity strong { display:block; font-size:.85rem; }
+    .student-dashboard .progress-identity small { display:block; color:#64748b; font-size:.73rem; margin-top:3px; }
+    .student-dashboard .progress-orbit-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:start; }
+    .student-dashboard .progress-orbit-card { min-width:0; border:1px solid #e6edf6; border-radius:18px; background:linear-gradient(155deg,#fff,#f8fafd); overflow:hidden; }
+    .student-dashboard .progress-orbit-card summary { list-style:none; cursor:pointer; display:flex; flex-direction:column; align-items:center; padding:16px 8px 12px; gap:10px; text-align:center; }
+    .student-dashboard .progress-orbit-card summary::-webkit-details-marker { display:none; }
+    .student-dashboard .progress-orbit-card summary:focus-visible { outline:3px solid var(--student-blue); outline-offset:-4px; border-radius:18px; }
+    .student-dashboard .orbit-label { font-size:.8rem; font-weight:650; display:flex; align-items:center; gap:6px; }
+    .student-dashboard .orbit-label i { color:var(--orbit-color); }
+    .student-dashboard .progress-orbit { width:94px; height:94px; border-radius:50%; background:conic-gradient(var(--orbit-color) var(--orbit-value),#eaf0f7 0); display:grid; place-items:center; position:relative; }
+    .student-dashboard .progress-orbit::before { content:""; position:absolute; inset:7px; border-radius:50%; background:#fff; box-shadow:0 2px 12px rgba(30,57,105,.04); }
+    .student-dashboard .progress-orbit strong { position:relative; color:#253b61; font-size:1.6rem; letter-spacing:-.04em; font-variant-numeric:tabular-nums; }
+    .student-dashboard .progress-orbit strong small { font-size:.75rem; margin-left:2px; color:#71819d; }
+    .student-dashboard .orbit-count { font-size:.72rem; color:#61708a; overflow-wrap:anywhere; }
+    .student-dashboard .orbit-hint { font-size:.65rem; color:#657694; }
+    .student-dashboard .orbit-hint i { margin-left:3px; transition:transform .2s ease; }
+    .student-dashboard .progress-orbit-card[open] .orbit-hint i { transform:rotate(180deg); }
+    .student-dashboard .orbit-detail { border-top:1px solid #e6edf6; padding:12px; font-size:.73rem; color:#61708a; }
+    .student-dashboard .orbit-detail p { margin-bottom:6px; }
+    .student-dashboard #progressFeedback:empty { display:none; }
+    .student-dashboard #interactiveProgress[aria-busy="true"] .progress-orbit-grid { opacity:.5; }
+    .student-dashboard .tab-pane.active { animation:student-panel-in .2s ease-out; }
+    @keyframes student-panel-in { from { opacity:.5; transform:translateY(3px); } to { opacity:1; transform:translateY(0); } }
+    @media(min-width:992px) { .student-dashboard .progress-orbit-grid { grid-template-columns:repeat(auto-fit,minmax(160px,1fr)); } }
+    @media(prefers-reduced-motion:reduce) { .student-dashboard .tab-pane.active { animation:none; } .student-dashboard .orbit-hint i { transition:none; } }
 </style>
 <div id="page-content-wrapper" class="student-dashboard">
     <nav class="student-topbar px-4 py-3">
@@ -335,7 +418,7 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
             <div class="col-6 col-md-3"><a href="ujian.php" class="quick-link"><span class="quick-icon bg-danger-subtle text-danger"><i class="fa-solid fa-file-pen"></i></span><span>Ulangan Harian</span></a></div>
         </div></section>
 
-        <section class="card section-card mb-4" aria-labelledby="kehadiranHariIni">
+        <section class="card section-card attendance-summary mb-4" aria-labelledby="kehadiranHariIni">
             <div class="card-body p-3">
                 <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-2">
                     <h2 class="h6 fw-bold mb-0" id="kehadiranHariIni"><i class="fa-solid fa-user-check text-success me-2" aria-hidden="true"></i>Status Kehadiran Hari Ini</h2>
@@ -375,56 +458,73 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
             </div>
         </section>
 
+        <div class="card section-card student-learning-tabs">
+            <div class="nav nav-pills student-tab-nav" role="tablist" aria-label="Ringkasan belajar siswa">
+                <button class="nav-link active" id="tab-progress" data-bs-toggle="pill" data-bs-target="#panel-progress" type="button" role="tab" aria-controls="panel-progress" aria-selected="true"><i class="fa-solid fa-chart-simple me-1" aria-hidden="true"></i>Progress</button>
+                <button class="nav-link" id="tab-tugas" data-bs-toggle="pill" data-bs-target="#panel-tugas" type="button" role="tab" aria-controls="panel-tugas" aria-selected="false" tabindex="-1"><i class="fa-solid fa-list-check me-1" aria-hidden="true"></i>Tugas</button>
+                <button class="nav-link" id="tab-ulangan" data-bs-toggle="pill" data-bs-target="#panel-ulangan" type="button" role="tab" aria-controls="panel-ulangan" aria-selected="false" tabindex="-1"><i class="fa-solid fa-file-pen me-1" aria-hidden="true"></i>Ulangan</button>
+                <button class="nav-link" id="tab-nilai" data-bs-toggle="pill" data-bs-target="#panel-nilai" type="button" role="tab" aria-controls="panel-nilai" aria-selected="false" tabindex="-1"><i class="fa-solid fa-graduation-cap me-1" aria-hidden="true"></i>Nilai</button>
+            </div>
+            <div class="tab-content">
+                <div class="tab-pane show active" id="panel-progress" role="tabpanel" aria-labelledby="tab-progress" tabindex="0">
+<section class="student-tab-section" aria-labelledby="progressBelajar" id="interactiveProgress">
+    <div class="card-body p-3 p-md-4">
+        <div class="progress-intro"><span class="progress-eyebrow">RUANG BELAJARMU</span><h2 class="h6 fw-bold mb-1" id="progressBelajar">Setiap langkah berarti</h2><p class="small text-muted mb-3">Lihat perjalanan belajarmu, satu pelajaran setiap waktu.</p></div>
         <?php if ($progress_mapel_list): ?>
-            <section class="card section-card mb-4" aria-labelledby="progressBelajar">
-                <div class="card-body p-3 p-md-4">
-                    <h2 class="h6 fw-bold mb-3" id="progressBelajar"><i class="fa-solid fa-chart-simple text-primary me-2" aria-hidden="true"></i>Progress Belajar</h2>
-                    <form method="get" action="index.php#progressBelajar" class="mb-3">
-                        <label for="progressMapel" class="form-label small text-muted">Mata pelajaran / guru</label>
-                        <div class="d-flex flex-wrap gap-2">
-                            <select id="progressMapel" name="progress_pengajaran_id" class="form-select progress-subject-select">
-                                <option value="0">Semua mata pelajaran (gabungan)</option>
-                                <?php foreach ($progress_mapel_list as $pilihan): ?>
-                                    <option value="<?= (int)$pilihan['id'] ?>" <?= $progress_pengajaran_id === (int)$pilihan['id'] ? 'selected' : '' ?>><?= sanitize($pilihan['nama_mapel'].' / '.$pilihan['nama_guru'].' / '.$pilihan['semester'].' '.$pilihan['tahun_ajaran']) ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                            <button type="submit" class="btn btn-sm btn-outline-primary">Tampilkan</button>
-                        </div>
-                    </form>
-                    <?php if (!$progress_belajar): ?><p class="small text-muted mb-0">Belum ada data progress untuk mata pelajaran ini.</p><?php endif; ?>
-                    <div class="row g-4">
-                        <?php foreach ($progress_belajar as $progress):
-                            $total_progress = (int)$progress['data']['total'];
-                            $selesai_progress = (int)$progress['data']['selesai'];
-                            $persen_progress = min(100, max(0, (int)round($selesai_progress / $total_progress * 100)));
-                        ?>
-                            <div class="col-12 col-sm-6 col-xl">
-                                <div class="d-flex justify-content-between align-items-center gap-2 mb-2">
-                                    <strong class="small"><i class="fa-solid <?= $progress['ikon'] ?> text-<?= $progress['warna'] ?> me-2" aria-hidden="true"></i><?= $progress['label'] ?></strong>
-                                    <span class="small fw-bold"><?= $persen_progress ?>%</span>
-                                </div>
-                                <p class="small text-muted mb-2"><?= $selesai_progress ?> / <?= $total_progress ?> <?= $progress['aksi'] ?></p>
-                                <div class="progress student-learning-progress" role="progressbar" aria-label="<?= $progress['label'] ?>: <?= $selesai_progress ?> dari <?= $total_progress ?> <?= $progress['aksi'] ?>" aria-valuenow="<?= $persen_progress ?>" aria-valuemin="0" aria-valuemax="100">
-                                    <div class="progress-bar bg-<?= $progress['warna'] ?>" style="width:<?= $persen_progress ?>%"></div>
-                                </div>
-                                <small class="d-block text-muted mt-2"><?= $progress['catatan'] ?></small>
-                            </div>
-                        <?php endforeach; ?>
-                    </div>
-                </div>
-            </section>
+        <form method="get" action="index.php#progressBelajar" class="mb-3" id="progressFilter">
+            <label for="progressMapel" class="form-label small text-muted">Mata pelajaran / guru</label>
+            <select id="progressMapel" name="progress_pengajaran_id" class="form-select w-100">
+                <option value="0">Semua mata pelajaran (gabungan)</option>
+                <?php foreach ($progress_mapel_list as $pilihan): ?>
+                <option value="<?= (int)$pilihan['id'] ?>" <?= $progress_pengajaran_id === (int)$pilihan['id'] ? 'selected' : '' ?>><?= sanitize($pilihan['nama_mapel'].' / '.$pilihan['nama_guru'].' / '.$pilihan['semester'].' '.$pilihan['tahun_ajaran']) ?></option>
+                <?php endforeach; ?>
+            </select>
+            <noscript><button type="submit" class="btn btn-sm btn-outline-primary mt-2">Tampilkan</button></noscript>
+        </form>
         <?php endif; ?>
+        <div class="progress-identity mb-3">
+            <i class="fa-solid fa-book-open text-primary" aria-hidden="true"></i>
+            <div>
+                <?php if ($progress_pengajaran_id > 0): foreach ($progress_mapel_list as $identitas): if ((int)$identitas['id'] !== $progress_pengajaran_id) continue; ?>
+                    <strong><?= sanitize($identitas['nama_mapel']) ?></strong><small><?= sanitize($identitas['nama_guru'].' ? '.$identitas['semester'].' '.$identitas['tahun_ajaran']) ?></small>
+                <?php endforeach; else: ?>
+                    <strong>Semua mata pelajaran</strong><small>Ringkasan gabungan dari guru di kelasmu</small>
+                <?php endif; ?>
+            </div>
+        </div>
+        <p id="progressFeedback" class="small text-muted mb-2" role="status" aria-live="polite"></p>
+        <?php if (!$progress_belajar): ?><p class="small text-muted mb-0">Belum ada data progress belajar.</p><?php endif; ?>
+        <div class="progress-orbit-grid">
+            <?php foreach ($progress_belajar as $progress):
+                $total_progress = (int)$progress['data']['total'];
+                $selesai_progress = (int)$progress['data']['selesai'];
+                $persen_progress = min(100, max(0, (int)round($selesai_progress / $total_progress * 100)));
+                $warna_ring = ['primary'=>'#3868d9','info'=>'#089bb5','danger'=>'#ad5cb5','success'=>'#19876d'][$progress['warna']];
+            ?>
+            <details class="progress-orbit-card" style="--orbit-color:<?= $warna_ring ?>">
+                <summary>
+                    <span class="orbit-label"><i class="fa-solid <?= $progress['ikon'] ?>" aria-hidden="true"></i><?= $progress['label'] ?></span>
+                    <span class="progress-orbit" style="--orbit-value:<?= $persen_progress ?>%" role="progressbar" aria-label="<?= $progress['label'] ?>" aria-valuenow="<?= $persen_progress ?>" aria-valuemin="0" aria-valuemax="100"><strong><?= $persen_progress ?><small>%</small></strong></span>
+                    <span class="orbit-count"><?= $selesai_progress ?> / <?= $total_progress ?> <?= $progress['aksi'] ?></span>
+                    <span class="orbit-hint">Detail <i class="fa-solid fa-chevron-down" aria-hidden="true"></i></span>
+                </summary>
+                <div class="orbit-detail"><p><?= $progress['catatan'] ?>.</p><span><?= $selesai_progress ?> dari <?= $total_progress ?> <?= $progress['aksi'] ?>.</span></div>
+            </details>
+            <?php endforeach; ?>
 
-        <div class="row g-3">
-            <div class="col-12 col-xl-6">
-                <section class="card section-card h-100" aria-labelledby="tugasTerdekat">
+        </div>
+    </div>
+</section>
+                </div>
+                <div class="tab-pane" id="panel-tugas" role="tabpanel" aria-labelledby="tab-tugas" tabindex="0">
+<section class="student-tab-section" aria-labelledby="tugasTerdekat">
                     <div class="card-body p-4">
                         <div class="section-heading">
                             <h2 class="h6 fw-bold mb-0" id="tugasTerdekat"><i class="fa-solid fa-list-check text-warning me-2"></i>Tugas Terdekat</h2>
                             <a href="tugas.php" class="small text-decoration-none">Lihat semua</a>
                         </div>
                         <?php if (!$tugas_terdekat): ?>
-                            <div class="text-center py-4"><i class="fa-solid fa-circle-check text-success fa-2x mb-2"></i><p class="small text-muted mb-0">Tidak ada tugas yang menunggu.</p></div>
+                            <div class="student-empty-state"><i class="fa-solid fa-circle-check text-success" aria-hidden="true"></i><p class="small text-muted mb-0">Tidak ada tugas yang menunggu.</p></div>
                         <?php else: foreach ($tugas_terdekat as $t):
                             $selesai = $t['pengumpulan_id'] !== null;
                             $terlambat = !$selesai && (bool)$t['lewat_deadline'];
@@ -448,16 +548,17 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
                         <?php endforeach; endif; ?>
                     </div>
                 </section>
-            </div>
-            <div class="col-12 col-xl-6" id="jadwal-ujian">
-                <section class="card section-card h-100" aria-labelledby="ulanganTerdekat">
+                </div>
+                <div class="tab-pane" id="panel-ulangan" role="tabpanel" aria-labelledby="tab-ulangan" tabindex="0">
+                    <div id="jadwal-ujian">
+<section class="student-tab-section" aria-labelledby="ulanganTerdekat">
                     <div class="card-body p-4">
                         <div class="section-heading">
                             <h2 class="h6 fw-bold mb-0" id="ulanganTerdekat"><i class="fa-solid fa-file-pen text-danger me-2"></i>Ulangan Terdekat</h2>
                             <a href="ujian.php" class="small text-decoration-none">Lihat semua</a>
                         </div>
                         <?php if (!$daftar_ujian): ?>
-                            <div class="text-center py-4"><i class="fa-solid fa-calendar-check text-success fa-2x mb-2"></i><p class="small text-muted mb-0">Belum ada ulangan yang dijadwalkan.</p></div>
+                            <div class="student-empty-state"><i class="fa-solid fa-calendar-check text-success" aria-hidden="true"></i><p class="small text-muted mb-0">Belum ada ulangan yang dijadwalkan.</p></div>
                         <?php else: foreach ($daftar_ujian as $u):
                             $sekarang = time();
                             $bisa_mulai = $sekarang >= strtotime($u['waktu_mulai']) && $sekarang <= strtotime($u['waktu_selesai']);
@@ -478,9 +579,10 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
                         <?php endforeach; endif; ?>
                     </div>
                 </section>
-            </div>
-        </div>
-        <section class="card section-card mt-4" aria-labelledby="nilaiTerbaru">
+                    </div>
+                </div>
+                <div class="tab-pane" id="panel-nilai" role="tabpanel" aria-labelledby="tab-nilai" tabindex="0">
+<section class="student-tab-section" aria-labelledby="nilaiTerbaru">
             <div class="card-body p-3 p-md-4">
                 <h2 class="h6 fw-bold mb-2" id="nilaiTerbaru"><i class="fa-solid fa-graduation-cap text-primary me-2" aria-hidden="true"></i>Nilai Terbaru</h2>
                 <?php if (!$nilai_terbaru): ?>
@@ -505,6 +607,47 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
                 <?php endif; ?>
             </div>
         </section>
+                </div>
+            </div>
+        </div>
     </main>
 </div>
+
+
+<script>
+(() => {
+    let pendingProgress = null;
+    document.addEventListener('change', async (event) => {
+        if (event.target.id !== 'progressMapel') return;
+        const section = document.getElementById('interactiveProgress');
+        const feedback = section.querySelector('#progressFeedback');
+        if (pendingProgress) pendingProgress.abort();
+        const controller = new AbortController();
+        pendingProgress = controller;
+        const url = new URL('index.php', window.location.href);
+        url.searchParams.set('progress_pengajaran_id', event.target.value);
+        section.setAttribute('aria-busy', 'true');
+        feedback.textContent = 'Memuat progress pelajaran?';
+        try {
+            const response = await fetch(url, { signal:controller.signal, credentials:'same-origin', cache:'no-store' });
+            if (!response.ok || response.redirected) throw new Error('Progress unavailable');
+            const html = new DOMParser().parseFromString(await response.text(), 'text/html');
+            const replacement = html.getElementById('interactiveProgress');
+            if (!replacement || !replacement.querySelector('#progressMapel')) throw new Error('Progress unavailable');
+            if (controller.signal.aborted) return;
+            section.replaceWith(replacement);
+            replacement.querySelector('#progressMapel').focus({preventScroll:true});
+            replacement.querySelector('#progressFeedback').textContent = 'Progress diperbarui.';
+            history.replaceState(null, '', url.pathname + url.search + '#progressBelajar');
+        } catch (error) {
+            if (error.name !== 'AbortError') feedback.textContent = 'Progress belum diperbarui. Pilih kembali pelajaran untuk mencoba lagi, atau muat ulang halaman.';
+        } finally {
+            if (pendingProgress === controller) {
+                pendingProgress = null;
+                document.getElementById('interactiveProgress')?.removeAttribute('aria-busy');
+            }
+        }
+    });
+})();
+</script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
