@@ -48,5 +48,6 @@ function showPwaButtons(){if(!isStandalone)pwaButtons().forEach(button=>button.c
 window.addEventListener('beforeinstallprompt',event=>{event.preventDefault();deferredPwaPrompt=event;showPwaButtons()});
 document.addEventListener('DOMContentLoaded',()=>{if(deferredPwaPrompt||isIos)showPwaButtons();pwaButtons().forEach(button=>button.addEventListener('click',async()=>{if(deferredPwaPrompt){deferredPwaPrompt.prompt();await deferredPwaPrompt.userChoice;deferredPwaPrompt=null;button.classList.add('d-none')}else if(isIos){Swal.fire({icon:'info',title:'Pasang di iPhone',html:'Ketuk tombol <strong>Bagikan</strong> di Safari, lalu pilih <strong>Tambahkan ke Layar Utama</strong>.',confirmButtonColor:'#1769e0'})}else{Swal.fire({icon:'info',title:'Pasang LMS',text:'Buka menu browser lalu pilih “Instal aplikasi” atau “Tambahkan ke layar utama”.',confirmButtonColor:'#1769e0'})}}))});
 </script><?php endif ?>
+<?php require_once __DIR__ . '/pengumuman_milad.php'; ?>
 </body>
 </html>
