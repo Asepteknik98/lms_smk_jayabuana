@@ -1,0 +1,123 @@
+/* Presentation only: all existing forms, controls and data remain in place. */
+.grade-page .grade-card {
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 18px rgb(15 23 42 / 4%);
+}
+.grade-page .grade-card + .grade-card { margin-top: 24px; }
+.grade-page .grade-card h6 { font-size: 1rem; font-weight: 700; color: #24354b; }
+.grade-page .grade-card .alert { line-height: 1.7; font-size: .875rem; }
+.grade-page .grade-table {
+    margin-bottom: 20px;
+    font-size: .875rem;
+    --bs-table-border-color: #e6ebf2;
+}
+.grade-page .grade-table thead th {
+    background: #f1f5f9;
+    color: #334155;
+    padding: 18px 14px;
+    line-height: 1.6;
+    vertical-align: middle;
+    white-space: nowrap;
+    border-bottom: 2px solid #dce5ef;
+}
+.grade-page .grade-table thead small { font-size: .75rem; font-weight: 500; }
+.grade-page .grade-table thead .text-warning { color: #925b12 !important; }
+.grade-page .grade-table td { padding: 14px; vertical-align: middle; }
+.grade-page .grade-table tbody tr:nth-child(even) > td { background-color: #fafbfd; }
+.grade-page .grade-table tbody tr:hover > td { background-color: #f0f6ff; }
+.grade-page .grade-table th:first-child,
+.grade-page .grade-table td:first-child { width: 48px; color: #64748b; }
+.grade-page .grade-table th:nth-child(2),
+.grade-page .grade-table td:nth-child(2) { min-width: 135px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.grade-page .grade-table .sticky-name { min-width: 210px; max-width: 290px; line-height: 1.55; }
+.grade-page .grade-table .sticky-name small { font-weight: 400; font-size: .75rem; }
+.grade-page .grade-table .score-cell { min-width: 160px; text-align: center; }
+.grade-page .grade-table .score-input {
+    width: 100px;
+    min-height: 38px;
+    border-radius: 8px;
+    border-color: #cbd5e1;
+    text-align: center;
+    font-size: .875rem;
+    font-variant-numeric: tabular-nums;
+}
+.grade-page .grade-table .score-input:disabled { color: #23634f; opacity: 1; }
+.grade-page .grade-table .score-source-label { margin-top: 5px; font-size: .7rem; line-height: 1.4; }
+.grade-page .grade-table .score-source-label.text-warning { color: #925b12 !important; }
+.grade-page .grade-table .score-toggle {
+    margin-top: 5px;
+    padding: 4px 9px;
+    border: 1px solid #d8e5f7;
+    border-radius: 6px;
+    background: #f3f7ff;
+    color: #235da5;
+    font-size: .72rem;
+    line-height: 1.5;
+    white-space: nowrap;
+    text-decoration: none;
+}
+.grade-page .grade-table .score-toggle:hover { background: #e4efff; border-color: #a8c8ef; }
+.grade-page .grade-table td:nth-last-child(2) { min-width: 110px; text-align: center; line-height: 1.7; }
+.grade-page .grade-table td:last-child { min-width: 110px; text-align: center; }
+.grade-page .grade-table td:last-child .btn { margin: 2px; border-radius: 7px; }
+.grade-page .grade-table .badge { font-size: .9rem !important; padding: 7px 10px; border-radius: 7px; }
+
+/* Keep every student form visible; give identity, fields and actions clear spacing. */
+#capaianPenilaian > .card-body > p { max-width: 1000px; font-size: .875rem; line-height: 1.8; margin-bottom: 20px; }
+#capaianPenilaian > .card-body > .d-flex > .btn { min-width: 76px; padding: 9px 18px; border-radius: 8px; font-size: .875rem; }
+#capaianPenilaian form {
+    padding: 24px !important;
+    margin-top: 20px;
+    margin-bottom: 24px !important;
+    border-color: #dce5ef !important;
+    border-radius: 12px !important;
+    background: #fff;
+    box-shadow: 0 3px 12px rgb(15 23 42 / 3%);
+}
+#capaianPenilaian form > .d-flex {
+    align-items: flex-start;
+    padding-bottom: 16px;
+    margin-bottom: 4px !important;
+    border-bottom: 1px solid #edf1f6;
+}
+#capaianPenilaian form strong { color: #24354b; font-size: .95rem; line-height: 1.6; }
+#capaianPenilaian form strong small { display: block; margin-top: 3px; font-size: .75rem; font-weight: 400; }
+#capaianPenilaian form .badge { padding: 7px 10px; border-radius: 6px; font-size: .7rem; font-weight: 600; }
+#capaianPenilaian form > .row { --bs-gutter-x: 24px; --bs-gutter-y: 20px; }
+#capaianPenilaian .form-label { color: #475569; font-size: .8rem; font-weight: 600; margin-bottom: 9px; }
+#capaianPenilaian .form-control { border-color: #cbd5e1; border-radius: 8px; padding: 11px 13px; font-size: .875rem; line-height: 1.7; }
+#capaianPenilaian .form-control::placeholder { color: #78879a; opacity: 1; }
+#capaianPenilaian textarea { min-height: 128px; resize: vertical; }
+#capaianPenilaian input[type="number"] { max-width: 160px; font-weight: 600; font-variant-numeric: tabular-nums; }
+#capaianPenilaian form > button { margin-top: 20px !important; padding: 9px 16px; border-radius: 8px; font-size: .8rem; }
+
+/* Administrator monitoring: preserve both UTS/UAS rows and all existing columns. */
+.rekap-monitor { border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 18px rgb(15 23 42 / 4%); }
+.rekap-monitor > .card-body { padding: 24px; }
+.rekap-monitor h6 { color: #24354b; font-size: 1rem; font-weight: 700; margin-bottom: 8px; }
+.rekap-monitor p { font-size: .875rem; line-height: 1.7; margin-bottom: 20px; }
+.rekap-monitor .table { min-width: 1120px; font-size: .85rem; margin-bottom: 0; --bs-table-border-color: #e8edf4; }
+.rekap-monitor .table th { padding: 15px 14px; background: #f1f5f9; color: #475569; font-size: .78rem; white-space: nowrap; vertical-align: middle; border-bottom: 2px solid #dce5ef; }
+.rekap-monitor .table td { padding: 13px 14px; line-height: 1.6; vertical-align: middle; }
+.rekap-monitor .table th,
+.rekap-monitor .table td { border-left-width: 0; border-right-width: 0; }
+.rekap-monitor .table td:first-child { min-width: 215px; color: #334155; font-weight: 500; }
+.rekap-monitor .table td:nth-child(2) { min-width: 260px; max-width: 390px; }
+.rekap-monitor .table th:nth-child(n+3),
+.rekap-monitor .table td:nth-child(n+3) { text-align: center; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.rekap-monitor .table td:nth-child(n+4):nth-child(-n+7) { min-width: 88px; }
+.rekap-monitor .table td:last-child { font-size: .78rem; color: #64748b; }
+.rekap-monitor .table tbody tr:nth-child(4n+3),
+.rekap-monitor .table tbody tr:nth-child(4n+4) { --bs-table-bg: #f8fafc; }
+.rekap-monitor .table tbody tr:nth-child(2n) td { border-bottom: 2px solid #dde5ef; }
+
+@media (max-width: 991.98px) {
+    #capaianPenilaian form > .row > .col-md-2 { width: 100%; }
+    #capaianPenilaian form > .row > .col-md-5 { width: 50%; }
+}
+@media (max-width: 575.98px) {
+    .rekap-monitor > .card-body, #capaianPenilaian form { padding: 16px !important; }
+    #capaianPenilaian form > .row > .col-md-5 { width: 100%; }
+    .grade-page .grade-table .sticky-name { min-width: 150px; max-width: 180px; }
+    #capaianPenilaian form > button { width: 100%; }
+}
