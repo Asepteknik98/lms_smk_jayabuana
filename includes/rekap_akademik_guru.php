@@ -1,6 +1,17 @@
 <?php
-// Presentation fragment inside the corresponding student's table row.
-$activePeriod=($_GET['jenis_capaian']??'UTS')==='UAS'?'UAS':'UTS';
+require_once __DIR__.'/../config/helper.php';
+
+/** Render the narrative editor for one student with explicit view data. */
+function render_capaian_guru(
+    array $s,
+    array $komponen,
+    array $capaianPerKomponen,
+    array $nilai,
+    int $selected,
+    string $csrfToken,
+    string $jenisCapaian = 'UTS'
+): void {
+$activePeriod=$jenisCapaian==='UAS'?'UAS':'UTS';
 ?>
 <div class="inline-capaian" data-student="<?= (int)$s['id'] ?>">
 <div class="capaian-heading"><div><strong>Capaian: <?= sanitize($s['nama_lengkap']) ?></strong><small>NISN <?= sanitize($s['nisn']??'') ?></small></div><button type="button" class="btn btn-sm btn-light capaian-close">Tutup</button></div>
@@ -16,7 +27,7 @@ $activePeriod=($_GET['jenis_capaian']??'UTS')==='UAS'?'UAS':'UTS';
 <div class="capaian-period-panel" id="period<?= $period.(int)$s['id'] ?>" data-period="<?= $period ?>" <?= $activePeriod!==$period?'hidden':'' ?>>
 <?php if(!$component): ?><p class="alert alert-warning mb-0">Tambahkan tepat satu komponen <?= $period ?> melalui Komponen Penilaian sebelum mengisi capaian.</p><?php else: ?>
 <form method="post" action="rekap_nilai_action.php" class="inline-capaian-form" data-period="<?= $period ?>">
-<input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="save_period"><input type="hidden" name="pengajaran_id" value="<?= $selected ?>"><input type="hidden" name="siswa_id" value="<?= (int)$s['id'] ?>"><input type="hidden" name="jenis" value="<?= $period ?>">
+<input type="hidden" name="csrf_token" value="<?= sanitize($csrfToken) ?>"><input type="hidden" name="action" value="save_period"><input type="hidden" name="pengajaran_id" value="<?= $selected ?>"><input type="hidden" name="siswa_id" value="<?= (int)$s['id'] ?>"><input type="hidden" name="jenis" value="<?= $period ?>">
 <div class="capaian-fields">
 <div><label for="periodNilai<?= $period.(int)$s['id'] ?>">Nilai <?= $period ?></label><input id="periodNilai<?= $period.(int)$s['id'] ?>" class="form-control period-score" name="nilai_periode" type="number" min="0" max="100" step="0.01" placeholder="Belum diisi" value="<?= $saved===null?'':number_format((float)$saved,2,'.','') ?>"><small class="text-muted">Nilai yang sama dengan tabel.</small></div>
 <div><label for="periodDeskripsi<?= $period.(int)$s['id'] ?>">Deskripsi Capaian Pembelajaran</label><textarea id="periodDeskripsi<?= $period.(int)$s['id'] ?>" class="form-control" name="deskripsi" rows="3" maxlength="2000" placeholder="Kemampuan atau materi yang sudah dikuasai siswa"><?= sanitize($cp['deskripsi']??'') ?></textarea></div>
@@ -26,3 +37,5 @@ $activePeriod=($_GET['jenis_capaian']??'UTS')==='UAS'?'UAS':'UTS';
 </form>
 <?php endif ?></div><?php endforeach ?>
 </div>
+<?php
+}
