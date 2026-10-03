@@ -64,10 +64,10 @@ require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 <p class="small text-muted">Geser tabel ke kanan untuk melihat semua mapel. Nama siswa tetap terlihat. PDF memakai halaman landscape lebar agar mapel tetap berjajar horizontal.</p>
 <div class="table-responsive rapor-scroll" tabindex="0" role="region" aria-label="Rekap nilai horizontal per kelas"><table class="table table-bordered align-top rapor-matrix" id="raporMatrix">
 <thead><tr><th rowspan="2" class="rapor-no" scope="col">No</th><th rowspan="2" class="rapor-nisn" scope="col">NISN</th><th rowspan="2" class="rapor-name" scope="col">Nama Siswa</th>
-<?php foreach($matrix['subjects'] as $subject): ?><th colspan="8" scope="colgroup" class="text-center rapor-subject"><?= sanitize($subject['nama_mapel']) ?><small class="d-block fw-normal"><?= sanitize($subject['nama_guru']) ?></small></th><?php endforeach ?></tr>
-<tr><?php foreach($matrix['subjects'] as $subject): ?><?php foreach(ram_columns() as $index=>$column): ?><th scope="col" class="<?= $index>=6?'rapor-narrative':'rapor-score' ?>"><?= nl2br(sanitize(ram_label($subject,$column))) ?></th><?php endforeach ?><?php endforeach ?></tr></thead>
-<tbody><?php foreach(ram_rows($matrix) as $row): ?><tr><?php foreach($row as $index=>$cell): ?><td class="<?= $index===0?'rapor-no':($index===1?'rapor-nisn':($index===2?'rapor-name':(($index-3)%8>=6?'rapor-narrative':(($index-3)%8===5?'rapor-score fw-bold':'rapor-score')))) ?>"><?= sanitize(is_float($cell)?number_format($cell,2,',','.'):(string)$cell) ?></td><?php endforeach ?></tr><?php endforeach ?>
-<?php if(!$matrix['students']): ?><tr><td colspan="<?= 3+8*count($matrix['subjects']) ?>" class="text-center text-muted">Tidak ada siswa sesuai filter.</td></tr><?php endif ?>
+<?php foreach($matrix['subjects'] as $subject): ?><th colspan="9" scope="colgroup" class="text-center rapor-subject"><?= sanitize($subject['nama_mapel']) ?><small class="d-block fw-normal"><?= sanitize($subject['nama_guru']) ?></small></th><?php endforeach ?></tr>
+<tr><?php foreach($matrix['subjects'] as $subject): ?><?php foreach(ram_columns() as $index=>$column): ?><th scope="col" class="<?= $index>=7?'rapor-narrative':'rapor-score' ?>"><?= nl2br(sanitize(ram_label($subject,$column))) ?></th><?php endforeach ?><?php endforeach ?></tr></thead>
+<tbody><?php foreach(ram_rows($matrix) as $row): ?><tr><?php foreach($row as $index=>$cell): ?><td class="<?= $index===0?'rapor-no':($index===1?'rapor-nisn':($index===2?'rapor-name':(($index-3)%9>=7?'rapor-narrative':(($index-3)%9===6?'rapor-score fw-bold':'rapor-score')))) ?>"><?= sanitize(is_float($cell)?number_format($cell,2,',','.'):(string)$cell) ?></td><?php endforeach ?></tr><?php endforeach ?>
+<?php if(!$matrix['students']): ?><tr><td colspan="<?= 3+9*count($matrix['subjects']) ?>" class="text-center text-muted">Tidak ada siswa sesuai filter.</td></tr><?php endif ?>
 </tbody></table></div></div></div></main></div>
 <script>
 (function(){

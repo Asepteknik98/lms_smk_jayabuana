@@ -3,6 +3,19 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {spawnSync}=require('node:child_process');
+test('Teacher can switch an individual score to manual and back to automatic',()=>{
+ const source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../guru/rekap_nilai.php'),'utf8');
+ const script=[...source.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.includes("document.querySelectorAll('.score-toggle')"));
+ const input={value:'50.00',disabled:true,required:false,classList:{toggle(){}},focus(){this.focused=true}};
+ const mode={value:'auto'},label={};let click;
+ const cell={dataset:{auto:'50.00'},querySelector:s=>s==='.score-input'?input:s==='.score-source'?mode:label};
+ const button={closest:()=>cell,addEventListener:(event,fn)=>{click=fn}};
+ require('node:vm').runInNewContext(script,{document:{querySelectorAll:()=>[button]}});
+ click();assert.equal(mode.value,'manual');assert.equal(input.disabled,false);assert.equal(input.required,true);
+ input.value='0';assert.equal(mode.value,'manual');
+ click();assert.equal(mode.value,'auto');assert.equal(input.disabled,true);assert.equal(input.value,'50.00');
+ assert.equal(button.textContent,'Isi Manual');
+});
 test('UTS/UAS ownership, missing grades, narratives, monitoring and exports',()=>{
  const php=String.raw`<?php
 require 'config/database.php';require 'includes/rekap_akademik.php';
@@ -91,14 +104,14 @@ check($values['UTS']===75.0&&$values['UAS']===91.0&&abs($values['Nilai Akhir']-6
 check(str_contains($values['Deskripsi Capaian Pembelajaran'],'UTS: Updated')&&str_contains($values['Deskripsi Capaian Pembelajaran'],'UAS: Menguasai persamaan'),'Both narratives retained');
 check($matrix['students'][1]['subjects'][1]['Nilai Akhir']==='Belum lengkap','No official final for missing manual scores');
 check($matrix['students'][0]['subjects'][2]['Nilai Akhir']==='Bobot belum 100%','Incomplete weights');
-check(count(ram_rows($matrix))===2&&count(ram_rows($matrix)[0])===19,'One student per row, eight subcolumns per subject');
+check(count(ram_rows($matrix))===2&&count(ram_rows($matrix)[0])===21,'One student per row, nine subcolumns per subject');
 check(count(ram_data($db,2,'2026/2027','Ganjil')['students'])===1,'Class separation');
 $xml=ram_excel('Rapor Kelas A',$matrix);check($doc->loadXML($xml),'Horizontal workbook XML');
 $xp=new DOMXPath($doc);$xp->registerNamespace('ss','urn:schemas-microsoft-com:office:spreadsheet');
 check($xp->query('//ss:Worksheet')->length===2,'One worksheet per subject');
 foreach($xp->query('//ss:Worksheet') as $sheet){
  check($xp->query('ss:Table/ss:Row',$sheet)->length===5,'Each sheet has three header rows and two students');
- check($xp->query('ss:Table/ss:Row[4]/ss:Cell',$sheet)->length===11,'Only one subject per student row');
+ check($xp->query('ss:Table/ss:Row[4]/ss:Cell',$sheet)->length===12,'Only one subject per student row');
 }
 check($xp->query('//ss:Worksheet[@ss:Name="Matematika"]/ss:Table/ss:Row[4]/ss:Cell[7]/ss:Data')->item(0)->textContent==='75','Math UTS in correct worksheet');
 check($xp->query('//ss:Worksheet[@ss:Name="Bahasa Indonesia"]/ss:Table/ss:Row[4]/ss:Cell[7]/ss:Data')->item(0)->textContent==='85','Other subject UTS isolated');
@@ -117,14 +130,44 @@ check(str_contains($pdf,'AKHIR_SARAN')&&str_contains($pdf,'Matematika')&&str_con
 preg_match('/MediaBox \[0 0 (\d+) (\d+)\]/',$pdf,$dim);check((int)$dim[1]>(int)$dim[2],'Landscape PDF');
 preg_match('/startxref\n(\d+)/',$pdf,$m);check(substr($pdf,(int)$m[1],4)==='xref','Wide PDF offsets');
 check(str_contains(ram_pdf('Kosong',['subjects'=>[],'students'=>[]]),'Tidak ada siswa.'),'Empty matrix PDF');
+
+require 'includes/penilaian_override.php';
+$db->exec("UPDATE komponen_penilaian SET bobot=10 WHERE id=2");
+$db->exec("INSERT INTO komponen_penilaian VALUES(10,1,'Ujian Praktik',10,6)");
+po_save($db,1,1,[1=>[7=>'0',8=>'0',9=>'88',10=>'80']],[1=>[7=>'manual',8=>'manual',9=>'manual']]);
+$changed=ram_data($db,1,'2026/2027','Ganjil')['students'][0]['subjects'][1];
+check($changed['Ulangan Harian']===0.0&&$changed['Tugas Harian']===0.0&&$changed['Kehadiran']===88.0,'Zero overrides and manual attendance');
+check($changed['Ujian Praktik']===80.0&&abs($changed['Nilai Akhir']-67.3)<.001,'Practical exam and overrides contribute to final');
+check((float)$db->query('SELECT nilai_total FROM nilai_ujian WHERE ujian_id=1')->fetchColumn()===100.0,'Source activity must not be overwritten');
+reject(fn()=>po_save($db,2,1,[1=>[10=>'90']],[]));
+reject(fn()=>po_save($db,1,1,[3=>[10=>'90']],[]));
+reject(fn()=>po_save($db,1,1,[1=>[3=>'90']],[]));
+reject(fn()=>po_save($db,1,1,[1=>[7=>'101']],[1=>[7=>'manual']]));
+reject(fn()=>po_save($db,1,1,[1=>[7=>'']],[1=>[7=>'manual']]));
+reject(fn()=>po_save($db,1,1,[1=>[10=>'80']],[1=>[10=>'auto']]));
+// A later invalid field must roll back earlier writes in the same submission.
+reject(fn()=>po_save($db,1,1,[1=>[7=>'99',10=>'invalid']],[1=>[7=>'manual']]));
+check((float)$db->query('SELECT nilai FROM nilai_komponen WHERE komponen_id=7 AND siswa_id=1')->fetchColumn()===0.0,'Atomic batch save');
+$db->exec('UPDATE nilai_ujian SET nilai_total=60 WHERE ujian_id=1');
+$historyBefore=(int)$db->query('SELECT COUNT(*) FROM riwayat_nilai')->fetchColumn();
+po_save($db,1,1,[],[1=>[7=>'auto',8=>'auto',9=>'auto']]);
+check((int)$db->query('SELECT COUNT(*) FROM nilai_komponen WHERE komponen_id IN(7,8,9) AND siswa_id=1')->fetchColumn()===0,'Return to auto removes override only');
+check((int)$db->query('SELECT COUNT(*) FROM riwayat_nilai')->fetchColumn()===$historyBefore+3,'Reset records history');
+$restored=ram_data($db,1,'2026/2027','Ganjil')['students'][0]['subjects'][1];
+check($restored['Ulangan Harian']===30.0&&$restored['Tugas Harian']===60.0&&$restored['Kehadiran']===50.0,'Reset uses latest automatic values');
+check(abs($restored['Nilai Akhir']-61.1)<.001,'Practical final after reset');
+check(po_automatic($db,1,1)['Ulangan Harian']===30.0,'Print and reset share automatic grade');
+$db->exec('UPDATE komponen_penilaian SET bobot=9 WHERE id=10');
+reject(fn()=>po_save($db,1,1,[1=>[10=>'90']],[]));
+$db->exec('UPDATE komponen_penilaian SET bobot=10 WHERE id=10');
 require 'config/auth.php';$_SESSION['user_id']=1;$_SESSION['role_id']=1;
 $_SERVER['PHP_SELF']='/admin/rekap_nilai.php';$_SERVER['SCRIPT_NAME']=$_SERVER['PHP_SELF'];
 $_GET=['kelas_id'=>1,'tahun_ajaran'=>'2026/2027','semester'=>'Ganjil'];
 ob_start();require 'includes/rekap_akademik_admin.php';$html=ob_get_clean();
 libxml_use_internal_errors(true);$doc->loadHTML($html);$xp=new DOMXPath($doc);
 check($xp->query('//table[@id="raporMatrix"]/tbody/tr')->length===2,'Rendered one student per row');
-check($xp->query('//table[@id="raporMatrix"]/thead/tr[1]/th[@colspan="8"]')->length===2,'Rendered subject groups');
-check($xp->query('//table[@id="raporMatrix"]/tbody/tr[1]/td')->length===19,'Rendered all subject subcolumns');
+check($xp->query('//table[@id="raporMatrix"]/thead/tr[1]/th[@colspan="9"]')->length===2,'Rendered subject groups');
+check($xp->query('//table[@id="raporMatrix"]/tbody/tr[1]/td')->length===21,'Rendered all subject subcolumns');
 check(!str_contains($html,'id="jenisGabungan"'),'Both exams shown without period toggle');
 session_destroy();
 echo "PASS";

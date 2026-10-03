@@ -2,7 +2,7 @@
 require_once __DIR__.'/rekap_akademik.php';
 
 function ram_columns(): array {
-    return ['Ulangan Harian','Tugas Harian','Kehadiran','UTS','UAS','Nilai Akhir','Deskripsi Capaian Pembelajaran','Saran Capaian Pembelajaran'];
+    return ['Ulangan Harian','Tugas Harian','Kehadiran','UTS','UAS','Ujian Praktik','Nilai Akhir','Deskripsi Capaian Pembelajaran','Saran Capaian Pembelajaran'];
 }
 
 function ram_data(PDO $db, int $kelas, string $tahun, string $semester): array {
@@ -27,11 +27,11 @@ function ram_data(PDO $db, int $kelas, string $tahun, string $semester): array {
           FROM siswa s WHERE s.kelas_id=?");
         $stmt->execute([$pid,$pid,$pid,$pid,$pid,$kelas]);
         foreach($stmt->fetchAll() as $auto){
-            $sid=$auto['id'];$values=array_fill_keys(array_slice(ram_columns(),0,5),null);
+            $sid=$auto['id'];$values=array_fill_keys(array_slice(ram_columns(),0,6),null);
             $automatic=['Ulangan Harian'=>(float)$auto['ulangan'],'Tugas Harian'=>(float)$auto['tugas'],'Kehadiran'=>(float)$auto['kehadiran']];
             $total=0;$missing=false;
             foreach($components as $c){
-                $value=$automatic[$c['nama_komponen']]??($scores[$sid][$c['id']]??null);
+                $value=$scores[$sid][$c['id']]??($automatic[$c['nama_komponen']]??null);
                 $values[$c['nama_komponen']]=$value;
                 if($value===null)$missing=true;else $total+=$value*(float)$c['bobot']/100;
             }
@@ -50,9 +50,9 @@ function ram_data(PDO $db, int $kelas, string $tahun, string $semester): array {
 }
 
 function ram_label(array $subject, string $column): string {
-    if(!in_array($column,array_slice(ram_columns(),0,5),true))return $column;
+    if(!in_array($column,array_slice(ram_columns(),0,6),true))return $column;
     $weight=isset($subject['weights'][$column])?number_format($subject['weights'][$column],2,',','.').'%':'Belum diatur';
-    return $column."\n".$weight."\n".(in_array($column,['UTS','UAS'],true)?'Manual':'Otomatis');
+    return $column."\n".$weight."\n".(in_array($column,['UTS','UAS','Ujian Praktik'],true)?'Manual':'Otomatis / Manual');
 }
 
 function ram_rows(array $data): array {
@@ -87,13 +87,13 @@ function ram_excel(string $title,array $data): string {
     foreach($data['subjects'] as $subject){
         $name=ram_sheet_name($subject['nama_mapel'],$used);
         $xml.='<Worksheet ss:Name="'.$x($name).'"><Table>';
-        foreach([35,95,160,90,90,90,70,70,100,280,280] as $width)$xml.='<Column ss:Width="'.$width.'"/>';
-        $xml.='<Row>'.$cell($title,'Header',10).'</Row><Row>'.$cell($subject['nama_mapel']."\nGuru: ".$subject['nama_guru'],'Header',10).'</Row><Row ss:Height="65">';
+        foreach([35,95,160,90,90,90,70,70,90,100,280,280] as $width)$xml.='<Column ss:Width="'.$width.'"/>';
+        $xml.='<Row>'.$cell($title,'Header',11).'</Row><Row>'.$cell($subject['nama_mapel']."\nGuru: ".$subject['nama_guru'],'Header',11).'</Row><Row ss:Height="65">';
         foreach(['No','NISN','Nama Siswa'] as $label)$xml.=$cell($label,'Header');
         foreach(ram_columns() as $column)$xml.=$cell(ram_label($subject,$column),'Header');
         $xml.='</Row>';
         foreach(ram_rows(['subjects'=>[$subject],'students'=>$data['students']]) as $row){$xml.='<Row>';foreach($row as $value)$xml.=$cell($value);$xml.='</Row>';}
-        if(!$data['students'])$xml.='<Row>'.$cell('Tidak ada siswa sesuai filter.','Wrap',10).'</Row>';
+        if(!$data['students'])$xml.='<Row>'.$cell('Tidak ada siswa sesuai filter.','Wrap',11).'</Row>';
         $xml.='</Table><WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>3</SplitHorizontal><TopRowBottomPane>3</TopRowBottomPane><SplitVertical>3</SplitVertical><LeftColumnRightPane>3</LeftColumnRightPane></WorksheetOptions></Worksheet>';
     }
     if(!$data['subjects'])$xml.='<Worksheet ss:Name="Rekap Kelas"><Table><Row>'.$cell($title,'Header').'</Row><Row>'.$cell('Tidak ada mata pelajaran sesuai filter.').'</Row></Table></Worksheet>';
@@ -106,10 +106,10 @@ function ram_pdf(string $title,array $data): string {
     $encode=static fn($v)=>(string)iconv('UTF-8','Windows-1252//TRANSLIT//IGNORE',(string)$v);
     $escape=static fn($v)=>str_replace(['\\','(',')',"\r"],['\\\\','\\(','\\)',''],$v);
     $wrap=static function($text,$width)use($encode){return explode("\n",wordwrap(str_replace("\t",' ',$encode($text)),max(1,(int)(($width-8)/4.8)),"\n",true));};
-    $pages=[];$groups=array_chunk($data['subjects'],19);if(!$groups)$groups=[[]];
+    $pages=[];$groups=array_chunk($data['subjects'],17);if(!$groups)$groups=[[]];
     foreach($groups as $groupIndex=>$subjects){
         $slice=['subjects'=>$subjects,'students'=>$data['students']];
-        $widths=[32,85,140];foreach($subjects as $subject)$widths=array_merge($widths,[65,65,65,45,45,85,180,180]);
+        $widths=[32,85,140];foreach($subjects as $subject)$widths=array_merge($widths,[65,65,65,45,45,65,85,180,180]);
         $pageWidth=max(842,40+array_sum($widths));
         $draw=static function($cells,$y,$height,$header=false)use($escape){
             $out='';$x=20;
@@ -124,7 +124,7 @@ function ram_pdf(string $title,array $data): string {
             $caption=$title.(count($groups)>1?' - Bagian mapel '.($groupIndex+1).'/'.count($groups):'');
             $cmd=$draw([[array_sum($widths),$wrap($caption,array_sum($widths))]],815,32,true);
             $top=[[257,['Identitas Siswa']]];
-            foreach($subjects as $subject)$top[]=[730,$wrap($subject['nama_mapel'].' / '.$subject['nama_guru'],730)];
+            foreach($subjects as $subject)$top[]=[795,$wrap($subject['nama_mapel'].' / '.$subject['nama_guru'],795)];
             $cmd.=$draw($top,783,38,true);
             $labels=['No','NISN','Nama Siswa'];foreach($subjects as $subject)foreach(ram_columns() as $column)$labels[]=ram_label($subject,$column);
             $cells=[];$count=0;foreach($labels as $i=>$label){$lines=$wrap($label,$widths[$i]);$count=max($count,count($lines));$cells[]=[$widths[$i],$lines];}

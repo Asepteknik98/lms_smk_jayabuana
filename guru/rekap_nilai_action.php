@@ -20,7 +20,7 @@ try {
    $_SESSION['flash_success']='Nilai, deskripsi capaian, dan saran '.$jenis.' berhasil disimpan dan tersedia bagi admin.';
  } elseif(in_array($action,['add','update'],true)){
    $id=(int)($_POST['id']??0);$nama=trim($_POST['nama_komponen']??'');$bobot=(float)($_POST['bobot']??0);
-   $namaDiizinkan=['Ulangan Harian','Tugas Harian','Kehadiran','UTS','UAS'];
+   $namaDiizinkan=['Ulangan Harian','Tugas Harian','Kehadiran','UTS','UAS','Ujian Praktik'];
    if(!in_array($nama,$namaDiizinkan,true)||$bobot<=0||$bobot>100)throw new RuntimeException('Nama dan bobot komponen tidak valid.');
    $stmt=$db->prepare('SELECT id FROM komponen_penilaian WHERE pengajaran_id=? AND nama_komponen=? AND id<>?');
    $stmt->execute([$pengajaran_id,$nama,$action==='update'?$id:0]);
@@ -46,15 +46,9 @@ try {
    else{$stmt=$db->prepare('INSERT INTO catatan_siswa_pengajaran(pengajaran_id,siswa_id,catatan) VALUES(?,?,?) ON DUPLICATE KEY UPDATE catatan=VALUES(catatan)');$stmt->execute([$pengajaran_id,$siswa_id,$catatan]);}
    $_SESSION['flash_success']='Catatan siswa berhasil disimpan.';
  } elseif($action==='save_scores'){
-   $stmt=$db->prepare('SELECT id FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$pengajaran_id]);$ids=array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
-   $stmt=$db->prepare('SELECT COALESCE(SUM(bobot),0) FROM komponen_penilaian WHERE pengajaran_id=?');$stmt->execute([$pengajaran_id]);
-   if(abs((float)$stmt->fetchColumn()-100)>0.001)throw new RuntimeException('Total bobot wajib tepat 100% sebelum nilai disimpan.');
-   $stmt=$db->prepare('SELECT s.id FROM siswa s JOIN pengajaran p ON p.kelas_id=s.kelas_id WHERE p.id=? AND p.guru_id=?');$stmt->execute([$pengajaran_id,$guru_id]);$studentIds=array_map('intval',$stmt->fetchAll(PDO::FETCH_COLUMN));
-   $up=$db->prepare('INSERT INTO nilai_komponen(komponen_id,siswa_id,nilai) VALUES(?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai)');
-   $old=$db->prepare('SELECT nilai FROM nilai_komponen WHERE komponen_id=? AND siswa_id=?');
-   $history=$db->prepare('INSERT INTO riwayat_nilai(pengajaran_id,siswa_id,komponen_id,guru_id,nilai_lama,nilai_baru) VALUES(?,?,?,?,?,?)');$db->beginTransaction();
-   foreach(($_POST['nilai']??[]) as $siswa=>$nilaiKomponen)foreach($nilaiKomponen as $komponen=>$nilai){$siswa=(int)$siswa;$komponen=(int)$komponen;if(!in_array($komponen,$ids,true)||!in_array($siswa,$studentIds,true))continue;if(!is_string($nilai))throw new RuntimeException('Nilai tidak valid.');if(trim($nilai)==='')continue;if(!is_numeric($nilai))throw new RuntimeException('Nilai harus berupa angka.');$v=(float)$nilai;if(!is_finite($v)||$v<0||$v>100)throw new RuntimeException('Nilai harus berada di antara 0 sampai 100.');$old->execute([$komponen,$siswa]);$lama=$old->fetchColumn();if($lama===false||abs((float)$lama-$v)>.001){$up->execute([$komponen,$siswa,$v]);$history->execute([$pengajaran_id,$siswa,$komponen,$guru_id,$lama===false?null:$lama,$v]);}}
-   $db->commit();$_SESSION['flash_success']='Nilai seluruh siswa berhasil disimpan.';
+   require_once __DIR__.'/../includes/penilaian_override.php';
+   po_save($db,$guru_id,$pengajaran_id,$_POST['nilai']??[],$_POST['sumber']??[]);
+   $_SESSION['flash_success']='Nilai dan pilihan otomatis/manual berhasil disimpan.';
  } else throw new RuntimeException('Aksi tidak valid.');
 } catch(Throwable $e){if($db->inTransaction())$db->rollBack();$_SESSION['flash_error']=$e->getMessage();}
 redirect($back);

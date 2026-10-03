@@ -23,12 +23,12 @@ if($info){
  $stmt=$db->prepare('SELECT id,nama_komponen,bobot FROM komponen_penilaian WHERE pengajaran_id=? ORDER BY urutan,id');$stmt->execute([$selected]);$komponen=$stmt->fetchAll();$total_bobot=(float)array_sum(array_column($komponen,'bobot'));
  $stmt=$db->prepare("SELECT s.id,s.nis,s.nisn,s.nama_lengkap,
  COALESCE((SELECT AVG(COALESCE(nu.nilai_total,0)) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=s.id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW()),0) nilai_ulangan,
- COALESCE((SELECT AVG(COALESCE(pt.nilai,0)) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
+ COALESCE((SELECT (SUM(COALESCE(pt.nilai,0))+COALESCE((SELECT SUM(nm.nilai) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0))/NULLIF(COUNT(*)+(SELECT COUNT(*) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=s.id),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) nilai_tugas,
  (SELECT COUNT(*) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=s.id WHERE t.pengajaran_id=? AND t.deadline<=NOW() AND pt.id IS NULL) tugas_belum,
  (SELECT COUNT(*) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=s.id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW() AND nu.id IS NULL) ujian_belum,
  COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Sakit','Izin') THEN 100 ELSE 0 END) FROM sesi_absensi sa LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=s.id WHERE sa.pengajaran_id=? AND sa.status='Ditutup'),0) nilai_kehadiran
  FROM siswa s WHERE s.kelas_id=? ORDER BY s.nama_lengkap");
- $stmt->execute([$selected,$selected,$selected,$selected,$selected,$info['kelas_id']]);$siswa=$stmt->fetchAll();
+ $stmt->execute([$selected,$selected,$selected,$selected,$selected,$selected,$selected,$info['kelas_id']]);$siswa=$stmt->fetchAll();
  if($mode==='siswa'){
   $valid=false;foreach($siswa as $row)if((int)$row['id']===$siswa_filter){$valid=true;break;}
   if(!$valid)$siswa_filter=(int)($siswa[0]['id']??0);
@@ -38,7 +38,7 @@ if($info){
  $stmt=$db->prepare('SELECT siswa_id,catatan FROM catatan_siswa_pengajaran WHERE pengajaran_id=?');$stmt->execute([$selected]);foreach($stmt->fetchAll() as $r)$catatan[(int)$r['siswa_id']]=$r['catatan'];
  $stmt=$db->prepare('SELECT nk.siswa_id,nk.komponen_id,nk.nilai FROM nilai_komponen nk JOIN komponen_penilaian kp ON kp.id=nk.komponen_id WHERE kp.pengajaran_id=?');$stmt->execute([$selected]);foreach($stmt->fetchAll() as $r)$nilai_manual[(int)$r['siswa_id']][(int)$r['komponen_id']]=(float)$r['nilai'];
  $auto_map=['Ulangan Harian'=>'nilai_ulangan','Tugas Harian'=>'nilai_tugas','Kehadiran'=>'nilai_kehadiran'];
- foreach($siswa as $row){$sid=(int)$row['id'];$akhir=0;$nilai_komponen=[];foreach($komponen as $k){$v=isset($auto_map[$k['nama_komponen']])?(float)$row[$auto_map[$k['nama_komponen']]]:(float)($nilai_manual[$sid][(int)$k['id']]??0);$nilai_komponen[(int)$k['id']]=$v;$akhir+=$v*(float)$k['bobot']/100;}$row['nilai_komponen']=$nilai_komponen;$row['nilai_akhir']=$akhir;$row['catatan']=$catatan[$sid]??'';$hasil[]=$row;}
+ foreach($siswa as $row){$sid=(int)$row['id'];$akhir=0;$nilai_komponen=[];foreach($komponen as $k){$v=(float)($nilai_manual[$sid][(int)$k['id']]??(isset($auto_map[$k['nama_komponen']])?$row[$auto_map[$k['nama_komponen']]]:0));if(isset($auto_map[$k['nama_komponen']]))$row[$auto_map[$k['nama_komponen']]]=$v;$nilai_komponen[(int)$k['id']]=$v;$akhir+=$v*(float)$k['bobot']/100;}$row['nilai_komponen']=$nilai_komponen;$row['nilai_akhir']=$akhir;$row['catatan']=$catatan[$sid]??'';$hasil[]=$row;}
  if($mode==='siswa')$hasil=array_values(array_filter($hasil,static fn($r)=>(int)$r['id']===$siswa_filter));
 }
 $siap=abs($total_bobot-100)<.001;
