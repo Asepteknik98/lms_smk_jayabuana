@@ -4,6 +4,7 @@ require_once __DIR__.'/../config/auth.php';
 require_once __DIR__.'/../config/database.php';
 require_once __DIR__.'/../config/helper.php';
 check_access([1]);$db=Database::getInstance();
+if (($_GET['scope']??'')==='gabungan') { require __DIR__.'/../includes/rekap_akademik_admin.php'; exit; }
 
 $pengajaran_list=$db->query('SELECT p.id pengajaran_id,p.guru_id,p.kelas_id,p.kkm,p.semester,p.tahun_ajaran,g.nama_lengkap nama_guru,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id ORDER BY g.nama_lengkap,k.nama_kelas,m.nama_mapel,p.tahun_ajaran DESC,p.semester')->fetchAll();
 $pengajaran_per_guru=[];
@@ -61,6 +62,7 @@ require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../include
 </style>
 <nav class="navbar top-navbar px-3 px-md-4 py-3"><div><h5 class="fw-bold mb-0"><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Rekap Nilai Akademik</h5><small class="text-muted">Gabungan tugas, ulangan, absensi, dan komponen penilaian</small></div></nav>
 <main class="container-fluid report-content p-3 p-md-4">
+<div class="d-flex flex-wrap gap-2 mb-3"><a href="rekap_nilai.php" class="btn btn-primary" aria-current="page">Rekap per Guru</a><a href="rekap_nilai.php?scope=gabungan" class="btn btn-outline-primary">Gabungan Semua Mapel UTS / UAS</a></div>
 <section class="report-hero mb-3"><div class="d-flex justify-content-between align-items-center gap-3"><div><small class="text-uppercase fw-semibold opacity-75">Laporan Akademik</small><h2 class="h4 fw-bold my-1">Nilai Siswa dan Kelas</h2><p class="mb-0 opacity-75">Gunakan rumus dan bobot yang sama dengan rekap nilai guru.</p></div><i class="fa-solid fa-chart-line fa-2x opacity-50"></i></div></section>
 <?php if(!$pengajaran_list): ?><div class="alert alert-warning">Belum ada pengajaran untuk direkap.</div><?php else: ?>
 <section class="card report-card mb-3"><div class="card-body p-3"><form method="get" class="row g-2 align-items-end"><div class="col-md-7"><span id="pengajaranLabel" class="form-label fw-semibold d-block">Guru &middot; Mapel &middot; Kelas</span>

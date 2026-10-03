@@ -1,0 +1,13 @@
+# Pembaruan rekap akademik UTS / UAS
+
+Jalankan `2026_10_03_capaian_penilaian.sql` pada database tujuan sebelum memasang pembaruan PHP. Migrasi menambahkan tabel capaian; nilai tetap menggunakan `nilai_komponen` dan riwayat tetap menggunakan `riwayat_nilai`.
+
+Halaman rekap guru yang sudah ada juga memerlukan `2026_08_12_nilai_manual_guru.sql`. Untuk instalasi lama yang sudah memiliki tabel tugas manual tanpa kolom pertemuan, gunakan migrasi `2026_08_12_nilai_manual_pertemuan.sql` yang tersedia. Kedua tabel yang diperlukan sudah tersedia pada database lokal setelah pembaruan ini.
+
+- Guru: buka Rekap Nilai, pilih pengajaran, lalu bagian **Nilai, Deskripsi Capaian, dan Saran UTS / UAS**. Komponen UTS/UAS harus sudah ditambahkan. Simpan per siswa; draf tanpa nilai diperbolehkan. Nilai ujian dapat disimpan terpisah dari kelengkapan bobot nilai akhir.
+- Admin: buka Rekap Nilai, pilih **Gabungan Semua Mapel UTS / UAS**. Pilih tahun ajaran, semester, kelas, dan mode per kelas/per siswa. Satu siswa satu baris; semua mapel berjajar horizontal dengan subkolom ulangan harian, tugas harian, kehadiran, UTS, UAS, nilai akhir, deskripsi, dan saran. UTS/UAS ditampilkan bersama dalam layar dan unduhan. Bobot dan sumber nilai otomatis mengikuti rekap guru. Nilai akhir ditandai belum lengkap jika nilai manual belum diisi, atau bobot belum tepat 100%.
+- Lengkap berarti nilai, deskripsi, dan saran sudah tersimpan. Belum diisi berbeda dari nilai nol. Tidak ada langkah finalisasi tambahan; admin langsung melihat data guru yang tersimpan.
+- Rekap mengikuti keanggotaan kelas siswa saat ini (`siswa.kelas_id`), sesuai struktur aplikasi. Riwayat keanggotaan kelas lintas tahun belum tersedia. Jika satu mapel memiliki beberapa pengajaran/guru, masing-masing ditampilkan dengan nama gurunya agar nilai tidak digabung tanpa aturan akademik.
+- Excel menggunakan format XML Spreadsheet `.xls`, sesuai pola ekspor aplikasi. Excel memisahkan setiap mapel/pengajaran menjadi sheet sendiri, berisi identitas siswa, komponen nilai, UTS/UAS, nilai akhir, deskripsi dan saran. Nama sheet dibuat unik dan dibatasi 31 karakter; nama mapel lengkap serta guru tetap tercantum di judul sheet. Kolom identitas dan header dibekukan. PDF menggunakan halaman landscape lebar dengan mapel tetap berjajar horizontal; teks panjang diteruskan ke halaman berikutnya. Di atas 19 pengajaran, PDF membagi lebar ke beberapa bagian dengan identitas siswa diulang untuk menjaga batas ukuran halaman PDF. Deskripsi/saran UTS dan UAS disertakan dengan label masing-masing.
+
+Uji regresi: `node --test tests/rekap-akademik.test.cjs`. Data uji menggunakan tabel sementara pada koneksi database, tanpa mengubah catatan sekolah.

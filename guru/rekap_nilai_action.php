@@ -12,7 +12,13 @@ $stmt=$db->prepare('SELECT id FROM pengajaran WHERE id=? AND guru_id=?');$stmt->
 if(!$stmt->fetchColumn()){http_response_code(403);exit('Pengajaran bukan milik Anda.');}
 $back='rekap_nilai.php?pengajaran_id='.$pengajaran_id;
 try {
- if(in_array($action,['add','update'],true)){
+ if($action==='save_period'){
+   require_once __DIR__.'/../includes/rekap_akademik.php';
+   $jenis=is_string($_POST['jenis']??null)?$_POST['jenis']:'';
+   $back.='&jenis_capaian='.ra_jenis($jenis).'#capaianPenilaian';
+   ra_save($db,$guru_id,$pengajaran_id,(int)($_POST['siswa_id']??0),$jenis,$_POST['nilai_periode']??'',$_POST['deskripsi']??'',$_POST['saran']??'');
+   $_SESSION['flash_success']='Nilai, deskripsi capaian, dan saran '.$jenis.' berhasil disimpan dan tersedia bagi admin.';
+ } elseif(in_array($action,['add','update'],true)){
    $id=(int)($_POST['id']??0);$nama=trim($_POST['nama_komponen']??'');$bobot=(float)($_POST['bobot']??0);
    $namaDiizinkan=['Ulangan Harian','Tugas Harian','Kehadiran','UTS','UAS'];
    if(!in_array($nama,$namaDiizinkan,true)||$bobot<=0||$bobot>100)throw new RuntimeException('Nama dan bobot komponen tidak valid.');
@@ -47,7 +53,7 @@ try {
    $up=$db->prepare('INSERT INTO nilai_komponen(komponen_id,siswa_id,nilai) VALUES(?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai)');
    $old=$db->prepare('SELECT nilai FROM nilai_komponen WHERE komponen_id=? AND siswa_id=?');
    $history=$db->prepare('INSERT INTO riwayat_nilai(pengajaran_id,siswa_id,komponen_id,guru_id,nilai_lama,nilai_baru) VALUES(?,?,?,?,?,?)');$db->beginTransaction();
-   foreach(($_POST['nilai']??[]) as $siswa=>$nilaiKomponen)foreach($nilaiKomponen as $komponen=>$nilai){$siswa=(int)$siswa;$komponen=(int)$komponen;if(!in_array($komponen,$ids,true)||!in_array($siswa,$studentIds,true))continue;$v=(float)$nilai;if($v<0||$v>100)throw new RuntimeException('Nilai harus berada di antara 0 sampai 100.');$old->execute([$komponen,$siswa]);$lama=$old->fetchColumn();if($lama===false||abs((float)$lama-$v)>.001){$up->execute([$komponen,$siswa,$v]);$history->execute([$pengajaran_id,$siswa,$komponen,$guru_id,$lama===false?null:$lama,$v]);}}
+   foreach(($_POST['nilai']??[]) as $siswa=>$nilaiKomponen)foreach($nilaiKomponen as $komponen=>$nilai){$siswa=(int)$siswa;$komponen=(int)$komponen;if(!in_array($komponen,$ids,true)||!in_array($siswa,$studentIds,true))continue;if(!is_string($nilai))throw new RuntimeException('Nilai tidak valid.');if(trim($nilai)==='')continue;if(!is_numeric($nilai))throw new RuntimeException('Nilai harus berupa angka.');$v=(float)$nilai;if(!is_finite($v)||$v<0||$v>100)throw new RuntimeException('Nilai harus berada di antara 0 sampai 100.');$old->execute([$komponen,$siswa]);$lama=$old->fetchColumn();if($lama===false||abs((float)$lama-$v)>.001){$up->execute([$komponen,$siswa,$v]);$history->execute([$pengajaran_id,$siswa,$komponen,$guru_id,$lama===false?null:$lama,$v]);}}
    $db->commit();$_SESSION['flash_success']='Nilai seluruh siswa berhasil disimpan.';
  } else throw new RuntimeException('Aksi tidak valid.');
 } catch(Throwable $e){if($db->inTransaction())$db->rollBack();$_SESSION['flash_error']=$e->getMessage();}
