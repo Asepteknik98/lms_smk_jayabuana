@@ -5,7 +5,13 @@ require_once __DIR__.'/../config/database.php';
 require_once __DIR__.'/../config/helper.php';
 check_access([1]);$db=Database::getInstance();
 
-$pengajaran_list=$db->query('SELECT p.id pengajaran_id,p.kelas_id,p.kkm,p.semester,p.tahun_ajaran,g.nama_lengkap nama_guru,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id ORDER BY g.nama_lengkap,k.nama_kelas,m.nama_mapel,p.tahun_ajaran DESC,p.semester')->fetchAll();
+$pengajaran_list=$db->query('SELECT p.id pengajaran_id,p.guru_id,p.kelas_id,p.kkm,p.semester,p.tahun_ajaran,g.nama_lengkap nama_guru,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id ORDER BY g.nama_lengkap,k.nama_kelas,m.nama_mapel,p.tahun_ajaran DESC,p.semester')->fetchAll();
+$pengajaran_per_guru=[];
+foreach($pengajaran_list as $p){
+ $guru_id=(int)$p['guru_id'];
+ if(!isset($pengajaran_per_guru[$guru_id]))$pengajaran_per_guru[$guru_id]=['nama'=>$p['nama_guru'],'pengajaran'=>[]];
+ $pengajaran_per_guru[$guru_id]['pengajaran'][]=$p;
+}
 $selected=(int)($_GET['pengajaran_id']??($pengajaran_list[0]['pengajaran_id']??0));$mode=($_GET['mode']??'kelas')==='siswa'?'siswa':'kelas';$siswa_filter=(int)($_GET['siswa_id']??0);
 $info=null;$komponen=[];$siswa=[];$nilai_manual=[];$catatan=[];$total_bobot=0;$aktivitas=['absensi'=>0,'tugas'=>0,'ulangan'=>0];$hasil=[];
 if($selected){
@@ -50,12 +56,32 @@ require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../include
 <div id="page-content-wrapper" class="academic-report-page">
 <style>
 .academic-report-page{background:#f7f9fc;min-width:0}.report-content{max-width:1400px;margin:auto}.report-hero{background:linear-gradient(135deg,#172554,#1d4ed8);color:#fff;border-radius:22px;padding:28px;box-shadow:0 18px 44px rgba(29,78,216,.17)}.report-card,.metric-card{border:1px solid #e8edf5!important;border-radius:18px!important;box-shadow:0 8px 28px rgba(15,23,42,.045)!important}.metric-icon{width:44px;height:44px;display:grid;place-items:center;border-radius:13px}.grade-table th{white-space:nowrap;font-size:.73rem;text-transform:uppercase;color:#64748b}.grade-table td{font-size:.82rem;vertical-align:middle}.student-profile{border:1px solid #e8edf5;border-radius:16px;padding:18px;background:#fff}.breakdown-item{padding:14px;border:1px solid #e8edf5;border-radius:13px;height:100%}.sticky-name{position:sticky;left:0;background:#fff;z-index:2}.grade-table thead .sticky-name{background:#f8f9fa}@media(max-width:767.98px){.report-content{padding:14px!important}.report-hero{padding:21px;border-radius:18px}}
+.teaching-picker{position:relative;min-width:0}.teaching-picker>.teaching-trigger{cursor:pointer;list-style:none}.teaching-picker>.teaching-trigger::-webkit-details-marker{display:none}.teaching-picker>.teaching-trigger span{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.teaching-picker>.teaching-trigger:focus-visible,.teaching-teacher>.teaching-teacher-trigger:focus-visible{outline:3px solid #93c5fd;outline-offset:2px}.teaching-picker-panel{position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:100;max-height:380px;max-height:min(380px,60vh);overflow:auto;padding:6px;background:#fff;border:1px solid #cbd5e1;border-radius:10px;box-shadow:0 12px 28px rgba(15,23,42,.16)}.teaching-teacher>.teaching-teacher-trigger{padding:10px 12px;cursor:pointer;font-weight:600;border-radius:6px;overflow-wrap:anywhere}.teaching-teacher>.teaching-teacher-trigger:hover,.teaching-teacher>.teaching-teacher-trigger[aria-expanded="true"]{background:#eff6ff;color:#1d4ed8}.teaching-options{padding:4px 0 8px 14px}.teaching-option{display:flex;align-items:flex-start;gap:9px;padding:9px 12px;border-radius:6px;cursor:pointer;overflow-wrap:anywhere}.teaching-option input{flex-shrink:0;margin-top:5px;accent-color:#1d4ed8}.teaching-option:hover,.teaching-option:focus-within{background:#f1f5f9}.teaching-option.is-selected{background:#dbeafe;color:#1e40af}
+.teaching-picker [hidden]{display:none!important}.teaching-teacher-trigger{display:block;width:100%;border:0;background:transparent;text-align:left;color:inherit;font:inherit}.teaching-arrow{display:inline-block}.teaching-teacher-trigger[aria-expanded="true"] .teaching-arrow{transform:rotate(90deg)}
 </style>
 <nav class="navbar top-navbar px-3 px-md-4 py-3"><div><h5 class="fw-bold mb-0"><i class="fa-solid fa-graduation-cap text-primary me-2"></i>Rekap Nilai Akademik</h5><small class="text-muted">Gabungan tugas, ulangan, absensi, dan komponen penilaian</small></div></nav>
 <main class="container-fluid report-content p-3 p-md-4">
 <section class="report-hero mb-3"><div class="d-flex justify-content-between align-items-center gap-3"><div><small class="text-uppercase fw-semibold opacity-75">Laporan Akademik</small><h2 class="h4 fw-bold my-1">Nilai Siswa dan Kelas</h2><p class="mb-0 opacity-75">Gunakan rumus dan bobot yang sama dengan rekap nilai guru.</p></div><i class="fa-solid fa-chart-line fa-2x opacity-50"></i></div></section>
 <?php if(!$pengajaran_list): ?><div class="alert alert-warning">Belum ada pengajaran untuk direkap.</div><?php else: ?>
-<section class="card report-card mb-3"><div class="card-body p-3"><form method="get" class="row g-2 align-items-end"><div class="col-md-7"><label class="form-label fw-semibold">Guru · Mapel · Kelas</label><select name="pengajaran_id" class="form-select"><?php foreach($pengajaran_list as $p): ?><option value="<?= (int)$p['pengajaran_id'] ?>" <?= $selected===(int)$p['pengajaran_id']?'selected':'' ?>><?= sanitize($p['nama_guru'].' · '.$p['nama_mapel'].' · '.$p['nama_kelas'].' ('.$p['semester'].' / '.$p['tahun_ajaran'].')') ?></option><?php endforeach ?></select></div><div class="col-md-2"><label class="form-label fw-semibold">Mode Rekap</label><select name="mode" id="modeRekapNilai" class="form-select"><option value="kelas" <?= $mode==='kelas'?'selected':'' ?>>Per Kelas</option><option value="siswa" <?= $mode==='siswa'?'selected':'' ?>>Per Siswa</option></select></div><div class="col-md-2"><label class="form-label fw-semibold">Siswa</label><select name="siswa_id" id="siswaRekapNilai" class="form-select" <?= $mode==='kelas'?'disabled':'' ?>><?php foreach($siswa as $r): ?><option value="<?= (int)$r['id'] ?>" <?= $siswa_filter===(int)$r['id']?'selected':'' ?>><?= sanitize($r['nama_lengkap']) ?></option><?php endforeach ?></select></div><div class="col-md-1"><button class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i></button></div></form></div></section>
+<section class="card report-card mb-3"><div class="card-body p-3"><form method="get" class="row g-2 align-items-end"><div class="col-md-7"><span id="pengajaranLabel" class="form-label fw-semibold d-block">Guru &middot; Mapel &middot; Kelas</span>
+<div class="teaching-picker" id="pengajaranPicker">
+ <button type="button" class="form-select text-start teaching-trigger" aria-expanded="false" aria-controls="pengajaranPanel" aria-labelledby="pengajaranLabel pengajaranSelected"><span id="pengajaranSelected"><?= $info?sanitize($info['nama_guru'].' · '.$info['nama_mapel'].' · '.$info['nama_kelas'].' ('.$info['semester'].' / '.$info['tahun_ajaran'].')'):'Pilih guru, mapel, dan kelas' ?></span></button>
+ <div class="teaching-picker-panel" id="pengajaranPanel" hidden>
+ <?php foreach($pengajaran_per_guru as $guru_id=>$guru): ?>
+  <div class="teaching-teacher">
+   <button type="button" class="teaching-teacher-trigger" aria-expanded="false" aria-controls="pengajaranGuru<?= $guru_id ?>"><span class="teaching-arrow" aria-hidden="true">&#9656;</span> <?= sanitize($guru['nama']) ?></button>
+   <div class="teaching-options" id="pengajaranGuru<?= $guru_id ?>" hidden>
+   <?php foreach($guru['pengajaran'] as $p): $pilihan_label=$p['nama_mapel'].' · '.$p['nama_kelas'].' ('.$p['semester'].' / '.$p['tahun_ajaran'].')'; ?>
+    <label class="teaching-option <?= $selected===(int)$p['pengajaran_id']?'is-selected':'' ?>">
+     <input type="radio" name="pengajaran_id" value="<?= (int)$p['pengajaran_id'] ?>" data-label="<?= sanitize($guru['nama'].' · '.$pilihan_label) ?>" <?= $selected===(int)$p['pengajaran_id']?'checked':'' ?>>
+     <span><?= sanitize($pilihan_label) ?></span>
+    </label>
+   <?php endforeach ?>
+   </div>
+  </div>
+ <?php endforeach ?>
+ </div>
+</div></div><div class="col-md-2"><label class="form-label fw-semibold">Mode Rekap</label><select name="mode" id="modeRekapNilai" class="form-select"><option value="kelas" <?= $mode==='kelas'?'selected':'' ?>>Per Kelas</option><option value="siswa" <?= $mode==='siswa'?'selected':'' ?>>Per Siswa</option></select></div><div class="col-md-2"><label class="form-label fw-semibold">Siswa</label><select name="siswa_id" id="siswaRekapNilai" class="form-select" <?= $mode==='kelas'?'disabled':'' ?>><?php foreach($siswa as $r): ?><option value="<?= (int)$r['id'] ?>" <?= $siswa_filter===(int)$r['id']?'selected':'' ?>><?= sanitize($r['nama_lengkap']) ?></option><?php endforeach ?></select></div><div class="col-md-1"><button class="btn btn-primary w-100"><i class="fa-solid fa-filter"></i></button></div></form></div></section>
 <?php if($info): ?>
 <div class="row g-2 mb-3"><?php $rata_akhir=$hasil?array_sum(array_column($hasil,'nilai_akhir'))/count($hasil):0;$tuntas=$siap?count(array_filter($hasil,fn($r)=>$r['nilai_akhir']>=(float)$info['kkm'])):0;foreach([['Siswa Ditampilkan',count($hasil),'fa-users','primary'],['Rata-rata Akhir',number_format($rata_akhir,2,',','.'),'fa-chart-column','info'],['Tuntas',$tuntas,'fa-circle-check','success'],['KKM',number_format((float)$info['kkm'],2,',','.'),'fa-bullseye','warning']] as [$label,$jumlah,$icon,$warna]): ?><div class="col-6 col-xl-3"><div class="card metric-card p-3 h-100"><div class="d-flex align-items-center gap-3"><span class="metric-icon bg-<?= $warna ?>-subtle text-<?= $warna ?>"><i class="fa-solid <?= $icon ?>"></i></span><div><small class="text-muted"><?= $label ?></small><h4 class="fw-bold mb-0"><?= $jumlah ?></h4></div></div></div></div><?php endforeach ?></div>
 <section class="card report-card"><div class="card-body p-3 p-md-4"><div class="d-flex flex-wrap justify-content-between gap-2 mb-3"><div><h6 class="fw-bold mb-1"><?= sanitize($info['nama_mapel']) ?> — <?= sanitize($info['nama_kelas']) ?></h6><small class="text-muted"><?= sanitize($info['nama_guru']) ?> · <?= sanitize($info['semester']) ?> · <?= sanitize($info['tahun_ajaran']) ?> · Bobot <?= number_format($total_bobot,2,',','.') ?>%</small></div><div class="d-flex gap-2"><a class="btn btn-sm btn-success" href="?<?= http_build_query(['pengajaran_id'=>$selected,'mode'=>$mode,'siswa_id'=>$siswa_filter,'format'=>'excel']) ?>"><i class="fa-solid fa-file-excel me-1"></i>Excel</a><a class="btn btn-sm btn-danger" href="?<?= http_build_query(['pengajaran_id'=>$selected,'mode'=>$mode,'siswa_id'=>$siswa_filter,'format'=>'pdf']) ?>"><i class="fa-solid fa-file-pdf me-1"></i>PDF</a></div></div>
@@ -64,5 +90,49 @@ require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../include
 <div class="table-responsive"><table class="table grade-table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>NISN</th><th class="sticky-name">Nama Siswa</th><th>Tugas</th><th>Ulangan</th><th>Kehadiran</th><?php foreach($komponen as $k): ?><th><?= sanitize($k['nama_komponen']) ?><br><small><?= number_format($k['bobot'],2,',','.') ?>%</small></th><?php endforeach ?><th>Nilai Akhir</th><th>Status</th></tr></thead><tbody>
 <?php foreach($hasil as $i=>$r): ?><tr><td><?= $i+1 ?></td><td><?= sanitize($r['nisn']?:$r['nis']) ?></td><td class="sticky-name"><strong><?= sanitize($r['nama_lengkap']) ?></strong><?php if($r['tugas_belum']||$r['ujian_belum']): ?><br><small class="text-danger"><?= (int)$r['tugas_belum'] ?> tugas · <?= (int)$r['ujian_belum'] ?> kuis belum</small><?php endif ?></td><td><?= number_format($r['nilai_tugas'],2,',','.') ?></td><td><?= number_format($r['nilai_ulangan'],2,',','.') ?></td><td><?= number_format($r['nilai_kehadiran'],2,',','.') ?></td><?php foreach($komponen as $k): ?><td><?= number_format($r['nilai_komponen'][(int)$k['id']],2,',','.') ?></td><?php endforeach ?><td><strong><?= number_format($r['nilai_akhir'],2,',','.') ?></strong></td><td><?php if(!$siap): ?><span class="badge bg-warning text-dark">Bobot Belum Siap</span><?php elseif($r['nilai_akhir']>=(float)$info['kkm']): ?><span class="badge bg-success">Tuntas</span><?php else: ?><span class="badge bg-danger">Remedial</span><?php endif ?></td></tr><?php endforeach ?><?php if(!$hasil): ?><tr><td colspan="<?= count($komponen)+9 ?>" class="text-center text-muted py-5">Tidak ada siswa pada rekap ini.</td></tr><?php endif ?></tbody></table></div>
 </div></section><?php endif ?><?php endif ?></main></div>
-<script>document.getElementById('modeRekapNilai')?.addEventListener('change',function(){document.getElementById('siswaRekapNilai').disabled=this.value==='kelas';});</script>
+<script>
+document.getElementById('modeRekapNilai')?.addEventListener('change',function(){document.getElementById('siswaRekapNilai').disabled=this.value==='kelas';});
+(function(){
+ const picker=document.getElementById('pengajaranPicker');
+ if(!picker)return;
+ const trigger=picker.querySelector('.teaching-trigger');
+ const panel=document.getElementById('pengajaranPanel');
+ function closePicker(restoreFocus){
+  // Move focus before hiding the focused control.
+  if(restoreFocus)trigger.focus();
+  panel.hidden=true;
+  trigger.setAttribute('aria-expanded','false');
+ }
+ trigger.addEventListener('click',function(){
+  const opening=panel.hidden;
+  panel.hidden=!opening;
+  trigger.setAttribute('aria-expanded',String(opening));
+ });
+ picker.addEventListener('click',function(event){
+  const teacher=event.target.closest('.teaching-teacher-trigger');
+  if(!teacher)return;
+  const opening=teacher.getAttribute('aria-expanded')!=='true';
+  picker.querySelectorAll('.teaching-teacher-trigger').forEach(function(button){
+   const expanded=button===teacher&&opening;
+   button.setAttribute('aria-expanded',String(expanded));
+   document.getElementById(button.getAttribute('aria-controls')).hidden=!expanded;
+  });
+ });
+ picker.addEventListener('change',function(event){
+  if(!event.target.matches('input[name="pengajaran_id"]'))return;
+  document.getElementById('pengajaranSelected').textContent=event.target.dataset.label;
+  picker.querySelectorAll('.teaching-option').forEach(function(option){
+   option.classList.toggle('is-selected',option.contains(event.target));
+  });
+  closePicker(true);
+ });
+ document.addEventListener('click',function(event){if(!picker.contains(event.target))closePicker(false);});
+ picker.addEventListener('keydown',function(event){
+  if(event.key==='Escape'){closePicker(true);event.preventDefault();}
+ });
+ picker.addEventListener('focusout',function(event){
+  if(event.relatedTarget&&!picker.contains(event.relatedTarget))closePicker(false);
+ });
+})();
+</script>
 <?php require_once __DIR__.'/../includes/footer.php'; ?>
