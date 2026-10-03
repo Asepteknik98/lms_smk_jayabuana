@@ -9,7 +9,7 @@ test('Teacher can switch an individual score to manual and back to automatic',()
  const input={value:'50.00',disabled:true,required:false,classList:{toggle(){}},focus(){this.focused=true}};
  const mode={value:'auto'},label={};let click;
  const cell={dataset:{auto:'50.00'},querySelector:s=>s==='.score-input'?input:s==='.score-source'?mode:label};
- const button={closest:()=>cell,addEventListener:(event,fn)=>{click=fn}};
+ const button={setAttribute(){},closest:()=>cell,addEventListener:(event,fn)=>{click=fn}};
  require('node:vm').runInNewContext(script,{document:{querySelectorAll:()=>[button]}});
  click();assert.equal(mode.value,'manual');assert.equal(input.disabled,false);assert.equal(input.required,true);
  input.value='0';assert.equal(mode.value,'manual');

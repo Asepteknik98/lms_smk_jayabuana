@@ -62,35 +62,6 @@
 .grade-page .grade-table td:last-child .btn { margin: 2px; border-radius: 7px; }
 .grade-page .grade-table .badge { font-size: .9rem !important; padding: 7px 10px; border-radius: 7px; }
 
-/* Keep every student form visible; give identity, fields and actions clear spacing. */
-#capaianPenilaian > .card-body > p { max-width: 1000px; font-size: .875rem; line-height: 1.8; margin-bottom: 20px; }
-#capaianPenilaian > .card-body > .d-flex > .btn { min-width: 76px; padding: 9px 18px; border-radius: 8px; font-size: .875rem; }
-#capaianPenilaian form {
-    padding: 24px !important;
-    margin-top: 20px;
-    margin-bottom: 24px !important;
-    border-color: #dce5ef !important;
-    border-radius: 12px !important;
-    background: #fff;
-    box-shadow: 0 3px 12px rgb(15 23 42 / 3%);
-}
-#capaianPenilaian form > .d-flex {
-    align-items: flex-start;
-    padding-bottom: 16px;
-    margin-bottom: 4px !important;
-    border-bottom: 1px solid #edf1f6;
-}
-#capaianPenilaian form strong { color: #24354b; font-size: .95rem; line-height: 1.6; }
-#capaianPenilaian form strong small { display: block; margin-top: 3px; font-size: .75rem; font-weight: 400; }
-#capaianPenilaian form .badge { padding: 7px 10px; border-radius: 6px; font-size: .7rem; font-weight: 600; }
-#capaianPenilaian form > .row { --bs-gutter-x: 24px; --bs-gutter-y: 20px; }
-#capaianPenilaian .form-label { color: #475569; font-size: .8rem; font-weight: 600; margin-bottom: 9px; }
-#capaianPenilaian .form-control { border-color: #cbd5e1; border-radius: 8px; padding: 11px 13px; font-size: .875rem; line-height: 1.7; }
-#capaianPenilaian .form-control::placeholder { color: #78879a; opacity: 1; }
-#capaianPenilaian textarea { min-height: 128px; resize: vertical; }
-#capaianPenilaian input[type="number"] { max-width: 160px; font-weight: 600; font-variant-numeric: tabular-nums; }
-#capaianPenilaian form > button { margin-top: 20px !important; padding: 9px 16px; border-radius: 8px; font-size: .8rem; }
-
 /* Administrator monitoring: preserve both UTS/UAS rows and all existing columns. */
 .rekap-monitor { border: 1px solid #e2e8f0; border-radius: 14px; box-shadow: 0 4px 18px rgb(15 23 42 / 4%); }
 .rekap-monitor > .card-body { padding: 24px; }
@@ -111,13 +82,59 @@
 .rekap-monitor .table tbody tr:nth-child(4n+4) { --bs-table-bg: #f8fafc; }
 .rekap-monitor .table tbody tr:nth-child(2n) td { border-bottom: 2px solid #dde5ef; }
 
-@media (max-width: 991.98px) {
-    #capaianPenilaian form > .row > .col-md-2 { width: 100%; }
-    #capaianPenilaian form > .row > .col-md-5 { width: 50%; }
+/* Integrated teacher table and per-student narrative editor. */
+.integrated-grades [hidden] { display: none !important; }
+#scoreForm { display: none; }
+.grade-page .integrated-table { width: 100%; font-size: .8rem; }
+.grade-page .integrated-table thead th { padding: 12px 8px; white-space: normal; line-height: 1.45; }
+.grade-page .integrated-table thead small { font-size: .68rem; }
+.grade-page .integrated-table td { padding: 10px 8px; }
+.grade-page .integrated-table .sticky-name { min-width: 135px; max-width: 190px; }
+.grade-page .integrated-table th:nth-child(2), .grade-page .integrated-table td:nth-child(2) { min-width: 108px; }
+.grade-page .integrated-table .score-cell { min-width: 105px; }
+.score-inline { display: grid; grid-template-columns: minmax(62px, 1fr) 28px; align-items: center; gap: 3px 4px; max-width: 118px; margin: auto; }
+.grade-page .integrated-table .score-input { width: 100%; min-width: 62px; min-height: 34px; padding: 5px; font-size: .8rem; }
+.grade-page .integrated-table .score-source-label { grid-column: 1 / -1; grid-row: 2; margin: 0; font-size: .65rem; }
+.grade-page .integrated-table .score-toggle { grid-column: 2; grid-row: 1; margin: 0; padding: 0; width: 28px; height: 30px; font-size: 0; }
+.grade-page .integrated-table .score-toggle::before { content: '\270E'; font-size: 16px; }
+.grade-page .integrated-table .score-inline:has(.score-source[value="manual"]) .score-toggle::before { content: '\21BA'; }
+.grade-page .integrated-table td:nth-last-child(2) { min-width: 85px; }
+.grade-page .integrated-table .student-actions { min-width: 108px; white-space: normal; }
+.grade-page .integrated-table .student-actions .capaian-toggle { display: block; width: 100%; margin: 0 0 5px; font-size: .75rem; }
+.grade-page .integrated-table .student-capaian-row > td { background: #f4f8ff; padding: 18px; }
+.inline-capaian { text-align: left; white-space: normal; max-width: 1100px; margin: auto; }
+.capaian-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.capaian-heading small { display: block; color: #64748b; margin-top: 3px; }
+.capaian-periods { display: flex; gap: 8px; margin-bottom: 15px; }
+.capaian-periods .btn { min-width: 64px; }
+.capaian-fields { display: grid; grid-template-columns: 130px minmax(0,1fr) minmax(0,1fr); gap: 18px; }
+.capaian-fields label { display: block; font-size: .8rem; font-weight: 600; color: #475569; margin-bottom: 7px; }
+.capaian-fields .form-control { font-size: .85rem; padding: 10px; border-radius: 8px; }
+.capaian-fields textarea { min-height: 110px; resize: vertical; }
+.capaian-fields small { font-size: .7rem; }
+.capaian-footer { display: flex; align-items: center; gap: 12px; margin-top: 14px; }
+.grade-save-bar { padding-top: 12px; border-top: 1px solid #e2e8f0; }
+@media (max-width: 1199.98px) {
+ .integrated-table-wrap { overflow: visible; }
+ .grade-page .integrated-table, .grade-page .integrated-table tbody { display: block; }
+ .grade-page .integrated-table thead { display: none; }
+ .grade-page .integrated-table .student-score-row { display: grid; grid-template-columns: repeat(3,minmax(0,1fr)); border: 1px solid #dce5ef; border-radius: 10px; margin: 14px 0; padding: 10px; background: #fff; }
+ .grade-page .integrated-table .student-score-row > td { display: block; border: 0; min-width: 0; max-width: none; width: auto; text-align: left; background: transparent; padding: 8px; }
+ .grade-page .integrated-table .student-score-row > td::before { content: attr(data-label); display: block; color: #64748b; font-size: .7rem; margin-bottom: 5px; font-weight: 500; }
+ .grade-page .integrated-table .sticky-name { position: static; grid-column: 1 / -1; grid-row: 1; font-size: .95rem; }
+ .grade-page .integrated-table .score-inline { max-width: 140px; margin: 0; }
+ .grade-page .integrated-table .student-actions { grid-column: 1 / -1; display: flex !important; align-items: center; gap: 8px; }
+ .grade-page .integrated-table .student-actions::before { display: none; }
+ .grade-page .integrated-table .student-actions .capaian-toggle { width: auto; margin: 0; }
+ .grade-page .integrated-table .student-capaian-row { display: block; margin: -10px 0 20px; }
+ .grade-page .integrated-table .student-capaian-row > td { display: block; width: 100%; min-width: 0; border-radius: 10px; }
+ .capaian-fields { grid-template-columns: minmax(0,1fr) minmax(0,1fr); }
+ .capaian-fields > div:first-child { grid-column: 1 / -1; max-width: 150px; }
 }
 @media (max-width: 575.98px) {
-    .rekap-monitor > .card-body, #capaianPenilaian form { padding: 16px !important; }
-    #capaianPenilaian form > .row > .col-md-5 { width: 100%; }
-    .grade-page .grade-table .sticky-name { min-width: 150px; max-width: 180px; }
-    #capaianPenilaian form > button { width: 100%; }
+ .rekap-monitor > .card-body { padding: 16px; }
+ .grade-page .integrated-table .student-score-row { grid-template-columns: repeat(2,minmax(0,1fr)); }
+ .capaian-fields { grid-template-columns: minmax(0,1fr); }
+ .capaian-footer { flex-wrap: wrap; }
+ .grade-save-bar > .btn { width: 100%; }
 }
