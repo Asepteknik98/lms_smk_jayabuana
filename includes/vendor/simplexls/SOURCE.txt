@@ -1,0 +1,6 @@
+Source: https://github.com/shuchkin/simplexls
+Commit: 0aad1dd0c8703c8fcc3234eda9d22d08e25b6579
+License: MIT (see LICENSE.md)
+Upstream SHA256: 96c53273ce0407e2d96c5987dd3c5f61e54a5264711e730e39202bdb46d4c6ad
+Local LMS patches: reject oversized OLE directory counts, cyclic/invalid sector
+chains, and out-of-bounds integer reads for uploaded workbook parsing.

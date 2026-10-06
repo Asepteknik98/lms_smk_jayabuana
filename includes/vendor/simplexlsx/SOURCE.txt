@@ -1,0 +1,6 @@
+Source: https://github.com/shuchkin/simplexlsx
+Commit: aa94c940c46ec5ee545ed1808c2aefeb26767cf8
+License: MIT (see LICENSE.md)
+Upstream SHA256: 08b3810ba72ee5866a8f15a393c79c8058727124b519671670efa57737a28897
+Local LMS patch: limit gzinflate output to 8 MiB + 1 per entry as defense in depth
+alongside the application's workbook preflight size limits.
