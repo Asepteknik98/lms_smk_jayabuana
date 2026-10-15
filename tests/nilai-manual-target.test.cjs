@@ -62,7 +62,7 @@ check(abs(po_automatic($db,1,1)['Tugas Harian']-80)<.01,'Legacy grade no longer 
 ini_set('session.save_path',sys_get_temp_dir());require 'config/session.php';$_SESSION['user_id']=1;$_SESSION['role_id']=2;$_SESSION['username']='Guru A';$_SESSION['milad_announcement_shown']=true;$_SERVER['REQUEST_METHOD']='GET';$_SERVER['SCRIPT_NAME']='/lms/guru/nilai_manual.php';$_SERVER['PHP_SELF']=$_SERVER['SCRIPT_NAME'];$_GET=['pengajaran_id'=>1,'jenis'=>'tugas','target_id'=>2];
 set_error_handler(function($severity,$message,$file,$line){if(error_reporting()&$severity)throw new ErrorException($message,0,$severity,$file,$line);});
 ob_start();require 'guru/nilai_manual.php';$html=ob_get_clean();
-check(str_contains($html,'Riwayat penilaian tugas')&&str_contains($html,'Pengenalan Algoritma')&&str_contains($html,'Arsip nilai manual lama'),'History, topic or archive UI missing');
+check(!str_contains($html,'Riwayat penilaian tugas')&&str_contains($html,'Pengenalan Algoritma')&&str_contains($html,'Arsip nilai manual lama'),'Task history must be hidden while topic and archive remain');
 check(str_contains($html,'Unduh Template Excel')&&str_contains($html,'Sudah dinilai')&&str_contains($html,'Belum dinilai'),'Input or import statuses missing');
 file_put_contents(sys_get_temp_dir().'/lms_manual_target_preview.html',str_replace('<head>','<head><base href="file:///C:/xampp/htdocs/lms/guru/">',$html));
 $_GET=['pengajaran_id'=>1];ob_start();require 'guru/rekap_nilai_guru.php';$recap=ob_get_clean();check(str_contains($recap,'80.00')&&str_contains($recap,'Nilai Akhir'),'Final grade recap did not render');
