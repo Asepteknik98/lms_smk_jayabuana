@@ -16,6 +16,8 @@ function rt_inline_url(array $context): string {
     return 'tugas.php?'.http_build_query(rt_inline_context($context)).'#rekap-tugas';
 }
 
+
+
 function rt_inline_prepare(PDO $db, int $guru, array $query): array {
     $schema=rt_schema_ready($db);
     $context=rt_inline_context($query);

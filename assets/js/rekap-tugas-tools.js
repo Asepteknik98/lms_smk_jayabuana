@@ -6,6 +6,9 @@
     const select = document.getElementById('remedialPilihanTugas');
     const body = document.getElementById('remedialDaftarSiswa');
     const save = document.getElementById('simpanRemedialTugas');
+    const participantsButton = document.getElementById('remedialFilterPeserta');
+    const historyButton = document.getElementById('remedialFilterRiwayat');
+    let showHistory = false;
     const number = value => value === null || value === undefined ? '—' : Number(value).toLocaleString('id-ID', {maximumFractionDigits: 2});
     function addCell(row, text) {
         const cell = document.createElement('td');
@@ -18,7 +21,21 @@
         const task = data.tasks.find(task => String(task.id) === select.value && Number(task.selesai));
         save.disabled = !data.ready || !task;
         if (!task) return;
-        data.students.forEach(student => {
+        const students = data.students.filter(student => {
+            const cell = student.cells[task.id];
+            if (!cell) return false;
+            return showHistory ? cell.remedial.length > 0 : cell.nilai !== null && cell.nilai !== undefined && Number.isFinite(Number(cell.nilai)) && Number(cell.nilai) < 75;
+        });
+        save.disabled = !data.ready || showHistory || !students.length;
+        if (!students.length) {
+            const row = document.createElement('tr');
+            const cell = addCell(row, showHistory ? 'Belum ada riwayat remedial untuk tugas ini.' : 'Tidak ada siswa dengan nilai di bawah 75 pada tugas ini.');
+            cell.colSpan = 5;
+            cell.className = 'text-center text-muted py-4';
+            body.appendChild(row);
+            return;
+        }
+        students.forEach(student => {
             const cell = student.cells[task.id];
             const row = document.createElement('tr');
             addCell(row, student.nama_lengkap);
@@ -31,13 +48,14 @@
             input.className = 'form-control form-control-sm';
             input.style.minWidth = '105px';
             input.setAttribute('aria-label', `Nilai remedial ${student.nama_lengkap}`);
-            input.disabled = cell.nilai === null;
-            input.placeholder = input.disabled ? 'Nilai awal belum diisi' : '0–100';
+            input.disabled = showHistory;
+            input.placeholder = showHistory ? 'Riwayat saja' : '0–100';
             inputCell.appendChild(input);
             const noteCell = addCell(row);
             const note = document.createElement('input');
             note.name = `catatan_remedial[${student.id}]`; note.maxLength = 1000;
             note.className = 'form-control form-control-sm'; note.placeholder = 'Catatan opsional';
+            note.disabled = showHistory;
             note.setAttribute('aria-label', `Catatan remedial ${student.nama_lengkap}`);
             noteCell.appendChild(note);
             if (cell.remedial.length) {
@@ -76,8 +94,16 @@
             body.appendChild(row);
         });
     }
+    function setHistory(value) {
+        showHistory = value;
+        if (participantsButton) { participantsButton.classList.toggle('active', !value); participantsButton.setAttribute('aria-pressed', String(!value)); }
+        if (historyButton) { historyButton.classList.toggle('active', value); historyButton.setAttribute('aria-pressed', String(value)); }
+        renderStudents();
+    }
+    if (participantsButton) participantsButton.addEventListener('click', () => setHistory(false));
+    if (historyButton) historyButton.addEventListener('click', () => setHistory(true));
     select.addEventListener('change', renderStudents);
-    document.getElementById('modalRemedialTugas').addEventListener('show.bs.modal', renderStudents);
+    document.getElementById('modalRemedialTugas').addEventListener('show.bs.modal', () => setHistory(false));
     const form = document.getElementById('formRemedialTugas');
     form.addEventListener('submit', event => {
         const anyScore = Array.from(body.querySelectorAll('input[type="number"]')).some(input => !input.disabled && input.value !== '');

@@ -257,7 +257,7 @@ test('Modal requires scores only when marked working and searches student histor
 test('Remedial form preserves zero, blocks pending work, shows history and requires an entry', () => {
     const vm=require('node:vm');
     class Element {
-        constructor(tag){this.tag=tag;this.children=[];this.style={};this.events={};this.value='';this.dataset={};}
+        constructor(tag){this.tag=tag;this.children=[];this.style={};this.events={};this.value='';this.dataset={};this.classList={toggle(){}};}
         appendChild(child){this.children.push(child);return child;}
         replaceChildren(){this.children=[];}
         addEventListener(event,callback){this.events[event]=callback;}
@@ -269,11 +269,14 @@ test('Remedial form preserves zero, blocks pending work, shows history and requi
         querySelectorAll(){return this.all().filter(child=>child.tag==='input' && child.type==='number');}
         querySelector(){return this.querySelectorAll().find(child=>!child.disabled);}
     }
-    const ids=['rekapRemedialData','remedialPilihanTugas','remedialDaftarSiswa','simpanRemedialTugas','modalRemedialTugas','formRemedialTugas','modalImporTugas','formBatalRemedialTugas','batalRemedialId','batalRemedialTugasId'];
+    const ids=['rekapRemedialData','remedialPilihanTugas','remedialDaftarSiswa','simpanRemedialTugas','modalRemedialTugas','formRemedialTugas','modalImporTugas','formBatalRemedialTugas','batalRemedialId','batalRemedialTugasId','remedialFilterPeserta','remedialFilterRiwayat'];
     const elements=Object.fromEntries(ids.map(id=>[id,new Element('div')]));
-    elements.rekapRemedialData.textContent=JSON.stringify({ready:true,cancelReady:true,tasks:[{id:1,selesai:1},{id:2,selesai:0}],students:[
+    elements.rekapRemedialData.textContent=JSON.stringify({ready:true,cancelReady:true,tasks:[{id:1,selesai:1},{id:2,selesai:0},{id:3,selesai:1}],students:[
         {id:1,nama_lengkap:'Siswa <A>',cells:{1:{nilai_awal:0,nilai:0,remedial:[{id:7,dibuat_pada:'2026-10-15',nilai_remedial:0,nilai_akhir:0,catatan:'<teks>'}]}}},
-        {id:2,nama_lengkap:'Siswa B',cells:{1:{nilai_awal:null,nilai:null,remedial:[]}}}
+        {id:2,nama_lengkap:'Siswa B',cells:{1:{nilai_awal:null,nilai:null,remedial:[]}}},
+        {id:3,nama_lengkap:'Nilai 74.99',cells:{1:{nilai_awal:74.99,nilai:74.99,remedial:[]}}},
+        {id:4,nama_lengkap:'Nilai 75',cells:{1:{nilai_awal:60,nilai:75,remedial:[{id:8,nilai_remedial:75,nilai_akhir:75}]}}},
+        {id:5,nama_lengkap:'Nilai 100',cells:{1:{nilai_awal:100,nilai:100,remedial:[]}}}
     ]});
     elements.remedialPilihanTugas.value='1';elements.modalImporTugas.dataset.open='1';
     let ready,opened=false;
@@ -286,7 +289,8 @@ test('Remedial form preserves zero, blocks pending work, shows history and requi
     const first=elements.remedialDaftarSiswa.children[0];
     assert.equal(first.children[0].textContent,'Siswa <A>');assert.equal(first.children[1].textContent,'0');
     assert.equal(first.children[3].children[0].disabled,false);
-    assert.equal(elements.remedialDaftarSiswa.children[1].children[3].children[0].disabled,true);
+    assert.equal(elements.remedialDaftarSiswa.children[1].children[0].textContent,'Nilai 74.99');
+    assert.equal(elements.remedialDaftarSiswa.children[1].children[3].children[0].disabled,false);
     assert.equal(first.children[4].children[1].children[0].textContent,'1 riwayat remedial / undo');
     const cancelButton=first.children[4].children[1].children[1].children[0].children[0];
     assert.equal(cancelButton.textContent,'Batalkan');assert.equal(cancelButton.type,'button');
@@ -294,6 +298,17 @@ test('Remedial form preserves zero, blocks pending work, shows history and requi
     assert.equal(elements.formBatalRemedialTugas.submitted,true);assert.equal(elements.formRemedialTugas.submitted,undefined);
     let prevented=false;elements.formRemedialTugas.events.submit({preventDefault(){prevented=true;}});assert.equal(prevented,true);
     first.children[3].children[0].value='0';prevented=false;elements.formRemedialTugas.events.submit({preventDefault(){prevented=true;}});assert.equal(prevented,false);
+    elements.remedialFilterRiwayat.events.click();
+    assert.equal(elements.remedialDaftarSiswa.children.length,2);
+    assert.equal(elements.remedialDaftarSiswa.children[1].children[0].textContent,'Nilai 75');
+    assert.equal(elements.remedialDaftarSiswa.children[1].children[3].children[0].disabled,true);
+    assert.equal(elements.simpanRemedialTugas.disabled,true);
+    const historyUndo=elements.remedialDaftarSiswa.children[1].children[4].children[1].children[1].children[0].children[0];
+    historyUndo.events.click();assert.equal(elements.batalRemedialId.value,8);
+    elements.remedialFilterPeserta.events.click();assert.equal(elements.simpanRemedialTugas.disabled,false);
+    elements.remedialPilihanTugas.value='3';elements.remedialPilihanTugas.events.change();
+    assert.equal(elements.simpanRemedialTugas.disabled,true);
+    assert.match(elements.remedialDaftarSiswa.children[0].children[0].textContent,/Tidak ada siswa/);
     elements.remedialPilihanTugas.value='2';elements.remedialPilihanTugas.events.change();assert.equal(elements.simpanRemedialTugas.disabled,true);
     ready();assert.equal(opened,true);
 });
