@@ -301,6 +301,9 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="tugas.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['tugas.php', 'tugas_penilaian.php'], true) ? 'active' : '' ?>">
             <i class="fa-solid fa-list-check me-2"></i> Tugas
         </a>
+        <a href="rekap_tugas.php" class="list-group-item list-group-item-action <?= $current_page === 'rekap_tugas.php' ? 'active' : '' ?>">
+            <i class="fa-solid fa-table-list me-2"></i> Rekap Tugas
+        </a>
         <a href="nilai_manual.php" class="list-group-item list-group-item-action <?= ($current_page === 'nilai_manual.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-pen-to-square me-2"></i> Input Nilai Manual
         </a>

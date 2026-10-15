@@ -366,7 +366,10 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
     <nav class="navbar task-page-toolbar px-2 px-md-4 py-2 py-md-3">
         <div class="d-flex justify-content-between align-items-center gap-2 w-100">
             <div class="min-w-0"><h5 class="mb-0 fw-bold text-truncate"><i class="fa-solid fa-list-check text-primary me-2"></i>Daftar Tugas</h5><small class="text-muted d-block text-truncate"><?= $filter_pengajaran_id ? $total_tugas_guru.' tugas pada pertemuan '.$filter_pertemuan : $total_tugas_guru.' tugas pada seluruh kelas yang Anda ampu' ?></small></div>
-            <button class="btn btn-primary btn-sm create-task-button flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalTugas" onclick="tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>)" aria-label="Tambah tugas baru" title="Tambah Tugas"><i class="fa-solid fa-plus me-1"></i><span>Tambah Tugas</span></button>
+            <div class="d-flex gap-2 flex-shrink-0">
+                <a href="rekap_tugas.php<?= $filter_pengajaran_id ? '?pengajaran_id='.(int)$filter_pengajaran_id : '' ?>" class="btn btn-outline-primary btn-sm create-task-button"><i class="fa-solid fa-table-list me-1"></i>Rekap Tugas</a>
+                <button class="btn btn-primary btn-sm create-task-button flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalTugas" onclick="tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>)" aria-label="Tambah tugas baru" title="Tambah Tugas"><i class="fa-solid fa-plus me-1"></i><span>Tambah Tugas</span></button>
+            </div>
         </div>
     </nav>
     <div class="container-fluid teacher-task-content p-3 p-md-4">

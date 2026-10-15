@@ -1,0 +1,95 @@
+// Run: node --test tests/rekap-tugas.test.cjs
+// Database fixtures are connection-local temporary tables; school records stay untouched.
+const {test} = require('node:test');
+const assert = require('node:assert/strict');
+const {spawnSync} = require('node:child_process');
+const fs = require('node:fs');
+const path = require('node:path');
+
+test('Task recap: averages, authorization, status, answer preservation and rollback', () => {
+    const php = String.raw`<?php
+require 'config/database.php';require 'includes/rekap_tugas_module.php';require 'includes/penilaian_override.php';
+$db=Database::getInstance();
+function check($ok,$message){if(!$ok)throw new RuntimeException($message);}
+function reject($fn){try{$fn();}catch(RuntimeException $e){return;}throw new RuntimeException('Invalid mutation accepted');}
+$tables=[
+ 'users'=>'id INT PRIMARY KEY,role_id INT,is_active INT',
+ 'guru'=>'id INT PRIMARY KEY,user_id INT',
+ 'kelas'=>'id INT PRIMARY KEY,nama_kelas VARCHAR(30)',
+ 'mapel'=>'id INT PRIMARY KEY,nama_mapel VARCHAR(30)',
+ 'pengajaran'=>'id INT PRIMARY KEY,guru_id INT,kelas_id INT,mapel_id INT,tahun_ajaran VARCHAR(20),semester VARCHAR(20)',
+ 'siswa'=>'id INT PRIMARY KEY,kelas_id INT,nis VARCHAR(30),nisn VARCHAR(30),nama_lengkap VARCHAR(100)',
+ 'tugas'=>'id INT PRIMARY KEY,pengajaran_id INT,judul VARCHAR(100),pertemuan_ke INT,deadline DATETIME,metode_pengumpulan VARCHAR(20)',
+ 'pengumpulan_tugas'=>'id INT AUTO_INCREMENT PRIMARY KEY,tugas_id INT,siswa_id INT,nilai DECIMAL(5,2),catatan_guru TEXT,file_tugas VARCHAR(255),catatan TEXT,dikumpulkan_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY(tugas_id,siswa_id)',
+ 'rekap_tugas_status'=>'tugas_id INT,siswa_id INT,guru_id INT,status VARCHAR(30),catatan VARCHAR(1000),updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(tugas_id,siswa_id)',
+ 'log_aktivitas'=>'user_id INT,aktivitas VARCHAR(255),ip_address VARCHAR(45),user_agent TEXT',
+ 'nilai_tugas_manual'=>'pengajaran_id INT,siswa_id INT,nilai DECIMAL(5,2)',
+ 'ujian'=>'id INT,pengajaran_id INT,jenis_ujian VARCHAR(20),waktu_selesai DATETIME',
+ 'nilai_ujian'=>'ujian_id INT,siswa_id INT,nilai_total DECIMAL(5,2)',
+ 'sesi_absensi'=>'id INT,pengajaran_id INT,status VARCHAR(20)',
+ 'detail_absensi'=>'sesi_absensi_id INT,siswa_id INT,status VARCHAR(20)'
+];
+foreach($tables as $table=>$schema)$db->exec("CREATE TEMPORARY TABLE $table ($schema) ENGINE=InnoDB");
+$db->exec("INSERT INTO users VALUES(1,2,1),(2,2,1),(3,3,1);INSERT INTO guru VALUES(1,1),(2,2);INSERT INTO kelas VALUES(1,'X-A'),(2,'X-B');INSERT INTO mapel VALUES(1,'Matematika');INSERT INTO pengajaran VALUES(1,1,1,1,'2026/2027','Ganjil'),(2,2,2,1,'2026/2027','Ganjil');INSERT INTO siswa VALUES(1,1,'001','00001','Siswa A'),(2,1,'002','00002','Siswa B'),(3,2,'003','00003','Siswa C');
+INSERT INTO tugas VALUES(1,1,'Dinilai',1,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'),(2,1,'Tidak Dikerjakan',2,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'),(3,1,'Belum Dinilai',3,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'),(4,1,'Terbuka',4,DATE_ADD(NOW(),INTERVAL 1 DAY),'online'),(5,1,'Offline',5,DATE_SUB(NOW(),INTERVAL 1 DAY),'offline'),(6,2,'Guru Lain',1,DATE_SUB(NOW(),INTERVAL 1 DAY),'online');
+INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai,file_tugas,catatan,dikumpulkan_pada) VALUES(1,1,80,'jawaban.pdf','Jawaban asli','2026-01-01 08:00:00'),(3,1,NULL,NULL,'Esai asli','2026-01-01 08:00:00'),(4,1,100,NULL,NULL,'2026-01-01 08:00:00');");
+$student=rt_data($db,1,1,true)['students'][0];
+check(abs($student['rata_rata']-26.67)<.01 && $student['jumlah_dihitung']===3,'Expired missing tasks must contribute 0');
+check($student['cells'][3]['nilai']===null && $student['belum_dinilai']===1,'Ungraded task must stay pending');
+check(!$student['cells'][4]['dihitung'],'Open task included in average');
+check(count(rt_data($db,1,1,false)['students'])===2,'Read-only legacy fallback failed');
+reject(fn()=>rt_data($db,2,1,true));
+$save=fn($sid,$tid,$status,$score='',$note='')=>rt_save($db,1,1,1,$sid,$tid,$status,$score,$note);
+reject(fn()=>$save(3,1,'mengerjakan','70'));reject(fn()=>$save(1,6,'mengerjakan','70'));
+reject(fn()=>rt_save($db,1,3,1,1,1,'mengerjakan','70',''));
+foreach(['','-1','101','NaN','INF','1e999'] as $value)reject(fn()=>$save(1,1,'mengerjakan',$value));
+reject(fn()=>$save(1,1,'invalid'));reject(fn()=>$save(1,1,'mengerjakan','80',str_repeat('a',1001)));
+reject(fn()=>$save(2,4,'tidak_mengerjakan'));reject(fn()=>$save(1,1,'tidak_mengerjakan'));reject(fn()=>$save(1,1,'belum_dinilai'));
+$beforeGrade=po_automatic($db,1,1)['Tugas Harian'];
+$save(1,5,'mengerjakan','100','Tugas tertulis');check(rt_data($db,1,1,true)['students'][0]['rata_rata']===60.0,'Offline score not counted');
+check(abs($beforeGrade-20)<.01 && abs(po_automatic($db,1,1)['Tugas Harian']-45)<.01,'Saved recap grade did not flow to the existing automatic Tugas Harian component');
+// The existing grade formula counts ungraded work as 0, unlike the new provisional history average.
+check(po_automatic($db,1,1)['Tugas Harian']!==rt_data($db,1,1,true)['students'][0]['rata_rata'],'Expected formula discrepancy was not detected');
+$save(1,2,'belum_dinilai','','Diterima guru');$student=rt_data($db,1,1,true)['students'][0];
+check($student['rata_rata']===90.0 && $student['belum_dinilai']===2,'Manual pending not respected');
+check((int)$db->query('SELECT COUNT(*) FROM pengumpulan_tugas WHERE tugas_id=2')->fetchColumn()===0,'Status created a fake submission');
+$save(1,2,'tidak_mengerjakan');check(rt_data($db,1,1,true)['students'][0]['rata_rata']===60.0,'Missing task did not contribute 0');
+$db->exec('INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai) VALUES(2,1,95)');
+$student=rt_data($db,1,1,true)['students'][0];check($student['cells'][2]['status']==='mengerjakan' && $student['cells'][2]['nilai']===95.0,'Later submission hidden by manual absence');
+$save(1,1,'mengerjakan','0','Nol yang sah');$original=$db->query('SELECT * FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=1')->fetch();
+check($original['file_tugas']==='jawaban.pdf' && $original['catatan']==='Jawaban asli' && $original['dikumpulkan_pada']==='2026-01-01 08:00:00','Answer/file/timestamp changed');
+check(rt_data($db,1,1,true)['students'][0]['cells'][1]['status']==='mengerjakan','Legitimate zero confused with absence');
+$save(1,1,'otomatis');check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=1')->fetchColumn()===0.0,'Reset deleted existing score');
+// Inject failure in the connection-local audit table; both mutations must roll back.
+$db->exec('UPDATE log_aktivitas SET user_id=-1');
+$db->exec('ALTER TABLE log_aktivitas ADD CONSTRAINT fixture_no_audit CHECK (user_id<0)');
+reject(fn()=>$save(1,1,'mengerjakan','90'));
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=1')->fetchColumn()===0.0,'Grade did not roll back');
+check((int)$db->query('SELECT COUNT(*) FROM rekap_tugas_status WHERE tugas_id=1 AND siswa_id=1')->fetchColumn()===0,'Status did not roll back');
+echo "PASS task recap integration\n";
+`;
+    const result=spawnSync('C:/xampp/php/php.exe',[],{cwd:path.join(__dirname,'..'),input:php,encoding:'utf8'});
+    assert.equal(result.status,0,result.stdout+result.stderr);
+    assert.match(result.stdout,/PASS task recap integration/);
+});
+
+test('Modal requires scores only when marked working and searches student history', () => {
+    const vm=require('node:vm');
+    const callbacks={};
+    const elements={};
+    for(const id of ['modalStatusTugas','statusTugas','nilaiStatusTugas','statusSiswaId','statusTugasId','statusNamaSiswa','statusJudulTugas','catatanStatusTugas','lihatJawabanTugas','cariSiswaRekap','rekapSearchEmpty']){
+        elements[id]={value:'',addEventListener:(event,fn)=>{callbacks[id+':'+event]=fn;}};
+    }
+    const rows=[{dataset:{search:'andi 001'}},{dataset:{search:'budi 002'}}];
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/js/rekap-tugas.js'),'utf8'),{
+        document:{getElementById:id=>elements[id],querySelectorAll:()=>rows},encodeURIComponent
+    });
+    callbacks['modalStatusTugas:show.bs.modal']({relatedTarget:{dataset:{siswaId:'1',tugasId:'2',nama:'Andi <b>',judul:'Tugas A',status:'mengerjakan',nilai:'0.00',catatan:'Catatan',pengumpulan:'1',metode:'online'}}});
+    assert.equal(elements.nilaiStatusTugas.required,true);assert.equal(elements.nilaiStatusTugas.value,'0.00');
+    assert.equal(elements.statusNamaSiswa.textContent,'Andi <b>');assert.equal(elements.lihatJawabanTugas.href,'tugas_penilaian.php?tugas_id=2');
+    elements.statusTugas.value='tidak_mengerjakan';callbacks['statusTugas:change']();
+    assert.equal(elements.nilaiStatusTugas.required,false);assert.equal(elements.nilaiStatusTugas.readOnly,true);assert.equal(elements.nilaiStatusTugas.value,'0');
+    elements.statusTugas.value='belum_dinilai';callbacks['statusTugas:change']();assert.equal(elements.nilaiStatusTugas.value,'');
+    elements.cariSiswaRekap.value=' BUDI ';callbacks['cariSiswaRekap:input']();assert.equal(rows[0].hidden,true);assert.equal(rows[1].hidden,false);assert.equal(elements.rekapSearchEmpty.hidden,true);
+    elements.cariSiswaRekap.value='tidak ada';callbacks['cariSiswaRekap:input']();assert.equal(elements.rekapSearchEmpty.hidden,false);
+});
