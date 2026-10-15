@@ -85,6 +85,34 @@ require_once 'config/helper.php';require 'includes/penugasan_remedial_siswa_view
 ob_start();pr_render_student($db,70);$studentRemedial=ob_get_clean();
 check(strpos($studentRemedial,'&lt;script&gt;')!==false && strpos($studentRemedial,'<script>')===false,'Student remedial text was not escaped');
 ob_start();pr_render_student($db,71);$tuntasView=ob_get_clean();check($tuntasView==='','Remedial section leaked to nonparticipants');
+$db->exec("ALTER TABLE penugasan_remedial ADD jenis VARCHAR(30) NOT NULL DEFAULT 'teks', ADD konfigurasi MEDIUMTEXT; ALTER TABLE peserta_penugasan_remedial ADD file_jawaban VARCHAR(100), ADD nama_file VARCHAR(255)");
+check(pr_types_ready($db),'Type migration was not detected');
+$mcqInput=['soal'=>[['teks'=>'Pilih hasil 2 + 2','opsi'=>['1','2','3','4'],'kunci'=>'3']]];
+$mcq=pr_create($db,1,1,70,70,'Pilihan ganda','Kerjakan soal',$deadline,str_repeat('b',48),'pilihan_ganda',$mcqInput);
+$typed=pr_student_tasks($db,73);$mcqTask=array_values(array_filter($typed,fn($t)=>(int)$t['id']===$mcq))[0];
+check($mcqTask['jenis']==='pilihan_ganda','Assignment type not persisted');
+reject(fn()=>pr_answer($mcqTask,['jawaban_soal'=>[]]));
+reject(fn()=>pr_answer($mcqTask,['jawaban_soal'=>['4']]));
+$mcqAnswer=pr_answer($mcqTask,['jawaban_soal'=>['3']]);
+check(strpos($mcqAnswer,'D. 4')!==false,'Choice answer did not retain submitted option');
+ob_start();pr_render_answer_fields($mcqTask);$mcqHtml=ob_get_clean();
+check(substr_count($mcqHtml,'type="radio"')===4 && strpos($mcqHtml,'kunci')===false && strpos($mcqHtml,'Kunci')===false,'Student question form leaked answer key or omitted choices');
+ob_start();pr_render_type_info($mcqTask,true);$teacherMcq=ob_get_clean();check(strpos($teacherMcq,'(Kunci)')!==false,'Teacher answer key is missing');
+pr_submit($db,73,$mcq,$mcqAnswer);
+pr_grade($db,1,1,70,$mcq,73,'100');
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=70 AND siswa_id=73')->fetchColumn()===100.0,'Typed task grade did not reach original task');
+reject(fn()=>pr_create($db,1,1,70,70,'Invalid','Soal',$deadline,str_repeat('c',48),'pilihan_ganda',['soal'=>[]]));
+foreach(['portofolio','esai','youtube','merangkum','video'] as $index=>$type){
+    $input=$type==='esai'?['soal'=>[['teks'=>'Jelaskan algoritma']]]:($type==='youtube'?['youtube_url'=>'https://youtu.be/example']:[]);
+    $created=pr_create($db,1,1,70,70,'Jenis '.$type,'Instruksi',$deadline,substr(hash('sha256',$type),0,48),$type,$input);
+    $q=$db->prepare('SELECT * FROM penugasan_remedial WHERE id=?');$q->execute([$created]);$typedTask=$q->fetch();
+    ob_start();pr_render_answer_fields($typedTask);$fields=ob_get_clean();
+    check($typedTask['jenis']===$type,'Missing assignment type '.$type);
+    if($type==='portofolio')check(strpos($fields,'type="file"')!==false,'Portfolio upload field missing');
+    if($type==='video')check(strpos($fields,'type="url"')!==false,'Video URL field missing');
+    if($type==='esai')check(strpos(pr_answer($typedTask,['jawaban_soal'=>['Langkah terurut']]),'Langkah terurut')!==false,'Essay answer mapping failed');
+}
+check((int)$db->query('SELECT COUNT(*) FROM tugas WHERE id=70')->fetchColumn()===1,'Typed remedial assignments duplicated ordinary tasks');
 $db->exec("UPDATE penugasan_remedial SET deadline=DATE_SUB(NOW(),INTERVAL 1 DAY)");
 reject(fn()=>pr_submit($db,73,$assignment,'Late answer'));
 $db->exec("DELETE FROM peserta_penugasan_remedial; DELETE FROM penugasan_remedial; DELETE FROM remedial_tugas_batal WHERE remedial_id=$attempt; DELETE FROM remedial_tugas WHERE tugas_id=70; DELETE FROM rekap_tugas_status WHERE tugas_id=70; DELETE FROM pengumpulan_tugas WHERE tugas_id=70; DELETE FROM tugas WHERE id=70; DELETE FROM siswa WHERE kelas_id=70; DELETE FROM pengajaran WHERE id=70; DELETE FROM kelas WHERE id=70; DELETE FROM users WHERE id>=70; DELETE FROM log_aktivitas;");

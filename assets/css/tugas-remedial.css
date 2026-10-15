@@ -13,7 +13,11 @@
 .pr-page .pr-card-heading>i{color:#1769e0;background:#eff5ff;padding:11px;border-radius:11px}
 .pr-page .pr-form-body{padding:24px 26px}
 .pr-page .form-label{font-size:14px;font-weight:600;margin-bottom:9px}
-.pr-page .form-control{border-color:#dce3ed;border-radius:10px;padding:11px 13px;font-size:14px;min-height:45px}
+.pr-page .form-control,.pr-page .form-select{border-color:#dce3ed;border-radius:10px;padding:11px 13px;font-size:14px;min-height:45px}
+.pr-page .form-select{padding-right:36px}
+.pr-page .pr-question-card{border:1px solid #dce3ed;border-radius:12px;padding:18px;margin-bottom:18px;background:#fbfcff}
+.pr-page .pr-question-card textarea.form-control{min-height:100px}
+.pr-page .pr-option{display:flex;align-items:center;gap:12px;margin-bottom:9px;font-size:13px;font-weight:600}
 .pr-page .form-control:focus{border-color:#80acff;box-shadow:0 0 0 3px #1769e014}
 .pr-page textarea.form-control{min-height:190px;resize:vertical;line-height:1.7}
 .pr-page .pr-field{margin-bottom:23px}
