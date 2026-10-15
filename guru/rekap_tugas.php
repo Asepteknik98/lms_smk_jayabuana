@@ -15,9 +15,13 @@ if(!isset($query['rekap_pengajaran']) && isset($query['pengajaran_id'])){
 if(in_array($_GET['format']??'',['csv','template'],true)){
     $view=rt_inline_prepare($db,$guru,$query);
     if($_GET['format']==='csv')rt_inline_export($view);
-    try{$xml=rt_import_template($view);}catch(RuntimeException $e){http_response_code(400);exit($e->getMessage());}
+    try{
+        $target=rt_import_target($view['data'],(int)($view['context']['impor_tugas_id']??0));
+        $view['visibleTasks']=[$target];
+        $xml=rt_import_template($view);
+    }catch(RuntimeException $e){http_response_code(400);exit($e->getMessage());}
     header('Content-Type: application/vnd.ms-excel; charset=UTF-8');
-    header('Content-Disposition: attachment; filename="Template_Nilai_Tugas_'.$view['pid'].'.xls"');
+    header('Content-Disposition: attachment; filename="Template_Nilai_Tugas_'.$target['nomor'].'_Pengajaran_'.$view['pid'].'.xls"');
     header('Cache-Control: no-store');echo $xml;exit;
 }
 header('Location: '.rt_inline_url(rt_inline_context($query)));exit;

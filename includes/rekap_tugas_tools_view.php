@@ -6,6 +6,8 @@ function rt_inline_render_tools(array $view): void {
         'remedialSelected'=>$remedialSelected,'cancelReady'=>$cancelReady
     ]=$view;
     $info=$data['info'];
+    $importTarget=null;
+    foreach($data['tasks'] as $task)if((int)$task['id']===(int)($context['impor_tugas_id']??0))$importTarget=$task;
 $hidden=function(string $action)use($context): void {
     echo '<input type="hidden" name="action" value="'.sanitize($action).'"><input type="hidden" name="csrf_token" value="'.sanitize($_SESSION['csrf_token']).'">';
     foreach($context as $key=>$value)echo '<input type="hidden" name="'.sanitize($key).'" value="'.sanitize((string)$value).'">';
@@ -16,14 +18,23 @@ $invalidRows=$importPlan?count(array_filter($importPlan['rows'],static fn($r)=>$
 <div class="modal fade" id="modalImporTugas" tabindex="-1" aria-labelledby="judulImporTugas" aria-hidden="true" data-open="<?= $panel==='impor'?'1':'0' ?>"><div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable"><div class="modal-content">
     <div class="modal-header"><div><h5 id="judulImporTugas" class="modal-title fw-bold">Impor Nilai Tugas Satu Kelas</h5><small class="text-muted"><?= sanitize($info['nama_kelas'].' · '.$info['nama_mapel']) ?></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div>
     <div class="modal-body">
-        <ol class="small"><li>Unduh template dengan daftar siswa dan kolom Tugas 1, Tugas 2, dan seterusnya.</li><li>Isi nilai 0–100 di Excel. Kosongkan sel yang tidak ingin diisi. Jangan mengubah ID siswa atau ID tugas.</li><li>Unggah file, periksa pratinjau, kemudian konfirmasi penyimpanan.</li></ol>
-        <p class="small text-muted">Template mengikuti tugas yang ditampilkan pada filter rekap. Nilai yang sudah tersimpan akan dilewati; gunakan menu Remedial untuk perbaikan nilai.</p>
-        <a class="btn btn-outline-success mb-3" href="rekap_tugas.php?<?= sanitize(http_build_query(array_merge($context,['format'=>'template']))) ?>"><i class="fa-solid fa-file-excel me-1"></i>Unduh Template Excel</a>
+        <ol class="small"><li>Pilih satu target tugas, lalu unduh template Excel untuk tugas tersebut.</li><li>Isi nilai 0&ndash;100. Kosongkan sel yang tidak ingin diisi. Jangan mengubah ID siswa atau ID tugas.</li><li>Unggah file, periksa target dan pratinjau nilai, kemudian konfirmasi penyimpanan.</li></ol>
+        <form method="get" action="tugas.php#rekap-tugas" class="border rounded-3 p-3 mb-3">
+            <?php foreach($context as $key=>$value): if($key==='impor_tugas_id')continue; ?><input type="hidden" name="<?= sanitize($key) ?>" value="<?= sanitize((string)$value) ?>"><?php endforeach ?>
+            <input type="hidden" name="rekap_panel" value="impor">
+            <label for="imporTargetTugas" class="form-label fw-semibold">Target tugas</label>
+            <div class="d-flex flex-wrap gap-2"><select id="imporTargetTugas" name="impor_tugas_id" onchange="this.form.requestSubmit()" class="form-select flex-grow-1" style="flex-basis:300px;width:auto" required><option value="">-- Pilih target tugas --</option><?php foreach($data['tasks'] as $task): ?><option value="<?= (int)$task['id'] ?>" <?= $importTarget && (int)$importTarget['id']===(int)$task['id']?'selected':'' ?>>Tugas <?= (int)$task['nomor'] ?> &mdash; <?= sanitize($task['judul']) ?></option><?php endforeach ?></select><button class="btn btn-outline-primary">Pilih Target</button></div>
+        </form>
+        <p class="small text-muted">Template dan nilai yang diimpor hanya berlaku untuk satu tugas terpilih. Nilai yang sudah tersimpan akan dilewati; gunakan menu Remedial untuk perbaikan nilai.</p>
+        <?php if($importTarget): ?>
+        <div class="alert alert-info">Target impor: <strong>Tugas <?= (int)$importTarget['nomor'] ?> &mdash; <?= sanitize($importTarget['judul']) ?></strong></div>
+        <a class="btn btn-outline-success mb-3" href="rekap_tugas.php?<?= sanitize(http_build_query(array_merge($context,['format'=>'template']))) ?>"><i class="fa-solid fa-file-excel me-1"></i>Unduh Template Tugas <?= (int)$importTarget['nomor'] ?></a>
         <form method="post" enctype="multipart/form-data" action="<?= sanitize(rt_inline_url($context)) ?>" class="border rounded-3 p-3 mb-3">
             <?php $hidden('rekap_tugas_import_preview'); ?>
             <label for="fileNilaiTugas" class="form-label fw-semibold">File nilai (.xlsx atau .xls, maksimal 5 MB)</label><input type="file" name="file_nilai" id="fileNilaiTugas" class="form-control mb-3" accept=".xlsx,.xls" required>
-            <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass me-1"></i>Periksa dan Pratinjau</button>
+            <button class="btn btn-primary"><i class="fa-solid fa-magnifying-glass me-1"></i>Periksa dan Pratinjau Tugas <?= (int)$importTarget['nomor'] ?></button>
         </form>
+        <?php else: ?><div class="alert alert-light border">Pilih target tugas untuk mengunduh template dan mengunggah nilai.</div><?php endif ?>
         <?php if($importPlan): ?>
         <div class="alert <?= $invalidRows?'alert-danger':'alert-info' ?>"><strong><?= $readyRows ?> nilai siap diimpor.</strong> <?= count($importPlan['rows'])-$readyRows ?> nilai dilewati atau perlu diperbaiki.<?php if($invalidRows): ?> Ada <?= $invalidRows ?> nilai tidak valid. Perbaiki file dan unggah ulang sebelum menyimpan.<?php endif ?></div>
         <div class="table-responsive"><table class="table table-sm table-bordered align-middle"><thead class="table-light"><tr><th>Baris Excel</th><th>Siswa</th><th>Tugas</th><th>Nilai Excel</th><th>Hasil Pemeriksaan</th></tr></thead><tbody><?php foreach($importPlan['rows'] as $row): ?><tr><td><?= (int)$row['row'] ?></td><td><?= sanitize($row['nama']) ?></td><td><?= sanitize($row['tugas']) ?></td><td><?= sanitize($row['raw']) ?></td><td class="<?= $row['ready']?'text-success':($row['invalid']?'text-danger':'text-muted') ?>"><?= sanitize($row['reason']) ?></td></tr><?php endforeach ?></tbody></table></div>

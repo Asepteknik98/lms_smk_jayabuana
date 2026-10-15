@@ -1,6 +1,11 @@
 <?php
 require_once __DIR__.'/nilai_excel_reader.php';
 
+function rt_import_target(array $data,int $tid): array {
+    foreach($data['tasks'] as $task)if((int)$task['id']===$tid)return $task;
+    throw new RuntimeException('Pilih satu target tugas yang sesuai kelas dan mata pelajaran.');
+}
+
 function rt_import_template(array $view): string {
     $tasks=$view['visibleTasks'];$data=$view['data'];$info=$data['info'];
     if(!$info || !$tasks)throw new RuntimeException('Belum ada tugas untuk dibuatkan template.');
@@ -18,7 +23,8 @@ function rt_import_template(array $view): string {
     return $xml.'</Table></Worksheet></Workbook>';
 }
 
-function rt_parse_import(array $data,array $rows,int $pid): array {
+function rt_parse_import(array $data,array $rows,int $pid,int $target=0): array {
+    if($target>0)rt_import_target($data,$target);
     if(trim((string)($rows[0][0]??''))!=='Pengajaran ID' || trim((string)($rows[0][1]??''))!==(string)$pid)throw new RuntimeException('Template bukan untuk kelas dan mata pelajaran yang dipilih. Unduh template yang sesuai.');
     $header=$rows[2]??[];
     if(array_slice($header,0,4)!==['ID Siswa','NIS','NISN','Nama Siswa'])throw new RuntimeException('Header template berubah. Gunakan template resmi.');
@@ -33,6 +39,7 @@ function rt_parse_import(array $data,array $rows,int $pid): array {
         $columns[$col]=$tid;$usedTasks[$tid]=true;
     }
     if(!$columns)throw new RuntimeException('Tidak ada kolom tugas.');
+    if($target>0 && (count($columns)!==1 || (int)reset($columns)!==$target))throw new RuntimeException('File Excel tidak sesuai target tugas terpilih. Unduh template untuk tugas tersebut; impor hanya boleh berisi satu tugas.');
     $result=[];$usedStudents=[];
     foreach($rows as $index=>$row){
         if($index<3)continue;
@@ -62,6 +69,7 @@ function rt_parse_import(array $data,array $rows,int $pid): array {
 
 function rt_import_apply(PDO $db,int $guru,int $user,int $pid,array $plan): int {
     if(($plan['guru']??0)!==$guru || ($plan['user']??0)!==$user || ($plan['pid']??0)!==$pid || ($plan['expires']??0)<time())throw new RuntimeException('Pratinjau impor kedaluwarsa atau tidak sesuai. Unggah ulang file.');
+    if(isset($plan['tid']) && ((int)$plan['tid']<1 || array_filter($plan['rows'],static fn($row)=>(int)$row['tid']!==(int)$plan['tid'])))throw new RuntimeException('Target tugas pada pratinjau tidak sesuai. Unggah ulang file.');
     if(array_filter($plan['rows'],static fn($row)=>$row['invalid']))throw new RuntimeException('Perbaiki nilai yang tidak valid dan unggah ulang file.');
     $ready=array_values(array_filter($plan['rows'],static fn($row)=>$row['ready']));
     if(!$ready)throw new RuntimeException('Tidak ada nilai baru yang dapat diimpor.');

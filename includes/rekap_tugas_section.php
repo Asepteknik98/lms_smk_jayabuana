@@ -4,7 +4,7 @@ require_once __DIR__.'/rekap_tugas_tools.php';
 
 function rt_inline_context(array $query): array {
     $context=[];
-    foreach(['page','pengajaran_id','pertemuan','rekap_kelas','rekap_pengajaran','rekap_tugas_id'] as $key){
+    foreach(['page','pengajaran_id','pertemuan','rekap_kelas','rekap_pengajaran','rekap_tugas_id','impor_tugas_id'] as $key){
         if(isset($query[$key]) && is_scalar($query[$key]) && (int)$query[$key]>0)$context[$key]=(int)$query[$key];
     }
     $context['rekap_mode']=($query['rekap_mode']??'')==='tugas'?'tugas':'semua';
@@ -33,14 +33,17 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
                 $_SESSION['rekap_tugas_success']='Status dan nilai tugas berhasil disimpan.';
             }elseif($action==='rekap_tugas_import_preview'){
                 unset($_SESSION['rekap_tugas_import']);
+                $target=(int)($context['impor_tugas_id']??0);
+                $data=rt_data($db,$guru,$pid,$schema);rt_import_target($data,$target);
                 $file=$_FILES['file_nilai']??null;
                 if(!$file || $file['error']!==UPLOAD_ERR_OK || !is_uploaded_file($file['tmp_name']))throw new RuntimeException('File nilai gagal diunggah.');
                 if(!in_array(strtolower(pathinfo($file['name'],PATHINFO_EXTENSION)),['xlsx','xls'],true) || $file['size']>5*1024*1024)throw new RuntimeException('Gunakan file .xlsx atau .xls, maksimal 5 MB.');
-                $data=rt_data($db,$guru,$pid,$schema);$book=ni_read_excel($file['tmp_name']);
-                $rows=rt_parse_import($data,$book['rows'],$pid);
-                $_SESSION['rekap_tugas_import']=['guru'=>$guru,'user'=>(int)$_SESSION['user_id'],'pid'=>$pid,'expires'=>time()+900,'token'=>bin2hex(random_bytes(24)),'rows'=>$rows];
+                $book=ni_read_excel($file['tmp_name']);
+                $rows=rt_parse_import($data,$book['rows'],$pid,$target);
+                $_SESSION['rekap_tugas_import']=['guru'=>$guru,'user'=>(int)$_SESSION['user_id'],'pid'=>$pid,'tid'=>$target,'expires'=>time()+900,'token'=>bin2hex(random_bytes(24)),'rows'=>$rows];
             }elseif($action==='rekap_tugas_import_apply'){
                 $plan=$_SESSION['rekap_tugas_import']??[];
+                if((int)($plan['tid']??0)<1 || (int)$plan['tid']!==(int)($context['impor_tugas_id']??0))throw new RuntimeException('Target tugas berubah. Periksa dan pratinjau ulang file.');
                 if(!is_string($_POST['import_token']??null) || !isset($plan['token']) || !hash_equals($plan['token'],$_POST['import_token']))throw new RuntimeException('Pratinjau impor tidak valid. Unggah ulang file.');
                 $count=rt_import_apply($db,$guru,(int)$_SESSION['user_id'],$pid,$plan);
                 unset($_SESSION['rekap_tugas_import']);$_SESSION['rekap_tugas_success']=$count.' nilai berhasil diimpor.';
@@ -87,7 +90,7 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
     $context['rekap_kelas']=$class;$context['rekap_pengajaran']=$pid;$context['rekap_tugas_id']=$selectedTask;
     $remedialReady=rt_remedial_ready($db);
     $importPlan=$_SESSION['rekap_tugas_import']??null;
-    if($importPlan && ($importPlan['pid']!==$pid || $importPlan['guru']!==$guru || $importPlan['user']!==(int)($_SESSION['user_id']??0) || $importPlan['expires']<time()))$importPlan=null;
+    if($importPlan && ($importPlan['pid']!==$pid || $importPlan['guru']!==$guru || $importPlan['user']!==(int)($_SESSION['user_id']??0) || $importPlan['expires']<time() || (int)($importPlan['tid']??0)<1 || (int)$importPlan['tid']!==(int)($context['impor_tugas_id']??0)))$importPlan=null;
     $panel=in_array($query['rekap_panel']??'',['impor','remedial'],true)?$query['rekap_panel']:'';
     $cancelReady=rt_cancel_ready($db);
     $remedialSelected=(int)($query['remedial_tugas_id']??$selectedTask);

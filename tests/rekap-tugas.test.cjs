@@ -159,6 +159,19 @@ $xml=rt_import_template(['pid'=>1,'data'=>$importData,'visibleTasks'=>$importDat
 $file=tempnam(sys_get_temp_dir(),'rt_xls_');file_put_contents($file,$xml);
 try{$sheet=ni_read_excel($file);}finally{unlink($file);}
 $rows=$sheet['rows'];check($rows[3][1]==='001','Template lost leading zero in NIS');
+// The import UI and download endpoint must bind every stage to one target.
+$targetTask=rt_import_target($importData,2);
+reject(fn()=>rt_import_target($importData,0));reject(fn()=>rt_import_target($importData,6));
+$targetXml=rt_import_template(['pid'=>1,'data'=>$importData,'visibleTasks'=>[$targetTask]]);
+$targetFile=tempnam(sys_get_temp_dir(),'lms_target_');file_put_contents($targetFile,$targetXml);
+try{$targetRows=ni_read_excel($targetFile)['rows'];}finally{unlink($targetFile);}
+check(count($targetRows[2])===5 && $targetRows[2][4]==='Tugas 2 [ID:2]','Target template contains extra task columns');
+$targetRows[4][4]='0';$targetParsed=rt_parse_import($importData,$targetRows,1,2);
+check(count($targetParsed)===1 && $targetParsed[0]['tid']===2 && $targetParsed[0]['score']===0.0,'Target parser lost task binding or zero score');
+reject(fn()=>rt_parse_import($importData,$targetRows,1,1));
+reject(fn()=>rt_parse_import($importData,$rows,1,2));
+$targetPlan=['guru'=>1,'user'=>1,'pid'=>1,'tid'=>1,'expires'=>time()+900,'rows'=>$targetParsed];
+reject(fn()=>rt_import_apply($db,1,1,1,$targetPlan));
 $rows[4][4]='80';$rows[4][6]='0';$rows[4][8]='55,5';
 $parsed=rt_parse_import($importData,$rows,1);
 check(count($parsed)===3 && $parsed[1]['score']===0.0,'Import lost zero/blank distinction');
@@ -251,6 +264,10 @@ check(strpos($toolbar[0],'Rekap Tugas')===false,'Separate recap toolbar button r
 check(strpos($html,'colspan="5">Nilai per Tugas')!==false,'One column per actual task is missing');
 check(strpos($html,'<th title="Pertemuan')===false && strpos($html,'>Tugas 1</th>')!==false,'Meeting headings remain in task recap');
 check(strpos($html,'id="modalImporTugas"')!==false && strpos($html,'id="modalRemedialTugas"')!==false,'Import/remedial menus are missing');
+check(strpos($html,'id="imporTargetTugas"')!==false && strpos($html,'id="fileNilaiTugas"')===false,'Import must require a selected target before upload');
+$targetView=rt_inline_prepare($db,1,['rekap_pengajaran'=>1,'impor_tugas_id'=>2,'rekap_panel'=>'impor']);
+ob_start();rt_inline_render($targetView);$targetHtml=ob_get_clean();
+check(strpos($targetHtml,'Unduh Template Tugas 2')!==false && strpos($targetHtml,'name="impor_tugas_id" value="2"')!==false,'Selected target is missing from template or upload form');
 $options=json_decode(html_entity_decode(rt_inline_options($rekap_tugas_view['data']['students'][0],$rekap_tugas_view['data']['tasks']),ENT_QUOTES,'UTF-8'),true);
 check(str_starts_with($options[0]['judul'],'Tugas 1'),'Status modal still uses meeting labels');
 check(strpos($html,'name="rekap_pengajaran"')!==false && strpos($html,'name="rekap_mode"')!==false,'Independent recap filters missing');
