@@ -318,7 +318,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
 ?>
 <?php require_once __DIR__ . '/../includes/header.php'; ?>
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
-<link rel="stylesheet" href="../assets/css/rekap-tugas.css?v=2">
+<link rel="stylesheet" href="../assets/css/rekap-tugas.css?v=3">
 <style>
     .teacher-task-page { background:#f5f7fb; min-width:0; }
     .teacher-task-content { max-width:1200px; margin:0 auto; }
@@ -433,7 +433,8 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
     <div class="col-md-6"><label class="form-label fw-semibold">Tenggat / Tanggal Masuk Rekap</label><input type="datetime-local" class="form-control" name="deadline" id="deadlineTugas" required><small class="text-muted">Nilai dihitung dalam rekap setelah waktu ini.</small></div><div class="col-md-6"><label class="form-label fw-semibold">Lampiran</label><input type="file" class="form-control" name="file_lampiran" accept=".pdf,.docx,.pptx,.zip"><small class="text-muted">PDF, DOCX, PPTX, ZIP · maks. 10 MB</small></div></div>
     <div id="infoEdit" class="alert alert-info small mt-3 mb-0 d-none">Kosongkan lampiran jika tidak ingin mengganti file lama.</div>
     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Publikasikan Tugas</button></div></form></div></div></div>
-<script src="../assets/js/rekap-tugas.js?v=2"></script>
+<script src="../assets/js/rekap-tugas.js?v=3"></script>
+<script src="../assets/js/rekap-tugas-tools.js?v=1"></script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 <script>
 const adaKelasGabunganTugas=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;

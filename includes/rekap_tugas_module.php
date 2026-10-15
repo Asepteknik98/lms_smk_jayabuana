@@ -26,8 +26,9 @@ function rt_data(PDO $db, int $guru, int $pid, bool $schema): array {
     // Older installations have only online tasks and no collection-method column.
     $columns=$db->query("SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=DATABASE() AND table_name='tugas' AND column_name='metode_pengumpulan'");
     $method=$columns->fetchColumn()?'metode_pengumpulan':"'online' AS metode_pengumpulan";
-    $q=$db->prepare('SELECT id,judul,pertemuan_ke,deadline,'.$method.',(deadline<=NOW()) selesai FROM tugas WHERE pengajaran_id=? ORDER BY pertemuan_ke,deadline,id');
+    $q=$db->prepare('SELECT id,judul,pertemuan_ke,deadline,'.$method.',(deadline<=NOW()) selesai FROM tugas WHERE pengajaran_id=? ORDER BY id');
     $q->execute([$pid]);$tasks=$q->fetchAll();
+    foreach($tasks as $index=>&$task)$task['nomor']=$index+1;unset($task);
     $q=$db->prepare('SELECT id,nis,nisn,nama_lengkap FROM siswa WHERE kelas_id=? ORDER BY nama_lengkap,id');
     $q->execute([$info['kelas_id']]);$students=$q->fetchAll();
     $q=$db->prepare('SELECT pt.id,pt.tugas_id,pt.siswa_id,pt.nilai,pt.catatan_guru FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id WHERE t.pengajaran_id=?');
@@ -38,10 +39,17 @@ function rt_data(PDO $db, int $guru, int $pid, bool $schema): array {
         $q=$db->prepare('SELECT rs.* FROM rekap_tugas_status rs JOIN tugas t ON t.id=rs.tugas_id WHERE t.pengajaran_id=?');$q->execute([$pid]);
         foreach($q->fetchAll() as $row)$manual[$row['siswa_id']][$row['tugas_id']]=$row;
     }
+    $history=[];
+    if(rt_remedial_ready($db)){
+        $q=$db->prepare('SELECT r.* FROM remedial_tugas r JOIN tugas t ON t.id=r.tugas_id WHERE t.pengajaran_id=? ORDER BY r.id');$q->execute([$pid]);
+        foreach($q->fetchAll() as $row)$history[$row['siswa_id']][$row['tugas_id']][]=$row;
+    }
     foreach($students as &$student){
         $sid=(int)$student['id'];$student['cells']=[];$sum=0;$count=0;$pending=0;$missing=0;
         foreach($tasks as $task){
             $tid=(int)$task['id'];$cell=rt_cell($task,$submissions[$sid][$tid]??null,$manual[$sid][$tid]??null);
+            $cell['remedial']=$history[$sid][$tid]??[];
+            $cell['nilai_awal']=$cell['remedial']?$cell['remedial'][0]['nilai_awal']:$cell['nilai'];
             $student['cells'][$tid]=$cell;
             if($cell['dihitung']){$sum+=$cell['nilai'];$count++;}
             if($cell['menunggu_nilai'])$pending++;
@@ -62,11 +70,10 @@ function rt_save(PDO $db, int $guru, int $user, int $pid, int $sid, int $tid, st
         if($rawScore==='' || !is_numeric($rawScore) || !is_finite((float)$rawScore) || (float)$rawScore<0 || (float)$rawScore>100)throw new RuntimeException('Nilai wajib diisi dengan angka 0 sampai 100.');
         $score=round((float)$rawScore,2);
     }
-    $db->beginTransaction();
+    $ownsTransaction=!$db->inTransaction();
+    if($ownsTransaction)$db->beginTransaction();
     try {
-        $q=$db->prepare('SELECT t.id,t.judul,(t.deadline<=NOW()) selesai FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN guru g ON g.id=p.guru_id JOIN users u ON u.id=g.user_id AND u.role_id=2 AND u.is_active=1 JOIN siswa s ON s.kelas_id=p.kelas_id WHERE t.id=? AND p.id=? AND p.guru_id=? AND g.user_id=? AND s.id=? FOR UPDATE');
-        $q->execute([$tid,$pid,$guru,$user,$sid]);$task=$q->fetch();
-        if(!$task)throw new RuntimeException('Tugas atau siswa bukan bagian kelas yang Anda ampu.');
+        $task=rt_lock_pair($db,$guru,$user,$pid,$sid,$tid);
         $q=$db->prepare('SELECT id,nilai FROM pengumpulan_tugas WHERE tugas_id=? AND siswa_id=? FOR UPDATE');$q->execute([$tid,$sid]);$old=$q->fetch();
         if($status==='tidak_mengerjakan'){
             if(!$task['selesai'])throw new RuntimeException('Tugas masih terbuka. Status tidak mengerjakan berlaku setelah tenggat.');
@@ -74,6 +81,10 @@ function rt_save(PDO $db, int $guru, int $user, int $pid, int $sid, int $tid, st
         }
         if($status==='belum_dinilai' && $old && $old['nilai']!==null)throw new RuntimeException('Nilai sudah tersimpan. Gunakan Mengerjakan untuk memperbarui nilai.');
         if($status==='mengerjakan'){
+            if(rt_remedial_ready($db)){
+                $q=$db->prepare('SELECT nilai_awal,nilai_remedial FROM remedial_tugas WHERE tugas_id=? AND siswa_id=? FOR UPDATE');$q->execute([$tid,$sid]);
+                foreach($q->fetchAll() as $attempt)$score=max($score,(float)$attempt['nilai_awal'],(float)$attempt['nilai_remedial']);
+            }
             // Preserve every existing answer, attachment and submission timestamp.
             $db->prepare('INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai,catatan_guru) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai),catatan_guru=VALUES(catatan_guru)')->execute([$tid,$sid,$score,$note!==''?$note:null]);
         }
@@ -81,6 +92,18 @@ function rt_save(PDO $db, int $guru, int $user, int $pid, int $sid, int $tid, st
         else $db->prepare('INSERT INTO rekap_tugas_status(tugas_id,siswa_id,guru_id,status,catatan) VALUES(?,?,?,?,?) ON DUPLICATE KEY UPDATE guru_id=VALUES(guru_id),status=VALUES(status),catatan=VALUES(catatan),updated_at=CURRENT_TIMESTAMP')->execute([$tid,$sid,$guru,$status,$note]);
         $description='Rekap tugas: '.json_encode(['tugas_id'=>$tid,'siswa_id'=>$sid,'status'=>$status,'nilai_lama'=>$old['nilai']??null,'nilai_baru'=>$score],JSON_UNESCAPED_UNICODE);
         $db->prepare('INSERT INTO log_aktivitas(user_id,aktivitas,ip_address,user_agent) VALUES(?,?,?,?)')->execute([$user,$description,$_SERVER['REMOTE_ADDR']??'CLI',substr($_SERVER['HTTP_USER_AGENT']??'CLI',0,255)]);
-        $db->commit();
-    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+        if($ownsTransaction)$db->commit();
+    }catch(Throwable $e){if($ownsTransaction && $db->inTransaction())$db->rollBack();throw $e;}
+}
+
+function rt_remedial_ready(PDO $db): bool {
+    try{$db->query('SELECT 1 FROM remedial_tugas LIMIT 0');return true;}
+    catch(PDOException $e){if($e->getCode()==='42S02')return false;throw $e;}
+}
+
+function rt_lock_pair(PDO $db,int $guru,int $user,int $pid,int $sid,int $tid): array {
+    $q=$db->prepare('SELECT t.id,t.judul,(t.deadline<=NOW()) selesai FROM tugas t JOIN pengajaran p ON p.id=t.pengajaran_id JOIN guru g ON g.id=p.guru_id JOIN users u ON u.id=g.user_id AND u.role_id=2 AND u.is_active=1 JOIN siswa s ON s.kelas_id=p.kelas_id WHERE t.id=? AND p.id=? AND p.guru_id=? AND g.user_id=? AND s.id=? FOR UPDATE');
+    $q->execute([$tid,$pid,$guru,$user,$sid]);$task=$q->fetch();
+    if(!$task)throw new RuntimeException('Tugas atau siswa bukan bagian kelas yang Anda ampu.');
+    return $task;
 }

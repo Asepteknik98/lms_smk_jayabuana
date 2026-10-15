@@ -61,19 +61,19 @@
     const classFilter = document.getElementById('rekapKelas');
     const subjectFilter = document.getElementById('rekapPengajaran');
     const modeFilter = document.getElementById('rekapMode');
-    const meetingFilter = document.getElementById('rekapPertemuan');
+    const taskFilter = document.getElementById('rekapTugasFilter');
     if (filterForm) {
         classFilter.addEventListener('change', () => {
             subjectFilter.disabled = true;
-            meetingFilter.disabled = true;
+            taskFilter.disabled = true;
             filterForm.requestSubmit();
         });
         subjectFilter.addEventListener('change', () => {
-            meetingFilter.disabled = true;
+            taskFilter.disabled = true;
             filterForm.requestSubmit();
         });
         modeFilter.addEventListener('change', () => {
-            meetingFilter.disabled = modeFilter.value !== 'pertemuan';
+            taskFilter.disabled = modeFilter.value !== 'tugas';
             filterForm.requestSubmit();
         });
     }
