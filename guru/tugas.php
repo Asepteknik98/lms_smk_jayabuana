@@ -318,7 +318,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
 ?>
 <?php require_once __DIR__ . '/../includes/header.php'; ?>
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
-<link rel="stylesheet" href="../assets/css/rekap-tugas.css?v=3">
+<link rel="stylesheet" href="../assets/css/rekap-tugas.css?v=4">
 <style>
     .teacher-task-page { background:#f5f7fb; min-width:0; }
     .teacher-task-content { max-width:1200px; margin:0 auto; }
@@ -434,7 +434,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
     <div id="infoEdit" class="alert alert-info small mt-3 mb-0 d-none">Kosongkan lampiran jika tidak ingin mengganti file lama.</div>
     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Publikasikan Tugas</button></div></form></div></div></div>
 <script src="../assets/js/rekap-tugas.js?v=3"></script>
-<script src="../assets/js/rekap-tugas-tools.js?v=1"></script>
+<script src="../assets/js/rekap-tugas-tools.js?v=2"></script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 <script>
 const adaKelasGabunganTugas=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;

@@ -11,6 +11,7 @@ function rt_inline_context(array $query): array {
     return $context;
 }
 
+
 function rt_inline_url(array $context): string {
     return 'tugas.php?'.http_build_query(rt_inline_context($context)).'#rekap-tugas';
 }
@@ -19,7 +20,7 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
     $schema=rt_schema_ready($db);
     $context=rt_inline_context($query);
     $action=$_POST['action']??'';
-    if(($_SERVER['REQUEST_METHOD']??'GET')==='POST' && in_array($action,['rekap_tugas_save','rekap_tugas_import_preview','rekap_tugas_import_apply','rekap_tugas_remedial'],true)){
+    if(($_SERVER['REQUEST_METHOD']??'GET')==='POST' && in_array($action,['rekap_tugas_save','rekap_tugas_import_preview','rekap_tugas_import_apply','rekap_tugas_remedial','rekap_tugas_remedial_cancel'],true)){
         $context=rt_inline_context($_POST);$pid=(int)($context['rekap_pengajaran']??0);
         try{
             if(!is_string($_POST['csrf_token']??null) || !verify_csrf($_POST['csrf_token']))throw new RuntimeException('Sesi keamanan berakhir. Muat ulang halaman.');
@@ -41,6 +42,10 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
                 if(!is_string($_POST['import_token']??null) || !isset($plan['token']) || !hash_equals($plan['token'],$_POST['import_token']))throw new RuntimeException('Pratinjau impor tidak valid. Unggah ulang file.');
                 $count=rt_import_apply($db,$guru,(int)$_SESSION['user_id'],$pid,$plan);
                 unset($_SESSION['rekap_tugas_import']);$_SESSION['rekap_tugas_success']=$count.' nilai berhasil diimpor.';
+            }elseif($action==='rekap_tugas_remedial_cancel'){
+                if(!is_string($_POST['alasan_batal']??null))throw new RuntimeException('Alasan pembatalan tidak valid.');
+                rt_remedial_cancel($db,$guru,(int)$_SESSION['user_id'],$pid,(int)($_POST['remedial_id']??0),$_POST['alasan_batal']);
+                $_SESSION['rekap_tugas_success']='Remedial dibatalkan. Nilai akhir sudah dihitung ulang; riwayat tetap tersimpan.';
             }else{
                 if(!is_array($_POST['nilai_remedial']??null) || !is_array($_POST['catatan_remedial']??null))throw new RuntimeException('Format nilai remedial tidak valid.');
                 $count=rt_remedial_save($db,$guru,(int)$_SESSION['user_id'],$pid,(int)($_POST['tugas_id']??0),$_POST['nilai_remedial'],$_POST['catatan_remedial']);
@@ -52,6 +57,7 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
         }
         $return=rt_inline_url($context);
         if($action==='rekap_tugas_import_preview')$return=str_replace('#rekap-tugas','&rekap_panel=impor#rekap-tugas',$return);
+        if($action==='rekap_tugas_remedial_cancel')$return=str_replace('#rekap-tugas','&rekap_panel=remedial&remedial_tugas_id='.(int)($_POST['tugas_id']??0).'#rekap-tugas',$return);
         header('Location: '.$return);exit;
     }
     $q=$db->prepare('SELECT p.id,p.kelas_id,p.semester,p.tahun_ajaran,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? ORDER BY k.nama_kelas,p.tahun_ajaran DESC,p.semester,m.nama_mapel');
@@ -80,10 +86,12 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
     $remedialReady=rt_remedial_ready($db);
     $importPlan=$_SESSION['rekap_tugas_import']??null;
     if($importPlan && ($importPlan['pid']!==$pid || $importPlan['guru']!==$guru || $importPlan['user']!==(int)($_SESSION['user_id']??0) || $importPlan['expires']<time()))$importPlan=null;
-    $panel=($query['rekap_panel']??'')==='impor'?'impor':'';
+    $panel=in_array($query['rekap_panel']??'',['impor','remedial'],true)?$query['rekap_panel']:'';
+    $cancelReady=rt_cancel_ready($db);
+    $remedialSelected=(int)($query['remedial_tugas_id']??$selectedTask);
     $success=$_SESSION['rekap_tugas_success']??'';$error=$_SESSION['rekap_tugas_error']??$loadError;
     unset($_SESSION['rekap_tugas_success'],$_SESSION['rekap_tugas_error']);
-    return compact('schema','context','classes','classAssignments','class','pid','data','mode','selectedTask','visibleTasks','success','error','remedialReady','importPlan','panel');
+    return compact('schema','context','classes','classAssignments','class','pid','data','mode','selectedTask','visibleTasks','success','error','remedialReady','importPlan','panel','cancelReady','remedialSelected');
 }
 
 function rt_inline_render(array $view): void {

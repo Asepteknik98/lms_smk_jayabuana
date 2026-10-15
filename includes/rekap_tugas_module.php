@@ -41,7 +41,10 @@ function rt_data(PDO $db, int $guru, int $pid, bool $schema): array {
     }
     $history=[];
     if(rt_remedial_ready($db)){
-        $q=$db->prepare('SELECT r.* FROM remedial_tugas r JOIN tugas t ON t.id=r.tugas_id WHERE t.pengajaran_id=? ORDER BY r.id');$q->execute([$pid]);
+        $cancel=rt_cancel_ready($db);
+        $fields=$cancel?'b.dibatalkan_pada,b.alasan alasan_batal':"NULL dibatalkan_pada,'' alasan_batal";
+        $join=$cancel?' LEFT JOIN remedial_tugas_batal b ON b.remedial_id=r.id ':'';
+        $q=$db->prepare('SELECT r.*,'.$fields.' FROM remedial_tugas r JOIN tugas t ON t.id=r.tugas_id'.$join.' WHERE t.pengajaran_id=? ORDER BY r.id');$q->execute([$pid]);
         foreach($q->fetchAll() as $row)$history[$row['siswa_id']][$row['tugas_id']][]=$row;
     }
     foreach($students as &$student){
@@ -49,6 +52,7 @@ function rt_data(PDO $db, int $guru, int $pid, bool $schema): array {
         foreach($tasks as $task){
             $tid=(int)$task['id'];$cell=rt_cell($task,$submissions[$sid][$tid]??null,$manual[$sid][$tid]??null);
             $cell['remedial']=$history[$sid][$tid]??[];
+            $cell['remedial_aktif']=count(array_filter($cell['remedial'],static fn($r)=>!$r['dibatalkan_pada']));
             $cell['nilai_awal']=$cell['remedial']?$cell['remedial'][0]['nilai_awal']:$cell['nilai'];
             $student['cells'][$tid]=$cell;
             if($cell['dihitung']){$sum+=$cell['nilai'];$count++;}
@@ -82,8 +86,10 @@ function rt_save(PDO $db, int $guru, int $user, int $pid, int $sid, int $tid, st
         if($status==='belum_dinilai' && $old && $old['nilai']!==null)throw new RuntimeException('Nilai sudah tersimpan. Gunakan Mengerjakan untuk memperbarui nilai.');
         if($status==='mengerjakan'){
             if(rt_remedial_ready($db)){
-                $q=$db->prepare('SELECT nilai_awal,nilai_remedial FROM remedial_tugas WHERE tugas_id=? AND siswa_id=? FOR UPDATE');$q->execute([$tid,$sid]);
-                foreach($q->fetchAll() as $attempt)$score=max($score,(float)$attempt['nilai_awal'],(float)$attempt['nilai_remedial']);
+                foreach(rt_remedial_history($db,$tid,$sid,true) as $attempt){
+                    $score=max($score,(float)$attempt['nilai_awal']);
+                    if(!$attempt['dibatalkan_pada'])$score=max($score,(float)$attempt['nilai_remedial']);
+                }
             }
             // Preserve every existing answer, attachment and submission timestamp.
             $db->prepare('INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai,catatan_guru) VALUES(?,?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai),catatan_guru=VALUES(catatan_guru)')->execute([$tid,$sid,$score,$note!==''?$note:null]);
@@ -99,6 +105,19 @@ function rt_save(PDO $db, int $guru, int $user, int $pid, int $sid, int $tid, st
 function rt_remedial_ready(PDO $db): bool {
     try{$db->query('SELECT 1 FROM remedial_tugas LIMIT 0');return true;}
     catch(PDOException $e){if($e->getCode()==='42S02')return false;throw $e;}
+}
+
+function rt_cancel_ready(PDO $db): bool {
+    try{$db->query('SELECT 1 FROM remedial_tugas_batal LIMIT 0');return true;}
+    catch(PDOException $e){if($e->getCode()==='42S02')return false;throw $e;}
+}
+
+function rt_remedial_history(PDO $db,int $tid,int $sid,bool $lock=false): array {
+    $cancel=rt_cancel_ready($db);
+    $fields=$cancel?'b.dibatalkan_pada,b.alasan alasan_batal':"NULL dibatalkan_pada,'' alasan_batal";
+    $join=$cancel?' LEFT JOIN remedial_tugas_batal b ON b.remedial_id=r.id ':'';
+    $q=$db->prepare('SELECT r.*,'.$fields.' FROM remedial_tugas r'.$join.' WHERE r.tugas_id=? AND r.siswa_id=? ORDER BY r.id'.($lock?' FOR UPDATE':''));
+    $q->execute([$tid,$sid]);return $q->fetchAll();
 }
 
 function rt_lock_pair(PDO $db,int $guru,int $user,int $pid,int $sid,int $tid): array {

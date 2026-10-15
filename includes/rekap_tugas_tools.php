@@ -98,12 +98,41 @@ function rt_remedial_save(PDO $db,int $guru,int $user,int $pid,int $tid,array $s
             $q=$db->prepare('SELECT nilai,catatan_guru FROM pengumpulan_tugas WHERE tugas_id=? AND siswa_id=? FOR UPDATE');$q->execute([$tid,$sid]);$old=$q->fetch();
             if($old && $old['nilai']===null)throw new RuntimeException('Masih ada tugas yang belum dinilai. Isi nilai awal siswa terlebih dahulu.');
             $before=$old?(float)$old['nilai']:0.0;$initial=$before;$final=max($before,$grade);
-            $q=$db->prepare('SELECT nilai_awal,nilai_remedial FROM remedial_tugas WHERE tugas_id=? AND siswa_id=? ORDER BY id FOR UPDATE');$q->execute([$tid,$sid]);$history=$q->fetchAll();
+            $history=rt_remedial_history($db,$tid,$sid,true);
             if($history)$initial=(float)$history[0]['nilai_awal'];
-            foreach($history as $attempt)$final=max($final,(float)$attempt['nilai_awal'],(float)$attempt['nilai_remedial']);
+            foreach($history as $attempt){$final=max($final,(float)$attempt['nilai_awal']);if(!$attempt['dibatalkan_pada'])$final=max($final,(float)$attempt['nilai_remedial']);}
             $db->prepare('INSERT INTO remedial_tugas(tugas_id,siswa_id,guru_id,nilai_awal,nilai_sebelum,nilai_remedial,nilai_akhir,catatan) VALUES(?,?,?,?,?,?,?,?)')->execute([$tid,$sid,$guru,$initial,$before,$grade,$final,$note]);
             rt_save($db,$guru,$user,$pid,$sid,$tid,'mengerjakan',(string)$final,$note!==''?$note:(string)($old['catatan_guru']??''));
         }
         $db->commit();return count($entries);
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
+
+function rt_remedial_cancel(PDO $db,int $guru,int $user,int $pid,int $attemptId,string $reason): void {
+    if(!rt_cancel_ready($db))throw new RuntimeException('Pembatalan remedial belum diaktifkan. Hubungi admin.');
+    $reason=trim($reason);
+    if(mb_strlen($reason)>1000)throw new RuntimeException('Alasan pembatalan maksimal 1.000 karakter.');
+    $db->beginTransaction();
+    try{
+        $q=$db->prepare('SELECT tugas_id,siswa_id FROM remedial_tugas WHERE id=?');$q->execute([$attemptId]);$pair=$q->fetch();
+        if(!$pair)throw new RuntimeException('Riwayat remedial tidak ditemukan.');
+        $tid=(int)$pair['tugas_id'];$sid=(int)$pair['siswa_id'];
+        rt_lock_pair($db,$guru,$user,$pid,$sid,$tid);
+        $history=rt_remedial_history($db,$tid,$sid,true);$target=null;
+        $initial=(float)$history[0]['nilai_awal'];$before=$initial;$after=$initial;
+        foreach($history as $attempt){
+            if((int)$attempt['id']===$attemptId)$target=$attempt;
+            if($attempt['dibatalkan_pada'])continue;
+            $before=max($before,(float)$attempt['nilai_remedial']);
+            if((int)$attempt['id']!==$attemptId)$after=max($after,(float)$attempt['nilai_remedial']);
+        }
+        if(!$target || $target['dibatalkan_pada'])throw new RuntimeException('Remedial ini sudah dibatalkan. Muat ulang halaman.');
+        $q=$db->prepare('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=? AND siswa_id=? FOR UPDATE');$q->execute([$tid,$sid]);$current=$q->fetch();
+        if(!$current || $current['nilai']===null || abs((float)$current['nilai']-$before)>.001)throw new RuntimeException('Nilai berubah di luar remedial. Periksa nilai siswa sebelum membatalkan agar perubahan lain tidak tertimpa.');
+        $db->prepare('INSERT INTO remedial_tugas_batal(remedial_id,guru_id,alasan,nilai_sebelum,nilai_sesudah) VALUES(?,?,?,?,?)')->execute([$attemptId,$guru,$reason,$before,$after]);
+        $db->prepare('UPDATE pengumpulan_tugas SET nilai=? WHERE tugas_id=? AND siswa_id=?')->execute([$after,$tid,$sid]);
+        $description='Membatalkan remedial: '.json_encode(['id'=>$attemptId,'tugas_id'=>$tid,'siswa_id'=>$sid,'nilai_lama'=>$before,'nilai_baru'=>$after]);
+        $db->prepare('INSERT INTO log_aktivitas(user_id,aktivitas,ip_address,user_agent) VALUES(?,?,?,?)')->execute([$user,$description,$_SERVER['REMOTE_ADDR']??'CLI',substr($_SERVER['HTTP_USER_AGENT']??'CLI',0,255)]);
+        $db->commit();
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }

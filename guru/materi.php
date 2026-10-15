@@ -54,6 +54,10 @@ $stmt_m = $db->prepare("
 ");
 $stmt_m->execute([$guru_id]);
 $materi_list = $stmt_m->fetchAll();
+$status_pertemuan_materi = [];
+foreach ($materi_list as $materi_status) {
+    $status_pertemuan_materi[(int)$materi_status['pengajaran_id']][(int)$materi_status['pertemuan_ke']][] = $materi_status['judul'];
+}
 $kelas_materi = array_values(array_unique(array_column($materi_list, 'nama_kelas')));
 natcasesort($kelas_materi);
 $kelas_materi = array_values($kelas_materi);
@@ -271,6 +275,8 @@ $kelas_materi = array_values($kelas_materi);
 
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 
+<script type="application/json" id="statusPertemuanMateri"><?= json_encode($status_pertemuan_materi, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
+<script src="../assets/js/materi-pertemuan.js?v=1"></script>
 <script>
 const adaKelasGabunganMateri=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;
 function aturModeMateri(mode){
@@ -280,6 +286,7 @@ function aturModeMateri(mode){
     document.getElementById('pengajaranMateri').disabled=gabungan;
     document.getElementById('pengajaranMateri').required=!gabungan;
     document.querySelectorAll('.kelas-materi').forEach(function(checkbox){checkbox.disabled=!gabungan});
+    window.refreshPertemuanMateri();
 }
 $(document).ready(function() {
     const tabelMateri = $('#tableMateri').DataTable({
@@ -384,6 +391,7 @@ function editMateri(data){
     document.getElementById('pengajaranMateri').disabled=false;
     document.getElementById('pengajaranMateri').required=true;
     document.getElementById('pengajaranMateri').value=data.pengajaran_id;
+    window.refreshPertemuanMateri();
     document.getElementById('pertemuanMateri').value=data.pertemuan_ke;
     document.getElementById('judulMateri').value=data.judul;
     document.getElementById('deskripsiMateri').value=data.deskripsi||'';

@@ -43,12 +43,32 @@
             if (cell.remedial.length) {
                 const details = document.createElement('details');
                 const summary = document.createElement('summary');
-                summary.textContent = `${cell.remedial.length} riwayat remedial`;
+                summary.textContent = `${cell.remedial.length} riwayat remedial / undo`;
+                details.open = true;
                 details.appendChild(summary);
                 const list = document.createElement('ul');
                 cell.remedial.forEach(attempt => {
                     const item = document.createElement('li');
                     item.textContent = `${attempt.dibuat_pada}: remedial ${number(attempt.nilai_remedial)}, nilai akhir ${number(attempt.nilai_akhir)}${attempt.catatan ? ' · ' + attempt.catatan : ''}`;
+                    if (attempt.dibatalkan_pada) {
+                        item.className = 'text-muted';
+                        const label = document.createElement('strong');
+                        label.textContent = ` — Dibatalkan ${attempt.dibatalkan_pada}`;
+                        item.appendChild(label);
+                    } else if (data.cancelReady) {
+                        const cancel = document.createElement('button');
+                        cancel.type = 'button';
+                        cancel.className = 'btn btn-sm btn-outline-danger ms-2 my-1';
+                        cancel.textContent = 'Batalkan';
+                        cancel.setAttribute('aria-label', `Batalkan remedial ${number(attempt.nilai_remedial)} untuk ${student.nama_lengkap}`);
+                        cancel.addEventListener('click', () => {
+                            if (!window.confirm(`Batalkan remedial ${number(attempt.nilai_remedial)} untuk ${student.nama_lengkap}? Nilai akhir akan dihitung ulang dari nilai awal dan remedial lain yang masih berlaku.`)) return;
+                            document.getElementById('batalRemedialId').value = attempt.id;
+                            document.getElementById('batalRemedialTugasId').value = task.id;
+                            document.getElementById('formBatalRemedialTugas').requestSubmit();
+                        });
+                        item.appendChild(cancel);
+                    }
                     list.appendChild(item);
                 });
                 details.appendChild(list); noteCell.appendChild(details);
@@ -68,7 +88,9 @@
         }
     });
     document.addEventListener('DOMContentLoaded', () => {
-        const modal = document.getElementById('modalImporTugas');
-        if (modal && modal.dataset.open === '1' && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+        ['modalImporTugas','modalRemedialTugas'].forEach(id => {
+            const modal = document.getElementById(id);
+            if (modal && modal.dataset.open === '1' && window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+        });
     });
 })();

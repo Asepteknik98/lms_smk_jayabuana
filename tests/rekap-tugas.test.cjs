@@ -38,6 +38,7 @@ $tables=[
  'pengumpulan_tugas'=>'id INT AUTO_INCREMENT PRIMARY KEY,tugas_id INT,siswa_id INT,nilai DECIMAL(5,2),catatan_guru TEXT,file_tugas VARCHAR(255),catatan TEXT,dikumpulkan_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP,UNIQUE KEY(tugas_id,siswa_id)',
  'rekap_tugas_status'=>'tugas_id INT,siswa_id INT,guru_id INT,status VARCHAR(30),catatan VARCHAR(1000),updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,PRIMARY KEY(tugas_id,siswa_id)',
  'log_aktivitas'=>'user_id INT,aktivitas VARCHAR(255),ip_address VARCHAR(45),user_agent TEXT',
+ 'remedial_tugas_batal'=>'remedial_id INT PRIMARY KEY,guru_id INT,alasan VARCHAR(1000),nilai_sebelum DECIMAL(5,2),nilai_sesudah DECIMAL(5,2),dibatalkan_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
  'remedial_tugas'=>'id INT AUTO_INCREMENT PRIMARY KEY,tugas_id INT,siswa_id INT,guru_id INT,nilai_awal DECIMAL(5,2),nilai_sebelum DECIMAL(5,2),nilai_remedial DECIMAL(5,2),nilai_akhir DECIMAL(5,2),catatan VARCHAR(1000),dibuat_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP',
  'nilai_tugas_manual'=>'pengajaran_id INT,siswa_id INT,nilai DECIMAL(5,2)',
  'ujian'=>'id INT,pengajaran_id INT,jenis_ujian VARCHAR(20),waktu_selesai DATETIME',
@@ -125,6 +126,37 @@ $beforeCount=(int)$db->query('SELECT COUNT(*) FROM remedial_tugas')->fetchColumn
 reject(fn()=>rt_remedial_save($db,1,1,1,1,[2=>'99',3=>'90'],[]));
 check((int)$db->query('SELECT COUNT(*) FROM remedial_tugas')->fetchColumn()===$beforeCount,'Remedial batch partially saved history');
 check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=2')->fetchColumn()===95.0,'Remedial batch partially changed score');
+
+// Undo individual attempts without deleting any original history.
+$attempts=rt_remedial_history($db,2,2);
+$firstId=(int)$attempts[0]['id'];$lowerId=(int)$attempts[1]['id'];$bestId=(int)$attempts[2]['id'];
+reject(fn()=>rt_remedial_cancel($db,2,2,1,$bestId,'Guru lain'));
+rt_remedial_cancel($db,1,1,1,$bestId,'Salah input');
+$cell=rt_data($db,1,1,true)['students'][1]['cells'][2];
+check($cell['nilai']===72.0 && count($cell['remedial'])===3 && $cell['remedial_aktif']===2,'Undo best score lost history or failed to restore remaining best');
+reject(fn()=>rt_remedial_cancel($db,1,1,1,$bestId,'Pengulangan'));
+rt_remedial_cancel($db,1,1,1,$firstId,'Batalkan 72');
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=2 AND siswa_id=2')->fetchColumn()===65.0,'Undo did not select remaining attempt');
+rt_remedial_cancel($db,1,1,1,$lowerId,'Batalkan semua');
+$cell=rt_data($db,1,1,true)['students'][1]['cells'][2];check($cell['nilai']===0.0 && $cell['remedial_aktif']===0,'Undo all failed to restore original zero');
+rt_remedial_save($db,1,1,1,2,[2=>'60'],[]);
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=2 AND siswa_id=2')->fetchColumn()===60.0,'Cancelled 85 was resurrected by new remedial');
+rt_save($db,1,1,1,2,2,'mengerjakan','10','Edit setelah undo');
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=2 AND siswa_id=2')->fetchColumn()===60.0,'Cancelled attempt still affects score floor');
+$attempts=rt_remedial_history($db,2,2);$newId=(int)end($attempts)['id'];
+$db->exec('UPDATE pengumpulan_tugas SET nilai=99 WHERE tugas_id=2 AND siswa_id=2');
+reject(fn()=>rt_remedial_cancel($db,1,1,1,$newId,'Nilai lain sudah berubah'));
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=2 AND siswa_id=2')->fetchColumn()===99.0,'Undo overwrote an unrelated grade change');
+$db->exec('UPDATE pengumpulan_tugas SET nilai=60 WHERE tugas_id=2 AND siswa_id=2');
+$db->exec('UPDATE log_aktivitas SET user_id=-1');
+$db->exec('ALTER TABLE log_aktivitas ADD CONSTRAINT undo_audit_failure CHECK(user_id<0)');
+reject(fn()=>rt_remedial_cancel($db,1,1,1,$newId,'Gagal audit'));
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=2 AND siswa_id=2')->fetchColumn()===60.0,'Undo audit failure did not roll back score');
+check((int)$db->query('SELECT COUNT(*) FROM remedial_tugas_batal WHERE remedial_id='.$newId)->fetchColumn()===0,'Undo audit failure persisted cancellation');
+$db->exec('ALTER TABLE log_aktivitas DROP CONSTRAINT undo_audit_failure');
+$t1=rt_remedial_history($db,1,2);rt_remedial_cancel($db,1,1,1,(int)$t1[0]['id'],'Kembalikan nilai awal');
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=2')->fetchColumn()===80.0,'Undo did not restore original nonzero grade');
+check(abs(po_automatic($db,1,2)['Tugas Harian']-48.875)<.001,'Undo did not update the automatic Tugas Harian source');
 
 // Reject stale preview and roll back any earlier cells in the same class import.
 $staleData=rt_data($db,1,1,true);$staleRows=$sheet['rows'];$staleRows[3][6]='70';$staleRows[4][7]='60';
@@ -232,21 +264,22 @@ test('Remedial form preserves zero, blocks pending work, shows history and requi
         setAttribute(name,value){this[name]=value;}
         setCustomValidity(message){this.validation=message;}
         reportValidity(){this.reported=true;}
+        requestSubmit(){this.submitted=true;}
         all(){return this.children.flatMap(child=>[child,...child.all()]);}
         querySelectorAll(){return this.all().filter(child=>child.tag==='input' && child.type==='number');}
         querySelector(){return this.querySelectorAll().find(child=>!child.disabled);}
     }
-    const ids=['rekapRemedialData','remedialPilihanTugas','remedialDaftarSiswa','simpanRemedialTugas','modalRemedialTugas','formRemedialTugas','modalImporTugas'];
+    const ids=['rekapRemedialData','remedialPilihanTugas','remedialDaftarSiswa','simpanRemedialTugas','modalRemedialTugas','formRemedialTugas','modalImporTugas','formBatalRemedialTugas','batalRemedialId','batalRemedialTugasId'];
     const elements=Object.fromEntries(ids.map(id=>[id,new Element('div')]));
-    elements.rekapRemedialData.textContent=JSON.stringify({ready:true,tasks:[{id:1,selesai:1},{id:2,selesai:0}],students:[
-        {id:1,nama_lengkap:'Siswa <A>',cells:{1:{nilai_awal:0,nilai:0,remedial:[{dibuat_pada:'2026-10-15',nilai_remedial:0,nilai_akhir:0,catatan:'<teks>'}]}}},
+    elements.rekapRemedialData.textContent=JSON.stringify({ready:true,cancelReady:true,tasks:[{id:1,selesai:1},{id:2,selesai:0}],students:[
+        {id:1,nama_lengkap:'Siswa <A>',cells:{1:{nilai_awal:0,nilai:0,remedial:[{id:7,dibuat_pada:'2026-10-15',nilai_remedial:0,nilai_akhir:0,catatan:'<teks>'}]}}},
         {id:2,nama_lengkap:'Siswa B',cells:{1:{nilai_awal:null,nilai:null,remedial:[]}}}
     ]});
     elements.remedialPilihanTugas.value='1';elements.modalImporTugas.dataset.open='1';
     let ready,opened=false;
     vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/js/rekap-tugas-tools.js'),'utf8'),{
         document:{getElementById:id=>elements[id],createElement:tag=>new Element(tag),addEventListener:(_,callback)=>{ready=callback;}},
-        window:{bootstrap:{Modal:{getOrCreateInstance:()=>({show(){opened=true;}})}}}
+        window:{confirm:()=>true,bootstrap:{Modal:{getOrCreateInstance:()=>({show(){opened=true;}})}}}
     });
     elements.modalRemedialTugas.events['show.bs.modal']();
     assert.equal(elements.remedialDaftarSiswa.children.length,2);
@@ -254,7 +287,11 @@ test('Remedial form preserves zero, blocks pending work, shows history and requi
     assert.equal(first.children[0].textContent,'Siswa <A>');assert.equal(first.children[1].textContent,'0');
     assert.equal(first.children[3].children[0].disabled,false);
     assert.equal(elements.remedialDaftarSiswa.children[1].children[3].children[0].disabled,true);
-    assert.equal(first.children[4].children[1].children[0].textContent,'1 riwayat remedial');
+    assert.equal(first.children[4].children[1].children[0].textContent,'1 riwayat remedial / undo');
+    const cancelButton=first.children[4].children[1].children[1].children[0].children[0];
+    assert.equal(cancelButton.textContent,'Batalkan');assert.equal(cancelButton.type,'button');
+    cancelButton.events.click();assert.equal(elements.batalRemedialId.value,7);assert.equal(elements.batalRemedialTugasId.value,1);
+    assert.equal(elements.formBatalRemedialTugas.submitted,true);assert.equal(elements.formRemedialTugas.submitted,undefined);
     let prevented=false;elements.formRemedialTugas.events.submit({preventDefault(){prevented=true;}});assert.equal(prevented,true);
     first.children[3].children[0].value='0';prevented=false;elements.formRemedialTugas.events.submit({preventDefault(){prevented=true;}});assert.equal(prevented,false);
     elements.remedialPilihanTugas.value='2';elements.remedialPilihanTugas.events.change();assert.equal(elements.simpanRemedialTugas.disabled,true);
