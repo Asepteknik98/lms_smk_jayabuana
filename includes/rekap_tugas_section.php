@@ -95,9 +95,8 @@ function rt_inline_prepare(PDO $db, int $guru, array $query): array {
 }
 
 function rt_inline_render(array $view): void {
-    // Local scope prevents the recap from overwriting the task list's variables.
-    extract($view,EXTR_SKIP);
-    require __DIR__.'/rekap_tugas_view.php';
+    require_once __DIR__.'/rekap_tugas_view.php';
+    rt_inline_render_template($view);
 }
 
 function rt_inline_export(array $view): void {

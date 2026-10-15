@@ -1,4 +1,14 @@
-<?php $info=$data['info'];$students=$data['students']; ?>
+<?php
+function rt_inline_render_template(array $view): void {
+    [
+        'data'=>$data,'schema'=>$schema,'success'=>$success,'error'=>$error,
+        'context'=>$context,'classes'=>$classes,'class'=>$class,'pid'=>$pid,
+        'classAssignments'=>$classAssignments,'mode'=>$mode,
+        'selectedTask'=>$selectedTask,'visibleTasks'=>$visibleTasks,
+        'remedialReady'=>$remedialReady
+    ]=$view;
+    $info=$data['info'];$students=$data['students'];
+?>
 <section id="rekap-tugas" class="task-recap-section mt-4 pt-3" aria-labelledby="judulRekapTugas">
     <div class="mb-3"><h5 id="judulRekapTugas" class="fw-bold mb-1"><i class="fa-solid fa-table-list text-primary me-2"></i>Rekap Tugas</h5><small class="text-muted">Riwayat pengerjaan, nilai, dan remedial setiap tugas</small></div>
     <?php if($success): ?><div class="alert alert-success" role="status"><?= sanitize($success) ?></div><?php endif ?>
@@ -55,4 +65,10 @@
     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary" <?= !$schema?'disabled':'' ?>><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Status</button></div>
 </form></div></div>
 
-<?php if($info)require __DIR__.'/rekap_tugas_tools_view.php'; ?>
+<?php
+    if($info){
+        require_once __DIR__.'/rekap_tugas_tools_view.php';
+        rt_inline_render_tools($view);
+    }
+}
+?>

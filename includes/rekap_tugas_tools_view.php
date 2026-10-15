@@ -1,4 +1,11 @@
 <?php
+function rt_inline_render_tools(array $view): void {
+    [
+        'data'=>$data,'context'=>$context,'importPlan'=>$importPlan,
+        'panel'=>$panel,'remedialReady'=>$remedialReady,
+        'remedialSelected'=>$remedialSelected,'cancelReady'=>$cancelReady
+    ]=$view;
+    $info=$data['info'];
 $hidden=function(string $action)use($context): void {
     echo '<input type="hidden" name="action" value="'.sanitize($action).'"><input type="hidden" name="csrf_token" value="'.sanitize($_SESSION['csrf_token']).'">';
     foreach($context as $key=>$value)echo '<input type="hidden" name="'.sanitize($key).'" value="'.sanitize((string)$value).'">';
@@ -35,3 +42,4 @@ $invalidRows=$importPlan?count(array_filter($importPlan['rows'],static fn($r)=>$
 </form></div></div>
 <form method="post" action="<?= sanitize(rt_inline_url($context)) ?>" id="formBatalRemedialTugas" hidden><?php $hidden('rekap_tugas_remedial_cancel'); ?><input type="hidden" name="remedial_id" id="batalRemedialId"><input type="hidden" name="tugas_id" id="batalRemedialTugasId"><input type="hidden" name="alasan_batal" value="Dibatalkan oleh guru melalui riwayat remedial"></form>
 <script type="application/json" id="rekapRemedialData"><?= json_encode(['tasks'=>$data['tasks'],'students'=>$data['students'],'ready'=>$remedialReady,'cancelReady'=>$cancelReady],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_INVALID_UTF8_SUBSTITUTE) ?></script>
+<?php } ?>
