@@ -327,7 +327,7 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="ujian.php" class="list-group-item list-group-item-action <?= ($current_page === 'ujian.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-file-circle-question me-2"></i> Ulangan Harian
         </a>
-        <a href="rekap_nilai.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_nilai.php') ? 'active' : '' ?>">
+        <a href="rekap_nilai_guru.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_nilai_guru.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-chart-column me-2"></i> Rekap Nilai
         </a>
         <a href="rekap_mengajar.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_mengajar.php') ? 'active' : '' ?>">

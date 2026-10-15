@@ -41,7 +41,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
                 $result=ni_narrative_commit($db,$guru,$pid,$item['component'],$item['description'],$item['advice'],$item['candidates'],$item,!empty($item['replace']));
                 $_SESSION['flash_success']='Capaian kelas: '.$result['fields'].' kolom '.(!empty($item['replace'])?'diperbarui':'kosong dilengkapi').' pada '.$result['students'].' siswa. Angka nilai tidak berubah.';
             }
-            unset($_SESSION['nilai_import_previews'][$key]);redirect('rekap_nilai.php?pengajaran_id='.$pid);
+            unset($_SESSION['nilai_import_previews'][$key]);redirect('rekap_nilai_guru.php?pengajaran_id='.$pid);
         }elseif($action==='preview'){
             $context=ni_context($db,$guru,$pid,$chosen);
             $preview=['user'=>(int)$_SESSION['user_id'],'guru'=>$guru,'pid'=>$pid,'mode'=>$mode,'component'=>$chosen,'component_name'=>$context['component']['nama_komponen'],'kelas_id'=>$context['kelas_id'],'semester'=>$context['semester'],'tahun_ajaran'=>$context['tahun_ajaran'],'expires'=>time()+1800];
@@ -80,7 +80,7 @@ require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../include
 ?>
 <div id="page-content-wrapper" class="bg-light"><nav class="navbar top-navbar px-3 px-md-4 py-3"><h5 class="mb-0"><?= $mode==='import'?'Import Nilai Excel':'Capaian Satu Kelas' ?></h5></nav>
 <main class="container-fluid p-3 p-md-4" style="max-width:1400px">
-<a class="btn btn-outline-secondary mb-3" href="rekap_nilai.php?pengajaran_id=<?= $pid ?>">Kembali ke Rekap Nilai</a>
+<a class="btn btn-outline-secondary mb-3" href="rekap_nilai_guru.php?pengajaran_id=<?= $pid ?>">Kembali ke Rekap Nilai</a>
 <div class="card mb-3"><div class="card-body"><h6><?= sanitize($info['nama_mapel'].' - '.$info['nama_kelas']) ?></h6><p class="text-muted mb-2"><?= sanitize($info['semester'].' / '.$info['tahun_ajaran']) ?></p>
 <div class="d-flex flex-wrap gap-2"><a class="btn btn-sm <?= $mode==='import'?'btn-primary':'btn-outline-primary' ?>" href="?pengajaran_id=<?= $pid ?>&amp;mode=import">Import Excel</a><a class="btn btn-sm <?= $mode==='capaian'?'btn-primary':'btn-outline-primary' ?>" href="?pengajaran_id=<?= $pid ?>&amp;mode=capaian">Capaian Satu Kelas</a></div></div></div>
 <?php if($error): ?><div class="alert alert-danger" role="alert"><?= sanitize($error) ?></div><?php endif ?>

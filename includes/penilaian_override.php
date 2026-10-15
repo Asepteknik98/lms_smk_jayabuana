@@ -4,9 +4,9 @@ function po_auto_names(): array { return ['Ulangan Harian','Tugas Harian','Kehad
 function po_automatic(PDO $db,int $pid,int $sid): array {
     $stmt=$db->prepare("SELECT
       COALESCE((SELECT AVG(COALESCE(nu.nilai_total,0)) FROM ujian u LEFT JOIN nilai_ujian nu ON nu.ujian_id=u.id AND nu.siswa_id=? WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis' AND u.waktu_selesai<=NOW()),0) ulangan,
-      COALESCE((SELECT (SUM(COALESCE(pt.nilai,0))+COALESCE((SELECT SUM(nm.nilai) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=?),0))/NULLIF(COUNT(*)+(SELECT COUNT(*) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=?),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=? WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) tugas,
+      COALESCE((SELECT (COALESCE(SUM(COALESCE(pt.nilai,0)),0)+COALESCE((SELECT SUM(nm.nilai) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=?),0))/NULLIF(COUNT(CASE WHEN pt.nilai IS NOT NULL OR (pt.tugas_id IS NULL AND COALESCE(rs.status,'')<>'belum_dinilai') THEN 1 END)+(SELECT COUNT(*) FROM nilai_tugas_manual nm WHERE nm.pengajaran_id=? AND nm.siswa_id=?),0) FROM tugas t LEFT JOIN pengumpulan_tugas pt ON pt.tugas_id=t.id AND pt.siswa_id=? LEFT JOIN rekap_tugas_status rs ON rs.tugas_id=t.id AND rs.siswa_id=? WHERE t.pengajaran_id=? AND t.deadline<=NOW()),0) tugas,
       COALESCE((SELECT AVG(CASE WHEN da.status IN ('Hadir','Sakit','Izin') THEN 100 ELSE 0 END) FROM sesi_absensi sa LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=? WHERE sa.pengajaran_id=? AND sa.status='Ditutup'),0) kehadiran");
-    $stmt->execute([$sid,$pid,$pid,$sid,$pid,$sid,$sid,$pid,$sid,$pid]);$r=$stmt->fetch();
+    $stmt->execute([$sid,$pid,$pid,$sid,$pid,$sid,$sid,$sid,$pid,$sid,$pid]);$r=$stmt->fetch();
     return ['Ulangan Harian'=>(float)$r['ulangan'],'Tugas Harian'=>(float)$r['tugas'],'Kehadiran'=>(float)$r['kehadiran']];
 }
 

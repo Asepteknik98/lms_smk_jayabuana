@@ -4,7 +4,7 @@ const {test}=require('node:test');
 const assert=require('node:assert/strict');
 const {spawnSync}=require('node:child_process');
 test('Teacher can switch an individual score to manual and back to automatic',()=>{
- const source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../guru/rekap_nilai.php'),'utf8');
+ const source=require('node:fs').readFileSync(require('node:path').join(__dirname,'../guru/rekap_nilai_guru.php'),'utf8');
  const script=[...source.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(m=>m[1]).find(s=>s.includes("document.querySelectorAll('.score-toggle')"));
  const input={value:'50.00',disabled:true,required:false,classList:{toggle(){}},focus(){this.focused=true}};
  const mode={value:'auto'},label={};let click;
@@ -84,6 +84,7 @@ foreach([
 'tugas'=>'id INT,pengajaran_id INT,deadline DATETIME',
 'pengumpulan_tugas'=>'tugas_id INT,siswa_id INT,nilai DECIMAL(5,2)',
 'nilai_tugas_manual'=>'pengajaran_id INT,siswa_id INT,nilai DECIMAL(5,2)',
+'rekap_tugas_status'=>'tugas_id INT,siswa_id INT,status VARCHAR(30)',
 'sesi_absensi'=>'id INT,pengajaran_id INT,status VARCHAR(30)',
 'detail_absensi'=>'sesi_absensi_id INT,siswa_id INT,status VARCHAR(30)',
 'kelas'=>'id INT,nama_kelas VARCHAR(50)'

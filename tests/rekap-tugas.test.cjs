@@ -131,11 +131,12 @@ reject(fn()=>$save(1,1,'invalid'));reject(fn()=>$save(1,1,'mengerjakan','80',str
 reject(fn()=>$save(2,4,'tidak_mengerjakan'));reject(fn()=>$save(1,1,'tidak_mengerjakan'));reject(fn()=>$save(1,1,'belum_dinilai'));
 $beforeGrade=po_automatic($db,1,1)['Tugas Harian'];
 $save(1,5,'mengerjakan','100','Tugas tertulis');check(rt_data($db,1,1,true)['students'][0]['rata_rata']===60.0,'Offline score not counted');
-check(abs($beforeGrade-20)<.01 && abs(po_automatic($db,1,1)['Tugas Harian']-45)<.01,'Saved recap grade did not flow to the existing automatic Tugas Harian component');
-// The existing grade formula counts ungraded work as 0, unlike the new provisional history average.
-check(po_automatic($db,1,1)['Tugas Harian']!==rt_data($db,1,1,true)['students'][0]['rata_rata'],'Expected formula discrepancy was not detected');
+check(abs($beforeGrade-(80/3))<.01 && abs(po_automatic($db,1,1)['Tugas Harian']-60)<.01,'Saved recap grade did not flow to the existing automatic Tugas Harian component');
+// Pending submitted work is excluded consistently in both automatic averages.
+check(abs(po_automatic($db,1,1)['Tugas Harian']-rt_data($db,1,1,true)['students'][0]['rata_rata'])<.01,'Task recap and final automatic average differ');
 $save(1,2,'belum_dinilai','','Diterima guru');$student=rt_data($db,1,1,true)['students'][0];
 check($student['rata_rata']===90.0 && $student['belum_dinilai']===2,'Manual pending not respected');
+check(abs(po_automatic($db,1,1)['Tugas Harian']-90)<.01,'Manual pending status was counted as zero in final recap');
 check((int)$db->query('SELECT COUNT(*) FROM pengumpulan_tugas WHERE tugas_id=2')->fetchColumn()===0,'Status created a fake submission');
 $save(1,2,'tidak_mengerjakan');check(rt_data($db,1,1,true)['students'][0]['rata_rata']===60.0,'Missing task did not contribute 0');
 $db->exec('INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai) VALUES(2,1,95)');

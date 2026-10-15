@@ -10,7 +10,7 @@ $stmt=$db->prepare('SELECT id FROM guru WHERE user_id=?');$stmt->execute([$_SESS
 $pengajaran_id=(int)($_POST['pengajaran_id']??0);$action=$_POST['action']??'';
 $stmt=$db->prepare('SELECT id FROM pengajaran WHERE id=? AND guru_id=?');$stmt->execute([$pengajaran_id,$guru_id]);
 if(!$stmt->fetchColumn()){http_response_code(403);exit('Pengajaran bukan milik Anda.');}
-$back='rekap_nilai.php?pengajaran_id='.$pengajaran_id;
+$back='rekap_nilai_guru.php?pengajaran_id='.$pengajaran_id;
 try {
  if($action==='save_period'){
    require_once __DIR__.'/../includes/rekap_akademik.php';
