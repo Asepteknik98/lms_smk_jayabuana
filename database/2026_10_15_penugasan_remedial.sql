@@ -1,0 +1,22 @@
+CREATE TABLE IF NOT EXISTS penugasan_remedial (
+ id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+ tugas_id INT UNSIGNED NOT NULL,
+ judul VARCHAR(200) NOT NULL,
+ instruksi TEXT NOT NULL,
+ deadline DATETIME NOT NULL,
+ token CHAR(48) NOT NULL UNIQUE,
+ dibuat_pada TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY (tugas_id) REFERENCES tugas(id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS peserta_penugasan_remedial (
+ penugasan_id BIGINT UNSIGNED NOT NULL,
+ siswa_id INT UNSIGNED NOT NULL,
+ jawaban MEDIUMTEXT NULL,
+ dikumpulkan_pada DATETIME NULL,
+ remedial_id BIGINT UNSIGNED NULL,
+ PRIMARY KEY (penugasan_id,siswa_id),
+ KEY (siswa_id),
+ FOREIGN KEY (penugasan_id) REFERENCES penugasan_remedial(id) ON DELETE CASCADE,
+ FOREIGN KEY (siswa_id) REFERENCES siswa(id) ON DELETE CASCADE,
+ FOREIGN KEY (remedial_id) REFERENCES remedial_tugas(id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

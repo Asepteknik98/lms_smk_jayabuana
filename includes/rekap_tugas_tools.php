@@ -90,7 +90,8 @@ function rt_remedial_save(PDO $db,int $guru,int $user,int $pid,int $tid,array $s
         $entries[]=[(int)$sid,round((float)$raw,2),trim($note)];
     }
     if(!$entries || count($entries)>5000)throw new RuntimeException('Isi minimal satu nilai remedial, maksimal 5.000 siswa.');
-    $db->beginTransaction();
+    $ownTransaction=!$db->inTransaction();
+    if($ownTransaction)$db->beginTransaction();
     try{
         foreach($entries as [$sid,$grade,$note]){
             $task=rt_lock_pair($db,$guru,$user,$pid,$sid,$tid);
@@ -104,8 +105,8 @@ function rt_remedial_save(PDO $db,int $guru,int $user,int $pid,int $tid,array $s
             $db->prepare('INSERT INTO remedial_tugas(tugas_id,siswa_id,guru_id,nilai_awal,nilai_sebelum,nilai_remedial,nilai_akhir,catatan) VALUES(?,?,?,?,?,?,?,?)')->execute([$tid,$sid,$guru,$initial,$before,$grade,$final,$note]);
             rt_save($db,$guru,$user,$pid,$sid,$tid,'mengerjakan',(string)$final,$note!==''?$note:(string)($old['catatan_guru']??''));
         }
-        $db->commit();return count($entries);
-    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+        if($ownTransaction)$db->commit();return count($entries);
+    }catch(Throwable $e){if($ownTransaction && $db->inTransaction())$db->rollBack();throw $e;}
 }
 
 function rt_remedial_cancel(PDO $db,int $guru,int $user,int $pid,int $attemptId,string $reason): void {

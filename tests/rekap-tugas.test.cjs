@@ -23,7 +23,7 @@ rt_inline_export($view);
 
 test('Task recap: averages, authorization, status, answer preservation and rollback', () => {
     const php = String.raw`<?php
-require 'config/database.php';require 'includes/rekap_tugas_module.php';require 'includes/rekap_tugas_tools.php';require 'includes/penilaian_override.php';
+require 'config/database.php';require 'includes/rekap_tugas_module.php';require 'includes/rekap_tugas_tools.php';require 'includes/penilaian_override.php';require 'includes/penugasan_remedial.php';
 $db=Database::getInstance();
 function check($ok,$message){if(!$ok)throw new RuntimeException($message);}
 function reject($fn){try{$fn();}catch(RuntimeException $e){return;}throw new RuntimeException('Invalid mutation accepted');}
@@ -50,6 +50,45 @@ foreach($tables as $table=>$schema)$db->exec("CREATE TEMPORARY TABLE $table ($sc
 $db->exec("INSERT INTO users VALUES(1,2,1),(2,2,1),(3,3,1);INSERT INTO guru VALUES(1,1),(2,2);INSERT INTO kelas VALUES(1,'X-A'),(2,'X-B');INSERT INTO mapel VALUES(1,'Matematika');INSERT INTO pengajaran VALUES(1,1,1,1,'2026/2027','Ganjil'),(2,2,2,1,'2026/2027','Ganjil');INSERT INTO siswa VALUES(1,1,'001','00001','Siswa A'),(2,1,'002','00002','Siswa B'),(3,2,'003','00003','Siswa C');
 INSERT INTO tugas VALUES(1,1,'Dinilai',1,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'),(2,1,'Tidak Dikerjakan',2,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'),(3,1,'Belum Dinilai',3,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'),(4,1,'Terbuka',4,DATE_ADD(NOW(),INTERVAL 1 DAY),'online'),(5,1,'Offline',5,DATE_SUB(NOW(),INTERVAL 1 DAY),'offline'),(6,2,'Guru Lain',1,DATE_SUB(NOW(),INTERVAL 1 DAY),'online');
 INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai,file_tugas,catatan,dikumpulkan_pada) VALUES(1,1,80,'jawaban.pdf','Jawaban asli','2026-01-01 08:00:00'),(3,1,NULL,NULL,'Esai asli','2026-01-01 08:00:00'),(4,1,100,NULL,NULL,'2026-01-01 08:00:00');");
+// Remedial assignments use separate records and never create ordinary task columns.
+$db->exec('CREATE TEMPORARY TABLE penugasan_remedial(id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,tugas_id INT,judul VARCHAR(200),instruksi TEXT,deadline DATETIME,token CHAR(48) UNIQUE,dibuat_pada TIMESTAMP DEFAULT CURRENT_TIMESTAMP) ENGINE=InnoDB');
+$db->exec('CREATE TEMPORARY TABLE peserta_penugasan_remedial(penugasan_id BIGINT UNSIGNED,siswa_id INT,jawaban MEDIUMTEXT,dikumpulkan_pada DATETIME,remedial_id INT,PRIMARY KEY(penugasan_id,siswa_id)) ENGINE=InnoDB');
+$db->exec("ALTER TABLE siswa ADD user_id INT; ALTER TABLE guru ADD nama_lengkap VARCHAR(100); INSERT INTO kelas VALUES(70,'Remedial'); INSERT INTO pengajaran VALUES(70,1,70,1,'2026/2027','Ganjil'); INSERT INTO users VALUES(70,3,1),(71,3,1),(72,3,1),(73,3,1); INSERT INTO siswa VALUES(70,70,'70','70','Remedial A',70),(71,70,'71','71','Tuntas',71),(72,70,'72','72','Pending',72),(73,70,'73','73','Zero',73); INSERT INTO tugas VALUES(70,70,'Asal remedial',1,DATE_SUB(NOW(),INTERVAL 1 DAY),'online'); INSERT INTO pengumpulan_tugas(tugas_id,siswa_id,nilai) VALUES(70,70,74.99),(70,71,75),(70,72,NULL);");
+$deadline=date('Y-m-d\TH:i',time()+86400);$token=str_repeat('a',48);
+reject(fn()=>pr_create($db,2,2,70,70,'Remedial','Soal',$deadline,$token));
+$assignment=pr_create($db,1,1,70,70,'Remedial','Soal <script>',$deadline,$token);
+check((int)$db->query('SELECT COUNT(*) FROM peserta_penugasan_remedial')->fetchColumn()===2,'Only below-75 students including missing zero should receive task');
+check(count(pr_student_tasks($db,70))===1 && count(pr_student_tasks($db,71))===0 && count(pr_student_tasks($db,72))===0,'Remedial visibility leaked to ineligible students');
+reject(fn()=>pr_create($db,1,1,70,70,'Duplicate','Soal',$deadline,$token));
+check((int)$db->query('SELECT COUNT(*) FROM penugasan_remedial')->fetchColumn()===1,'Double publish created duplicate assignment');
+reject(fn()=>pr_submit($db,71,$assignment,'Unauthorized'));
+reject(fn()=>pr_submit($db,70,$assignment,'   '));
+pr_submit($db,70,$assignment,'Jawaban <script>');
+reject(fn()=>pr_submit($db,70,$assignment,'Second answer'));
+reject(fn()=>pr_grade($db,2,2,70,$assignment,70,'90'));
+reject(fn()=>pr_grade($db,1,1,70,$assignment,73,'90'));
+reject(fn()=>pr_grade($db,1,1,70,$assignment,70,'101'));
+check(!$db->inTransaction(),'Failed grading left an open transaction');
+$db->exec('ALTER TABLE log_aktivitas ADD CONSTRAINT pr_fail_audit CHECK (user_id<0)');
+reject(fn()=>pr_grade($db,1,1,70,$assignment,70,'90'));
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=70 AND siswa_id=70')->fetchColumn()===74.99,'Failed remedial assignment grading partially changed original grade');
+check($db->query('SELECT remedial_id FROM peserta_penugasan_remedial WHERE siswa_id=70')->fetchColumn()===null,'Failed grading retained result link');
+$db->exec('ALTER TABLE log_aktivitas DROP CONSTRAINT pr_fail_audit');
+pr_grade($db,1,1,70,$assignment,70,'90');
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=70 AND siswa_id=70')->fetchColumn()===90.0,'Assignment grade did not reach original task');
+reject(fn()=>pr_grade($db,1,1,70,$assignment,70,'95'));
+$attempt=(int)$db->query('SELECT remedial_id FROM peserta_penugasan_remedial WHERE siswa_id=70')->fetchColumn();
+rt_remedial_cancel($db,1,1,70,$attempt,'Undo');
+check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=70 AND siswa_id=70')->fetchColumn()===74.99,'Assignment undo did not restore initial grade');
+check(pr_student_tasks($db,70)[0]['dibatalkan_pada']!==null,'Student cannot see cancelled remedial grade status');
+require_once 'config/helper.php';require 'includes/penugasan_remedial_siswa_view.php';$_SESSION=['csrf_token'=>'fixture'];
+ob_start();pr_render_student($db,70);$studentRemedial=ob_get_clean();
+check(strpos($studentRemedial,'&lt;script&gt;')!==false && strpos($studentRemedial,'<script>')===false,'Student remedial text was not escaped');
+ob_start();pr_render_student($db,71);$tuntasView=ob_get_clean();check($tuntasView==='','Remedial section leaked to nonparticipants');
+$db->exec("UPDATE penugasan_remedial SET deadline=DATE_SUB(NOW(),INTERVAL 1 DAY)");
+reject(fn()=>pr_submit($db,73,$assignment,'Late answer'));
+$db->exec("DELETE FROM peserta_penugasan_remedial; DELETE FROM penugasan_remedial; DELETE FROM remedial_tugas_batal WHERE remedial_id=$attempt; DELETE FROM remedial_tugas WHERE tugas_id=70; DELETE FROM rekap_tugas_status WHERE tugas_id=70; DELETE FROM pengumpulan_tugas WHERE tugas_id=70; DELETE FROM tugas WHERE id=70; DELETE FROM siswa WHERE kelas_id=70; DELETE FROM pengajaran WHERE id=70; DELETE FROM kelas WHERE id=70; DELETE FROM users WHERE id>=70; DELETE FROM log_aktivitas;");
+$db->exec('ALTER TABLE guru DROP COLUMN nama_lengkap');
 $student=rt_data($db,1,1,true)['students'][0];
 check(abs($student['rata_rata']-26.67)<.01 && $student['jumlah_dihitung']===3,'Expired missing tasks must contribute 0');
 check($student['cells'][3]['nilai']===null && $student['belum_dinilai']===1,'Ungraded task must stay pending');

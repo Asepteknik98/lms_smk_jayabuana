@@ -1,6 +1,8 @@
 <?php
 require_once __DIR__ . '/../includes/header.php';
 require_once __DIR__ . '/../config/database.php';
+require_once __DIR__ . '/../includes/penugasan_remedial.php';
+require_once __DIR__ . '/../includes/penugasan_remedial_siswa_view.php';
 
 // Proteksi Khusus Siswa (Role ID 3)
 check_access([3]);
@@ -95,6 +97,7 @@ $tugas_list = array_slice($tugas_list, ($halaman - 1) * $tugas_per_halaman, $tug
     </nav>
 
     <div class="container-fluid p-3 p-md-4">
+        <?php pr_render_student($db,(int)$siswa_id); ?>
         <form class="card border-0 shadow-sm p-3 mb-3" method="get"><div class="row g-2"><div class="col-6"><select class="form-select form-select-sm" name="status"><option value="semua">Semua Status</option><?php foreach(['aktif'=>'Aktif','selesai'=>'Selesai','terlambat'=>'Terlambat'] as $key=>$label): ?><option value="<?= $key ?>" <?= $filter_status===$key?'selected':'' ?>><?= $label ?></option><?php endforeach ?></select></div><div class="col-6"><select class="form-select form-select-sm" name="mapel"><option value="">Semua Mapel</option><?php foreach($daftar_mapel as $mapel): ?><option value="<?= sanitize($mapel) ?>" <?= $filter_mapel===$mapel?'selected':'' ?>><?= sanitize($mapel) ?></option><?php endforeach ?></select></div><div class="col-12 d-grid"><button class="btn btn-sm btn-primary"><i class="fa-solid fa-filter me-1"></i>Terapkan Filter</button></div></div></form>
         <?php if (!$tugas_list): ?>
             <div class="card border-0 shadow-sm text-center p-5">

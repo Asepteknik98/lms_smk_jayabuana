@@ -19,6 +19,12 @@
     function renderStudents() {
         body.replaceChildren();
         const task = data.tasks.find(task => String(task.id) === select.value && Number(task.selesai));
+        const create = document.getElementById('buatTugasRemedial');
+        if (create) {
+            create.href = 'tugas_remedial.php?pengajaran_id=' + encodeURIComponent(create.dataset.pengajaran) + '&tugas_id=' + encodeURIComponent(select.value);
+            create.classList.toggle('disabled', !task);
+            create.setAttribute('aria-disabled', String(!task));
+        }
         save.disabled = !data.ready || !task;
         if (!task) return;
         const students = data.students.filter(student => {
