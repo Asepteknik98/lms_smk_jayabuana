@@ -2,6 +2,27 @@
 require_once __DIR__.'/rekap_tugas_module.php';
 require_once __DIR__.'/nilai_excel_reader.php';
 
+function nm_create_target(PDO $db,int $guru,int $user,int $pid,string $kind,string $title,int $meeting,string $when): int {
+    $title=trim($title);$date=DateTimeImmutable::createFromFormat('!Y-m-d\TH:i',$when);
+    if(!in_array($kind,['tugas','ujian'],true)||$title===''||mb_strlen($title)>200)throw new RuntimeException('Pilih jenis penilaian dan isi judul, maksimal 200 karakter.');
+    if(!$date||$date->format('Y-m-d\TH:i')!==$when||$date->getTimestamp()>time())throw new RuntimeException('Tanggal penilaian manual harus sekarang atau sebelumnya.');
+    if($kind==='tugas'&&($meeting<1||$meeting>20))throw new RuntimeException('Pilih pertemuan 1 sampai 20.');
+    $db->beginTransaction();
+    try{
+        $q=$db->prepare('SELECT p.id FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN users u ON u.id=g.user_id AND u.role_id=2 AND u.is_active=1 WHERE p.id=? AND p.guru_id=? AND g.user_id=? FOR UPDATE');$q->execute([$pid,$guru,$user]);
+        if(!$q->fetchColumn())throw new RuntimeException('Pengajaran bukan milik Anda.');
+        if($kind==='tugas'){
+            $db->prepare("INSERT INTO tugas(pengajaran_id,pertemuan_ke,judul,deskripsi,jenis_tugas,metode_pengumpulan,deadline) VALUES(?,?,?,?,'portofolio','offline',?)")->execute([$pid,$meeting,$title,'Penilaian tugas kelas/buku. Nilai diinput guru melalui Input Nilai Manual.',$date->format('Y-m-d H:i:s')]);
+        }else{
+            // A completed classroom exam is a grading target, never a new live online session.
+            $db->prepare("INSERT INTO ujian(pengajaran_id,nama_ujian,jenis_ujian,durasi_menit,waktu_mulai,waktu_selesai,acak_soal) VALUES(?,?,'Kuis',1,?,?,0)")->execute([$pid,$title,$date->modify('-1 minute')->format('Y-m-d H:i:s'),$date->format('Y-m-d H:i:s')]);
+        }
+        $id=(int)$db->lastInsertId();
+        $db->prepare('INSERT INTO log_aktivitas(user_id,aktivitas,ip_address,user_agent) VALUES(?,?,?,?)')->execute([$user,'Membuat target nilai manual: '.json_encode(['jenis'=>$kind,'target'=>$id,'pengajaran'=>$pid]),$_SERVER['REMOTE_ADDR']??'CLI',substr($_SERVER['HTTP_USER_AGENT']??'CLI',0,255)]);
+        $db->commit();return $id;
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
+
 function nm_context(PDO $db,int $guru,int $pid,string $kind): array {
     if(!in_array($kind,['tugas','ujian'],true))throw new RuntimeException('Jenis penilaian tidak valid.');
     $q=$db->prepare('SELECT p.*,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.id=? AND p.guru_id=?');$q->execute([$pid,$guru]);$info=$q->fetch();
@@ -19,7 +40,7 @@ function nm_target(array $context,int $id): array {
     throw new RuntimeException('Pilih target tugas atau ujian yang tersedia pada kelas ini.');
 }
 
-function nm_score($raw): ?float {
+function nm_score(mixed $raw): ?float {
     if(!is_string($raw))throw new RuntimeException('Format nilai tidak valid.');
     $raw=str_replace(',','.',trim($raw));if($raw==='')return null;
     if(!preg_match('/^\d+(?:\.\d+)?$/D',$raw)||!is_finite((float)$raw)||(float)$raw>100)throw new RuntimeException('Nilai harus angka 0 sampai 100.');
