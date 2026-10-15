@@ -1,0 +1,78 @@
+.pr-page{max-width:1360px;margin:0 auto;padding:28px 32px 48px;color:#233047}
+.pr-page .pr-back{display:inline-flex;align-items:center;gap:8px;color:#64748b;text-decoration:none;font-size:14px;margin-bottom:22px}
+.pr-page .pr-back:hover{color:#1769e0}
+.pr-page .pr-heading{display:flex;align-items:center;gap:16px;margin-bottom:26px}
+.pr-page .pr-heading-icon{display:grid;place-items:center;width:56px;height:56px;border-radius:17px;background:#e7efff;color:#1769e0;font-size:24px;flex-shrink:0}
+.pr-page h1{font-size:26px;font-weight:750;letter-spacing:-.6px;margin:0 0 7px}
+.pr-page .pr-heading p{font-size:14px;color:#64748b;margin:0}
+.pr-page .pr-layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;align-items:start}
+.pr-page .pr-card{background:#fff;border:1px solid #e5eaf1;border-radius:18px;box-shadow:0 4px 18px #23304705;overflow:hidden;min-width:0}
+.pr-page .pr-card-heading{padding:22px 26px;border-bottom:1px solid #edf0f5;display:flex;gap:12px;align-items:center}
+.pr-page .pr-card-heading h2,.pr-page .pr-published-heading h2{font-size:17px;font-weight:700;margin:0 0 5px}
+.pr-page .pr-card-heading p,.pr-page .pr-published-heading p{font-size:13px;color:#758399;margin:0}
+.pr-page .pr-card-heading>i{color:#1769e0;background:#eff5ff;padding:11px;border-radius:11px}
+.pr-page .pr-form-body{padding:24px 26px}
+.pr-page .form-label{font-size:14px;font-weight:600;margin-bottom:9px}
+.pr-page .form-control{border-color:#dce3ed;border-radius:10px;padding:11px 13px;font-size:14px;min-height:45px}
+.pr-page .form-control:focus{border-color:#80acff;box-shadow:0 0 0 3px #1769e014}
+.pr-page textarea.form-control{min-height:190px;resize:vertical;line-height:1.7}
+.pr-page .pr-field{margin-bottom:23px}
+.pr-page .pr-required{color:#dc3545;margin-left:3px}
+.pr-page .pr-hint{font-size:12px;line-height:1.7;color:#7b8799;margin:8px 0 0}
+.pr-page .pr-answer-hint{display:flex;gap:10px;background:#f6f8fc;border:1px solid #edf0f5;border-radius:10px;padding:12px 14px;margin-top:12px}
+.pr-page .pr-answer-hint i{color:#7087aa;margin-top:3px}
+.pr-page .pr-answer-hint p{margin:0;font-size:12px;line-height:1.7;color:#64748b}
+.pr-page .pr-deadline{max-width:340px;margin-bottom:0}
+.pr-page .pr-form-footer{padding:18px 26px;background:#fbfcfe;border-top:1px solid #edf0f5;display:flex;justify-content:space-between;align-items:center;gap:16px}
+.pr-page .pr-form-footer>span{color:#8290a4;font-size:12px;max-width:230px;line-height:1.6}
+.pr-page .btn{font-size:14px;border-radius:9px;padding:10px 16px;font-weight:600}
+.pr-page .btn-primary{background:#1769e0;border-color:#1769e0}
+.pr-page .pr-side{display:grid;gap:18px}
+.pr-page .pr-participants{padding:23px}
+.pr-page .pr-side-label{display:flex;align-items:center;gap:9px;font-size:14px;font-weight:650;margin:0 0 18px}
+.pr-page .pr-side-label i{color:#e59c19}
+.pr-page .pr-participant-count{display:flex;align-items:baseline;gap:9px;margin-bottom:14px}
+.pr-page .pr-participant-count strong{font-size:38px;line-height:1;font-weight:750;letter-spacing:-1px}
+.pr-page .pr-participant-count span{font-size:13px;color:#718096}
+.pr-page .pr-threshold{display:inline-block;padding:5px 10px;background:#fff5df;color:#a66b00;border-radius:7px;font-size:12px;font-weight:600;margin-bottom:13px}
+.pr-page .pr-side-copy{font-size:12px;line-height:1.8;color:#7b8799;margin:0 0 18px}
+.pr-page .pr-participants details{border-top:1px solid #edf0f5;padding-top:15px}
+.pr-page summary{cursor:pointer;font-size:13px;color:#1769e0;font-weight:600}
+.pr-page .pr-participant-list{list-style:none;padding:0;margin:12px 0 0;max-height:240px;overflow-y:auto}
+.pr-page .pr-participant-list li{display:flex;align-items:center;gap:10px;padding:9px 0;font-size:12px;border-bottom:1px solid #f1f4f8;overflow-wrap:anywhere}
+.pr-page .pr-student-icon{width:29px;height:29px;background:#f0f4fa;color:#91a0b6;border-radius:50%;display:grid;place-items:center;flex-shrink:0}
+.pr-page .pr-delivery{padding:21px 23px;background:#edf5ff;border-color:#dceaff}
+.pr-page .pr-delivery>i{color:#1769e0;font-size:20px;margin-bottom:12px}
+.pr-page .pr-delivery h3{font-size:14px;font-weight:700;margin:0 0 9px}
+.pr-page .pr-delivery p{font-size:12px;line-height:1.8;color:#627b9b;margin:0}
+.pr-page .pr-published{margin-top:34px}
+.pr-page .pr-published-heading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:18px}
+.pr-page .pr-count-badge{font-size:12px;background:#e9eef6;color:#64748b;padding:6px 11px;border-radius:20px;white-space:nowrap}
+.pr-page .pr-empty{text-align:center;padding:35px 20px;border-style:dashed;background:#fafcfe}
+.pr-page .pr-empty>i{font-size:25px;color:#a8b7cd;background:#eef3fa;padding:16px;border-radius:50%;margin-bottom:14px}
+.pr-page .pr-empty h3{font-size:14px;font-weight:650;margin:0 0 7px}
+.pr-page .pr-empty p{font-size:12px;color:#8290a4;margin:0}
+.pr-page .pr-assignment{margin-bottom:18px}
+.pr-page .pr-assignment-top{padding:22px 24px;border-bottom:1px solid #edf0f5}
+.pr-page .pr-assignment-title{display:flex;align-items:start;justify-content:space-between;gap:12px}
+.pr-page .pr-assignment-title h3{font-size:16px;font-weight:700;margin:0 0 9px;overflow-wrap:anywhere}
+.pr-page .pr-meta{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:#7b8799}
+.pr-page .pr-instructions{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px;line-height:1.8;color:#64748b;margin:16px 0 0;max-height:220px;overflow:auto}
+.pr-page .table{font-size:13px;margin:0}
+.pr-page .table th{background:#f8fafc;color:#7b8799;font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:650;padding:13px 24px;border-bottom-color:#eaf0f6}
+.pr-page .table td{padding:17px 24px;vertical-align:middle;border-bottom-color:#edf0f5}
+.pr-page .table tbody tr:last-child td{border-bottom:0}
+.pr-page .pr-student-name{font-weight:600;min-width:160px}
+.pr-page .pr-grade-form{display:flex;gap:8px;min-width:190px;max-width:260px}
+.pr-page .pr-grade-form .form-control{width:95px;min-height:39px;padding:7px 10px}
+.pr-page .pr-grade-form .btn{padding:7px 13px;font-size:12px}
+.pr-page .pr-status{display:inline-flex;align-items:center;gap:6px;font-size:11px;font-weight:600;padding:5px 9px;border-radius:6px;white-space:nowrap}
+.pr-page .pr-status-pending{background:#f0f3f7;color:#7b8799}
+.pr-page .pr-status-success{background:#e8f7f0;color:#188658}
+.pr-page .pr-status-cancelled{background:#fff2e4;color:#ad6b22}
+.pr-page .pr-answer{white-space:pre-wrap;overflow-wrap:anywhere;max-width:480px;max-height:260px;overflow:auto;padding-top:10px;line-height:1.8}
+.pr-page .pr-submitted{font-size:11px;color:#91a0b6;display:block;margin-bottom:6px}
+@media(min-width:1600px){.pr-page{padding-top:36px}}
+@media(max-width:1100px){.pr-page{padding:24px}.pr-page .pr-layout{grid-template-columns:minmax(0,1fr) 275px;gap:18px}.pr-page .pr-form-footer{flex-wrap:wrap}}
+@media(max-width:850px){.pr-page .pr-layout{grid-template-columns:minmax(0,1fr)}.pr-page .pr-side{grid-template-columns:1fr 1fr}.pr-page .pr-form-footer{flex-wrap:nowrap}}
+@media(max-width:575px){.pr-page{padding:20px 15px 32px}.pr-page h1{font-size:22px}.pr-page .pr-heading{gap:12px;align-items:flex-start}.pr-page .pr-heading-icon{width:46px;height:46px;font-size:20px;border-radius:13px}.pr-page .pr-heading p{font-size:12px;line-height:1.6}.pr-page .pr-card-heading,.pr-page .pr-form-body{padding:20px}.pr-page .pr-side{grid-template-columns:1fr}.pr-page .pr-form-footer{padding:16px 20px;flex-direction:column;align-items:stretch}.pr-page .pr-form-footer>span{max-width:none;text-align:center}.pr-page .pr-published-heading{align-items:start}.pr-page .pr-published-heading h2{font-size:16px}.pr-page .pr-assignment-top{padding:20px}.pr-page .table th,.pr-page .table td{padding:13px 18px}}
