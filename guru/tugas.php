@@ -16,6 +16,9 @@ if ($guru_id < 1) {
     exit('Data guru tidak ditemukan.');
 }
 
+require_once __DIR__ . '/../includes/rekap_tugas_section.php';
+$rekap_tugas_view = rt_inline_prepare($db, $guru_id, $_GET);
+
 $pesan_sukses = $_SESSION['tugas_success'] ?? '';
 $pesan_error = $_SESSION['tugas_error'] ?? '';
 unset($_SESSION['tugas_success'], $_SESSION['tugas_error']);
@@ -291,6 +294,7 @@ if ($daftar_tugas) {
         }
     }
     foreach ($daftar_tugas as &$item_tugas) {
+        $item_tugas['metode_pengumpulan'] = $item_tugas['metode_pengumpulan'] ?? 'online';
         $item_tugas['struktur'] = array_values($struktur_tugas[(int)$item_tugas['id']] ?? []);
     }
     unset($item_tugas);
@@ -302,8 +306,9 @@ $total_tugas_guru = count($daftar_tugas);
 $total_halaman_tugas = max(1, (int)ceil($total_tugas_guru / $tugas_per_halaman));
 $halaman_tugas = max(1, min((int)($_GET['page'] ?? 1), $total_halaman_tugas));
 $daftar_tugas = array_slice($daftar_tugas, ($halaman_tugas - 1) * $tugas_per_halaman, $tugas_per_halaman);
-$url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $filter_pertemuan): string {
-    $parameter = ['page' => $page];
+$url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $filter_pertemuan, $rekap_tugas_view): string {
+    $parameter = array_filter($rekap_tugas_view['context'], static fn($key) => strpos($key, 'rekap_') === 0, ARRAY_FILTER_USE_KEY);
+    $parameter['page'] = $page;
     if ($filter_pengajaran_id > 0) {
         $parameter['pengajaran_id'] = $filter_pengajaran_id;
         $parameter['pertemuan'] = $filter_pertemuan;
@@ -313,6 +318,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
 ?>
 <?php require_once __DIR__ . '/../includes/header.php'; ?>
 <?php require_once __DIR__ . '/../includes/sidebar.php'; ?>
+<link rel="stylesheet" href="../assets/css/rekap-tugas.css?v=2">
 <style>
     .teacher-task-page { background:#f5f7fb; min-width:0; }
     .teacher-task-content { max-width:1200px; margin:0 auto; }
@@ -366,13 +372,11 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
     <nav class="navbar task-page-toolbar px-2 px-md-4 py-2 py-md-3">
         <div class="d-flex justify-content-between align-items-center gap-2 w-100">
             <div class="min-w-0"><h5 class="mb-0 fw-bold text-truncate"><i class="fa-solid fa-list-check text-primary me-2"></i>Daftar Tugas</h5><small class="text-muted d-block text-truncate"><?= $filter_pengajaran_id ? $total_tugas_guru.' tugas pada pertemuan '.$filter_pertemuan : $total_tugas_guru.' tugas pada seluruh kelas yang Anda ampu' ?></small></div>
-            <div class="d-flex gap-2 flex-shrink-0">
-                <a href="rekap_tugas.php<?= $filter_pengajaran_id ? '?pengajaran_id='.(int)$filter_pengajaran_id : '' ?>" class="btn btn-outline-primary btn-sm create-task-button"><i class="fa-solid fa-table-list me-1"></i>Rekap Tugas</a>
-                <button class="btn btn-primary btn-sm create-task-button flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalTugas" onclick="tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>)" aria-label="Tambah tugas baru" title="Tambah Tugas"><i class="fa-solid fa-plus me-1"></i><span>Tambah Tugas</span></button>
-            </div>
+            <button class="btn btn-primary btn-sm create-task-button flex-shrink-0" data-bs-toggle="modal" data-bs-target="#modalTugas" onclick="tugasBaru(<?= $filter_pengajaran_id ?>,<?= $filter_pertemuan ?>)" aria-label="Tambah tugas baru" title="Tambah Tugas"><i class="fa-solid fa-plus me-1"></i><span>Tambah Tugas</span></button>
         </div>
     </nav>
     <div class="container-fluid teacher-task-content p-3 p-md-4">
+        <div class="task-list-section">
         <?php if ($pesan_sukses): ?><div class="alert alert-success alert-dismissible fade show"><?= sanitize($pesan_sukses) ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
         <?php if ($pesan_error): ?><div class="alert alert-danger alert-dismissible fade show"><?= sanitize($pesan_error) ?><button class="btn-close" data-bs-dismiss="alert"></button></div><?php endif; ?>
         <?php if ($filter_pengajaran_id): ?><div class="alert alert-primary d-flex flex-wrap justify-content-between align-items-center gap-2"><span><i class="fa-solid fa-filter me-1"></i>Menampilkan tugas pertemuan <?= $filter_pertemuan ?> dari materi yang dipilih.</span><a href="tugas.php" class="btn btn-sm btn-light border">Tampilkan Semua</a></div><?php endif; ?>
@@ -415,6 +419,8 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
                 </nav>
             <?php endif; ?>
         <?php endif; ?>
+        </div>
+        <?php rt_inline_render($rekap_tugas_view); ?>
     </div>
 </div>
 
@@ -427,6 +433,7 @@ $url_halaman_tugas = static function (int $page) use ($filter_pengajaran_id, $fi
     <div class="col-md-6"><label class="form-label fw-semibold">Tenggat / Tanggal Masuk Rekap</label><input type="datetime-local" class="form-control" name="deadline" id="deadlineTugas" required><small class="text-muted">Nilai dihitung dalam rekap setelah waktu ini.</small></div><div class="col-md-6"><label class="form-label fw-semibold">Lampiran</label><input type="file" class="form-control" name="file_lampiran" accept=".pdf,.docx,.pptx,.zip"><small class="text-muted">PDF, DOCX, PPTX, ZIP · maks. 10 MB</small></div></div>
     <div id="infoEdit" class="alert alert-info small mt-3 mb-0 d-none">Kosongkan lampiran jika tidak ingin mengganti file lama.</div>
     </div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button type="submit" class="btn btn-primary"><i class="fa-solid fa-cloud-arrow-up me-1"></i> Publikasikan Tugas</button></div></form></div></div></div>
+<script src="../assets/js/rekap-tugas.js?v=2"></script>
 <?php require_once __DIR__ . '/../includes/footer.php'; ?>
 <script>
 const adaKelasGabunganTugas=<?= $ada_kelas_gabungan ? 'true' : 'false' ?>;

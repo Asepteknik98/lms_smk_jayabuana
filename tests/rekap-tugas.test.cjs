@@ -6,6 +6,21 @@ const {spawnSync} = require('node:child_process');
 const fs = require('node:fs');
 const path = require('node:path');
 
+test('CSV follows the embedded meeting filter and preserves zero scores', () => {
+    const php=String.raw`<?php
+require 'config/helper.php';require 'includes/rekap_tugas_section.php';
+$view=['pid'=>1,'visibleTasks'=>[['id'=>2,'pertemuan_ke'=>2,'judul'=>'Tugas Terpilih']],
+'data'=>['info'=>['nama_mapel'=>'Matematika','nama_kelas'=>'X-A','tahun_ajaran'=>'2026/2027','semester'=>'Ganjil'],
+'students'=>[['nis'=>'001','nisn'=>'00001','nama_lengkap'=>'=FORMULA','cells'=>[2=>['nilai'=>0,'label'=>'Tidak Mengerjakan']],
+'rata_rata'=>0,'jumlah_dihitung'=>1,'belum_dinilai'=>0]]]];
+rt_inline_export($view);
+`;
+    const result=spawnSync('C:/xampp/php/php.exe',[],{cwd:path.join(__dirname,'..'),input:php,encoding:'utf8'});
+    assert.equal(result.status,0,result.stderr);
+    assert.match(result.stdout,/sep=;/);assert.match(result.stdout,/P2 Tugas Terpilih - Nilai/);
+    assert.match(result.stdout,/'=FORMULA;0;/);assert.match(result.stdout,/Rata-rata semua tugas selesai/);
+});
+
 test('Task recap: averages, authorization, status, answer preservation and rollback', () => {
     const php = String.raw`<?php
 require 'config/database.php';require 'includes/rekap_tugas_module.php';require 'includes/penilaian_override.php';
@@ -66,11 +81,69 @@ $db->exec('ALTER TABLE log_aktivitas ADD CONSTRAINT fixture_no_audit CHECK (user
 reject(fn()=>$save(1,1,'mengerjakan','90'));
 check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=1')->fetchColumn()===0.0,'Grade did not roll back');
 check((int)$db->query('SELECT COUNT(*) FROM rekap_tugas_status WHERE tugas_id=1 AND siswa_id=1')->fetchColumn()===0,'Status did not roll back');
-echo "PASS task recap integration\n";
+// Render the whole task page using only connection-local fixtures.
+$db->exec("ALTER TABLE tugas ADD deskripsi TEXT NULL,ADD jenis_tugas VARCHAR(20) DEFAULT 'portofolio',ADD file_lampiran VARCHAR(255) NULL");
+$db->exec("ALTER TABLE guru ADD nama_lengkap VARCHAR(100) DEFAULT 'Guru Fixture'");
+$db->exec('CREATE TEMPORARY TABLE pertanyaan_tugas(id INT,tugas_id INT,pertanyaan TEXT,urutan INT)');
+$db->exec('CREATE TEMPORARY TABLE opsi_tugas(id INT,pertanyaan_id INT,label_opsi VARCHAR(10),teks_opsi TEXT,is_benar INT)');
+ini_set('session.save_path',sys_get_temp_dir());require 'config/session.php';
+$_SESSION['user_id']=1;$_SESSION['role_id']=2;$_SESSION['username']='Guru Fixture';$_SESSION['milad_announcement_shown']=true;
+$_SERVER['REQUEST_METHOD']='GET';$_SERVER['SCRIPT_NAME']='/lms/guru/tugas.php';$_SERVER['PHP_SELF']=$_SERVER['SCRIPT_NAME'];
+$_GET=['page'=>2,'rekap_pengajaran'=>1];$_POST=[];
+set_error_handler(function($severity,$message,$file,$line){if(error_reporting() & $severity)throw new ErrorException($message,0,$severity,$file,$line);});
+ob_start();require 'guru/tugas.php';$html=ob_get_clean();
+check(substr_count($html,'id="page-content-wrapper"')===1,'Recap must not create a second page wrapper');
+check(substr_count($html,'id="rekap-tugas"')===1,'Recap rendered more than once');
+check(strpos($html,'id="rekap-tugas"')>strpos($html,'Menampilkan maksimal'),'Recap must appear below cards AND pagination');
+preg_match('~<nav class="navbar task-page-toolbar[\s\S]*?</nav>~',$html,$toolbar);
+check(strpos($toolbar[0],'Rekap Tugas')===false,'Separate recap toolbar button remains');
+check(strpos($html,'colspan="20">Nilai Tugas per Pertemuan')!==false,'Attendance-style P1-P20 matrix missing');
+check(strpos($html,'name="rekap_pengajaran"')!==false && strpos($html,'name="rekap_mode"')!==false,'Independent recap filters missing');
+check(strpos($html,'value="rekap_tugas_save"')!==false,'Recap save action is not isolated');
+check(strpos(rt_inline_url(['page'=>2,'rekap_pengajaran'=>1]),'#rekap-tugas')!==false,'Save does not return to embedded recap');
+$meetingView=rt_inline_prepare($db,1,['rekap_pengajaran'=>1,'rekap_mode'=>'pertemuan','rekap_pertemuan'=>2]);
+check(count($meetingView['visibleTasks'])===1 && (int)$meetingView['visibleTasks'][0]['id']===2,'Per-meeting filter includes other tasks');
+ob_start();rt_inline_render($meetingView);$meetingHtml=ob_get_clean();
+check(strpos($meetingHtml,'<th>Catatan</th>')!==false && strpos($meetingHtml,'Ubah Status')!==false,'Per-meeting detail/status table missing');
+$savedContext=rt_inline_context(['page'=>2,'pengajaran_id'=>1,'pertemuan'=>3,'rekap_pengajaran'=>1,'untrusted'=>'bad']);
+check($savedContext['page']===2 && !isset($savedContext['untrusted']),'List state not preserved or arbitrary query accepted');
+$preview=str_replace('<head>','<head><base href="file:///C:/xampp/htdocs/lms/guru/">',$html);
+file_put_contents(sys_get_temp_dir().'/lms_rekap_tugas_inline_preview.html',$preview);
+restore_error_handler();
+// The embedded POST must be intercepted before the task create/edit/delete handler.
+$db->exec('ALTER TABLE log_aktivitas DROP CONSTRAINT fixture_no_audit');
+$_SERVER['REQUEST_METHOD']='POST';
+$_POST=['action'=>'rekap_tugas_save','csrf_token'=>$_SESSION['csrf_token'],'rekap_pengajaran'=>1,'rekap_kelas'=>1,'page'=>2,'siswa_id'=>1,'tugas_id'=>1,'status'=>'mengerjakan','nilai'=>'77','catatan'=>'Melalui rekap di bawah daftar'];
+register_shutdown_function(function()use($db){
+ check((float)$db->query('SELECT nilai FROM pengumpulan_tugas WHERE tugas_id=1 AND siswa_id=1')->fetchColumn()===77.0,'Embedded POST did not save the score');
+ check(isset($_SESSION['rekap_tugas_success']),'Embedded POST did not set success feedback');
+ session_destroy();echo "PASS task recap integration\n";
+});
+rt_inline_prepare($db,1,$_GET);
 `;
     const result=spawnSync('C:/xampp/php/php.exe',[],{cwd:path.join(__dirname,'..'),input:php,encoding:'utf8'});
     assert.equal(result.status,0,result.stdout+result.stderr);
     assert.match(result.stdout,/PASS task recap integration/);
+});
+
+test('Embedded recap modal switches tasks and filters without mixing task-list parameters', () => {
+    const vm=require('node:vm');
+    const callbacks={},elements={};
+    const ids=['modalStatusTugas','statusTugas','nilaiStatusTugas','statusSiswaId','statusTugasId','statusNamaSiswa','statusJudulTugas','catatanStatusTugas','lihatJawabanTugas','statusPilihanTugas','formFilterRekapTugas','rekapKelas','rekapPengajaran','rekapMode','rekapPertemuan'];
+    ids.forEach(id=>{elements[id]={value:'',options:[],addEventListener(event,fn){callbacks[id+':'+event]=fn;},replaceChildren(){this.options=[];},appendChild(option){this.options.push(option);},requestSubmit(){this.submitted=true;}};});
+    vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/js/rekap-tugas.js'),'utf8'),{
+        document:{getElementById:id=>elements[id],createElement:()=>({}),querySelectorAll:()=>[]},encodeURIComponent
+    });
+    const options=[{tugasId:10,judul:'P1 · Esai',status:'mengerjakan',nilai:'85.75',catatan:'Baik',pengumpulan:'7',metode:'online'},
+        {tugasId:11,judul:'P1 · Praktik',status:'belum_dinilai',nilai:'',catatan:'Diterima',pengumpulan:'0',metode:'offline'}];
+    callbacks['modalStatusTugas:show.bs.modal']({relatedTarget:{dataset:{siswaId:'3',nama:'Siswa C',tugasList:JSON.stringify(options)}}});
+    assert.equal(elements.statusPilihanTugas.options.length,2);
+    assert.equal(elements.statusTugasId.value,10);assert.equal(elements.nilaiStatusTugas.value,'85.75');
+    elements.statusPilihanTugas.value='11';callbacks['statusPilihanTugas:change']();
+    assert.equal(elements.statusTugasId.value,11);assert.equal(elements.catatanStatusTugas.value,'Diterima');
+    assert.equal(elements.nilaiStatusTugas.required,false);assert.equal(elements.lihatJawabanTugas.hidden,true);
+    callbacks['rekapKelas:change']();assert.equal(elements.rekapPengajaran.disabled,true);assert.equal(elements.formFilterRekapTugas.submitted,true);
+    elements.rekapMode.value='pertemuan';callbacks['rekapMode:change']();assert.equal(elements.rekapPertemuan.disabled,false);
 });
 
 test('Modal requires scores only when marked working and searches student history', () => {
