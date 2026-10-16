@@ -57,26 +57,31 @@
 .attendance-manual-page .student-attendance-row:focus-within { border-color:#a9cbb8; box-shadow:0 0 0 3px rgb(34 116 81 / 7%); }
 .attendance-manual-page .student-name strong { font-size:13px; color:#334155; }
 .attendance-manual-page .student-name small { margin-top:5px; font-size:11px; }
+.attendance-manual-page .status-options { grid-template-columns:repeat(3,minmax(0,1fr)); }
 .attendance-manual-page .status-option label,
 .attendance-manual-page .reset-student { border-radius:8px; font-size:12px; min-height:42px; }
 .attendance-manual-page .status-option label::before { font-family:"Font Awesome 6 Free"; font-weight:900; font-size:12px; width:14px; height:auto; flex:0 0 14px; border:0; border-radius:0; line-height:1; }
 .attendance-manual-page .status-hadir label::before { content:"\f4fc"; }
+.attendance-manual-page .status-pkl label::before { content:"\f0b1"; }
 .attendance-manual-page .status-sakit label::before { content:"\f481"; }
 .attendance-manual-page .status-izin label::before { content:"\f658"; }
 .attendance-manual-page .status-alpa label::before { content:"\f235"; }
 .attendance-manual-page .status-option input:checked + label { box-shadow:none; }
 .attendance-manual-page .status-option input:checked + label::before { border:0; background:none; box-shadow:none; }
 .attendance-manual-page .status-hadir label { color:#226b4f; background:#f4faf6; border-color:#c5e5d2; }
+.attendance-manual-page .status-pkl label { color:#7046aa; background:#f6f2ff; border-color:#dfd3f7; }
 .attendance-manual-page .status-sakit label { color:#8b601a; background:#fffbf2; border-color:#ebdcb9; }
 .attendance-manual-page .status-izin label { color:#245c9e; background:#f4f8ff; border-color:#cedef2; }
 .attendance-manual-page .status-alpa label { color:#a93e4a; background:#fff7f7; border-color:#efcfd3; }
 .attendance-manual-page .status-hadir input:checked + label { background:#227451; border-color:#227451; color:#fff; }
+.attendance-manual-page .status-pkl input:checked + label { background:#7046aa; border-color:#7046aa; color:#fff; }
 .attendance-manual-page .status-sakit input:checked + label { background:#94651c; border-color:#94651c; color:#fff; }
 .attendance-manual-page .status-izin input:checked + label { background:#245c9e; border-color:#245c9e; color:#fff; }
 .attendance-manual-page .status-alpa input:checked + label { background:#b54150; border-color:#b54150; color:#fff; }
 .attendance-manual-page .manual-summary { border-radius:12px; border-color:#d4e4da; box-shadow:0 5px 20px rgb(27 49 78 / 9%); }
 .attendance-manual-page .manual-summary .badge { padding:8px 10px; font-weight:500; border-radius:6px; }
 .attendance-manual-page .manual-summary .bg-success { background:#e5f3eb !important; color:#226b4f; }
+.attendance-manual-page .manual-summary .attendance-pkl-summary { background:#eee7fb; color:#7046aa; }
 .attendance-manual-page .manual-summary .bg-secondary { background:#fff1d8 !important; color:#805512; }
 .attendance-manual-page .manual-summary .bg-primary { background:#e8f0fc !important; color:#245c9e; }
 .attendance-manual-page .manual-summary .bg-danger { background:#fbe9eb !important; color:#a93e4a; }
@@ -88,6 +93,9 @@
  .attendance-manual-page .manual-card .card-body { padding:22px !important; }
  .attendance-manual-page #formPilihPengajaran { align-items:start !important; }
  .attendance-manual-page #formPilihPengajaran > .col-md-3 { padding-top:32px; }
+}
+@media(min-width:1400px) {
+ .attendance-manual-page .status-options { grid-template-columns:repeat(6,minmax(0,1fr)); }
 }
 @media(min-width:992px) and (max-width:1199.98px) {
  .attendance-manual-page .status-option label::before { display:none; }
@@ -103,10 +111,15 @@
  .attendance-manual-page .manual-summary { position:relative; bottom:auto; }
 }
 @media(max-width:575.98px) {
+ .attendance-manual-page .manual-summary > div { grid-template-columns:repeat(3,minmax(0,1fr)); }
  .attendance-manual-page .manual-card .form-control,
  .attendance-manual-page .manual-card .form-select { font-size:16px; }
  .attendance-manual-page .status-option label,
  .attendance-manual-page .reset-student { min-height:46px; }
  .attendance-manual-page .manual-summary .badge { padding:8px 3px; font-size:11px; }
  .attendance-manual-page .manual-summary .badge i { display:none; }
+}
+@media(max-width:374.98px) {
+ .attendance-manual-page .status-options,
+ .attendance-manual-page .manual-summary > div { grid-template-columns:repeat(2,minmax(0,1fr)); }
 }
