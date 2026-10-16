@@ -6,7 +6,8 @@ function nm_create_target(PDO $db,int $guru,int $user,int $pid,string $kind,stri
     $title=trim($title);$date=DateTimeImmutable::createFromFormat('!Y-m-d\TH:i',$when);
     if(!in_array($kind,['tugas','ujian'],true)||$title===''||mb_strlen($title)>200)throw new RuntimeException('Pilih jenis penilaian dan isi judul, maksimal 200 karakter.');
     if(!$date||$date->format('Y-m-d\TH:i')!==$when||$date->getTimestamp()>time())throw new RuntimeException('Tanggal penilaian manual harus sekarang atau sebelumnya.');
-    if($kind==='tugas'&&($meeting<1||$meeting>20))throw new RuntimeException('Pilih pertemuan 1 sampai 20.');
+    // Zero denotes an offline task independent of any lesson or meeting.
+    if($kind==='tugas'&&($meeting<0||$meeting>20))throw new RuntimeException('Pertemuan tugas tidak valid.');
     $db->beginTransaction();
     try{
         $q=$db->prepare('SELECT p.id FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN users u ON u.id=g.user_id AND u.role_id=2 AND u.is_active=1 WHERE p.id=? AND p.guru_id=? AND g.user_id=? FOR UPDATE');$q->execute([$pid,$guru,$user]);
