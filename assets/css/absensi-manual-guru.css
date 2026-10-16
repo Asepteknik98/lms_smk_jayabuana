@@ -1,0 +1,112 @@
+/* Teacher manual attendance presentation. Existing responsive controls remain intact. */
+.manual-page{background:#f5f7fb;min-width:0;overflow-x:hidden}.manual-content{width:100%;max-width:1760px;min-width:0;flex:0 0 auto;margin:0 auto;padding-bottom:calc(28px + env(safe-area-inset-bottom))!important}.manual-card{border:0;border-radius:18px;box-shadow:0 6px 22px rgba(15,23,42,.06)}.manual-card .form-control,.manual-card .form-select{min-height:44px;border-radius:10px}.student-attendance-row{border:1px solid #e8edf4;border-radius:14px;padding:13px;background:#fff;transition:border-color .15s ease,box-shadow .15s ease}.student-attendance-row:focus-within{border-color:#bfdbfe;box-shadow:0 0 0 3px rgba(37,99,235,.07)}.student-attendance-row+.student-attendance-row{margin-top:9px}.student-name{min-width:0}.student-name strong{overflow-wrap:anywhere;line-height:1.35}.student-name small{display:block;line-height:1.45}.status-options{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}.status-option{position:relative;min-width:0}.status-option input{position:absolute;opacity:0;pointer-events:none}.status-option label,.reset-student{display:flex;align-items:center;justify-content:center;gap:5px;width:100%;min-height:42px;padding:7px 6px;border:1px solid #dbe2ea;border-radius:10px;background:#fff;color:#64748b;font-size:.76rem;font-weight:700;cursor:pointer;transition:.15s ease;white-space:nowrap}.status-option label::before{content:"";width:12px;height:12px;border:2px solid currentColor;border-radius:50%;flex:0 0 12px}.status-option input:focus-visible+label,.reset-student:focus-visible{outline:3px solid rgba(37,99,235,.25);outline-offset:2px}.status-option input:checked+label{box-shadow:0 0 0 2px rgba(15,23,42,.05);color:#fff}.status-option input:checked+label::before{border:3px solid #fff;background:currentColor;box-shadow:inset 0 0 0 2px currentColor}.status-hadir input:checked+label{background:#198754;border-color:#198754}.status-sakit input:checked+label{background:#6c757d;border-color:#6c757d}.status-izin input:checked+label{background:#0d6efd;border-color:#0d6efd}.status-alpa input:checked+label{background:#dc3545;border-color:#dc3545}.reset-student:hover{background:#f1f5f9;color:#334155}.manual-summary{position:sticky;bottom:calc(12px + env(safe-area-inset-bottom));z-index:10;border:1px solid rgba(226,232,240,.9);border-radius:15px;background:rgba(255,255,255,.96);backdrop-filter:blur(8px);box-shadow:0 8px 28px rgba(15,23,42,.16)}.manual-summary .badge{font-size:.72rem;padding:7px 8px}.manual-summary .btn{min-height:44px}.offline-note{font-size:.76rem;color:#64748b}
+.student-list-toolbar{position:sticky;top:0;z-index:5;padding:10px;margin:0 -4px 12px;border:1px solid #e8edf4;border-radius:13px;background:rgba(248,250,252,.96);backdrop-filter:blur(8px)}.student-search-wrap{position:relative}.student-search-wrap>i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:#94a3b8;pointer-events:none}.student-search-wrap input{padding-left:38px}.student-pagination{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:14px}.student-pagination .btn{min-height:40px;min-width:42px}.student-page-info{min-width:125px;text-align:center;font-size:.78rem;color:#64748b}.student-empty-filter{border:1px dashed #cbd5e1;border-radius:13px;padding:28px;text-align:center;color:#64748b}
+@media(min-width:992px) and (max-width:1199.98px){.student-attendance-row .student-name{font-size:.9rem}.status-option label,.reset-student{font-size:.7rem;padding-inline:4px}.status-option label::before{display:none}}
+@media(max-width:991.98px){.student-attendance-row{padding:14px}.status-options{grid-template-columns:repeat(5,minmax(72px,1fr))}.student-attendance-row .row{--bs-gutter-y:.65rem}.manual-summary{bottom:calc(74px + env(safe-area-inset-bottom))}}
+@media(max-width:767.98px){.status-options{grid-template-columns:repeat(3,minmax(0,1fr))}.manual-summary{position:relative;bottom:auto;margin-top:12px!important}.manual-summary .btn{width:100%}}
+@media(max-width:575.98px){.manual-content{padding:12px!important;padding-bottom:calc(20px + env(safe-area-inset-bottom))!important}.manual-card{border-radius:15px}.manual-card .card-body{padding:14px!important}.manual-card .form-control,.manual-card .form-select{min-height:46px;font-size:16px}.student-attendance-row{padding:12px;border-radius:13px}.student-name strong{font-size:.92rem}.student-name small{font-size:.71rem}.status-options{gap:7px}.status-option label,.reset-student{min-height:46px;font-size:.78rem;border-radius:11px}.manual-summary{padding:12px!important;border-radius:14px}.manual-summary>div{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;width:100%}.manual-summary .badge{margin:0!important;text-align:center;padding:7px 4px}.attendance-manual-page .top-navbar h5{font-size:1rem}.attendance-manual-page .top-navbar small{font-size:.7rem}}
+@media(max-width:374.98px){.status-options{grid-template-columns:repeat(2,minmax(0,1fr))}.manual-summary>div{grid-template-columns:repeat(2,1fr)}}
+
+.attendance-manual-page { --attendance-green:#227451; --attendance-line:#dfe7f0; background:#f3f6fa; color:#263b53; }
+.attendance-manual-page .top-navbar { flex:0 0 auto; border-bottom:1px solid var(--attendance-line); box-shadow:none; }
+.attendance-manual-page .attendance-header { flex-wrap:wrap; gap:12px !important; }
+.attendance-manual-page .attendance-header > div:first-child { flex:1 1 300px; min-width:0; }
+.attendance-manual-page .top-navbar h5 { display:flex; align-items:center; gap:10px; color:#203d60; font-size:20px; letter-spacing:-.3px; }
+.attendance-manual-page .top-navbar small { display:block; line-height:1.6; margin-top:5px; font-size:13px; }
+.attendance-manual-page .attendance-title-icon { display:inline-grid; place-items:center; flex-shrink:0; width:36px; height:36px; border-radius:10px; color:#fff; background:var(--attendance-green); font-size:17px; }
+.attendance-manual-page .attendance-header > [data-install-pwa] { margin-left:0 !important; }
+.attendance-manual-page .manual-card { border:1px solid var(--attendance-line); border-radius:12px; box-shadow:0 3px 14px rgb(27 49 78 / 3%); }
+.attendance-manual-page .attendance-class-card { border-left:4px solid #7052ad; }
+.attendance-manual-page .attendance-section-heading { display:flex; gap:10px; align-items:center; margin-bottom:20px; }
+.attendance-manual-page .attendance-section-heading h2 { font-size:16px; font-weight:700; margin:0 0 4px; }
+.attendance-manual-page .attendance-section-heading p { margin:0; font-size:12px; color:#61738a; line-height:1.6; }
+.attendance-manual-page .attendance-section-icon { display:inline-grid; place-items:center; width:34px; height:34px; border-radius:9px; font-size:15px; flex-shrink:0; }
+.attendance-manual-page .attendance-purple { background:#eee7fb; color:#7046aa; }
+.attendance-manual-page .attendance-teal { background:#e2f1f5; color:#1f6e8c; }
+.attendance-manual-page .form-label { font-size:13px; color:#38516d; }
+.attendance-manual-page .form-label i { color:#7052ad; }
+.attendance-manual-page .form-control,
+.attendance-manual-page .form-select { border-color:#d4deeb; color:#263b53; font-size:14px; }
+.attendance-manual-page .form-select { background-color:#fbfcfe; }
+.attendance-manual-page .form-control:focus,
+.attendance-manual-page .form-select:focus { border-color:#81b69e; box-shadow:0 0 0 3px rgb(34 116 81 / 12%); }
+.attendance-manual-page .attendance-load-hint { display:block; margin-top:7px; font-size:12px; line-height:1.6; }
+.attendance-manual-page .btn { min-height:40px; padding:9px 13px; font-size:13px; border-radius:8px; font-weight:500; }
+.attendance-manual-page #tombolTampilkanSiswa { min-height:44px; }
+.attendance-manual-page .btn-primary { background:#245c9e; border-color:#245c9e; }
+.attendance-manual-page .btn-primary:hover { background:#1b487d; border-color:#1b487d; }
+.attendance-manual-page .btn-outline-primary { background:#edf5ff; border-color:#cbdef5; color:#245c9e; }
+.attendance-manual-page .btn-outline-primary:hover { background:#e0edfc; color:#1b487d; }
+.attendance-manual-page .btn-success { background:var(--attendance-green); border-color:var(--attendance-green); }
+.attendance-manual-page .btn-success:hover { background:#195b3e; border-color:#195b3e; }
+.attendance-manual-page .btn-outline-success { background:#eaf6ef; border-color:#c5e5d2; color:#226b4f; }
+.attendance-manual-page .btn-outline-success:hover { background:#dbeee2; }
+.attendance-manual-page .btn-outline-danger { background:#fff0f1; border-color:#f0ced1; color:#a93e4a; }
+.attendance-manual-page .btn-outline-danger:hover { background:#fbe0e3; }
+.attendance-manual-page .btn-outline-secondary { background:#f5f7fa; border-color:#dce3ed; color:#536880; }
+.attendance-manual-page .btn-outline-secondary:hover { background:#e9eef4; }
+.attendance-manual-page .attendance-roster-heading { align-items:center; gap:16px !important; }
+.attendance-manual-page .attendance-roster-title { display:flex; align-items:center; gap:9px; font-size:16px; font-weight:700; margin:0 0 12px; }
+.attendance-manual-page .attendance-roster-heading h6 { font-size:14px; line-height:1.6; }
+.attendance-manual-page .attendance-roster-heading small { font-size:12px; }
+.attendance-manual-page .attendance-session { padding:14px; border:1px solid #e6ebf2; border-radius:10px; background:#f8fafd; --bs-gutter-x:14px; }
+.attendance-manual-page .attendance-help { margin:0 0 14px; font-size:12px; color:#61738a; line-height:1.7; }
+.attendance-manual-page .student-list-toolbar { top:0; padding:12px; margin-inline:0; background:#f4f7fb; border-radius:10px; }
+.attendance-manual-page .student-attendance-row { border-radius:10px; padding:14px; }
+.attendance-manual-page .student-attendance-row:nth-child(even) { background:#fbfcfe; }
+.attendance-manual-page .student-attendance-row:focus-within { border-color:#a9cbb8; box-shadow:0 0 0 3px rgb(34 116 81 / 7%); }
+.attendance-manual-page .student-name strong { font-size:13px; color:#334155; }
+.attendance-manual-page .student-name small { margin-top:5px; font-size:11px; }
+.attendance-manual-page .status-option label,
+.attendance-manual-page .reset-student { border-radius:8px; font-size:12px; min-height:42px; }
+.attendance-manual-page .status-option label::before { font-family:"Font Awesome 6 Free"; font-weight:900; font-size:12px; width:14px; height:auto; flex:0 0 14px; border:0; border-radius:0; line-height:1; }
+.attendance-manual-page .status-hadir label::before { content:"\f4fc"; }
+.attendance-manual-page .status-sakit label::before { content:"\f481"; }
+.attendance-manual-page .status-izin label::before { content:"\f658"; }
+.attendance-manual-page .status-alpa label::before { content:"\f235"; }
+.attendance-manual-page .status-option input:checked + label { box-shadow:none; }
+.attendance-manual-page .status-option input:checked + label::before { border:0; background:none; box-shadow:none; }
+.attendance-manual-page .status-hadir label { color:#226b4f; background:#f4faf6; border-color:#c5e5d2; }
+.attendance-manual-page .status-sakit label { color:#8b601a; background:#fffbf2; border-color:#ebdcb9; }
+.attendance-manual-page .status-izin label { color:#245c9e; background:#f4f8ff; border-color:#cedef2; }
+.attendance-manual-page .status-alpa label { color:#a93e4a; background:#fff7f7; border-color:#efcfd3; }
+.attendance-manual-page .status-hadir input:checked + label { background:#227451; border-color:#227451; color:#fff; }
+.attendance-manual-page .status-sakit input:checked + label { background:#94651c; border-color:#94651c; color:#fff; }
+.attendance-manual-page .status-izin input:checked + label { background:#245c9e; border-color:#245c9e; color:#fff; }
+.attendance-manual-page .status-alpa input:checked + label { background:#b54150; border-color:#b54150; color:#fff; }
+.attendance-manual-page .manual-summary { border-radius:12px; border-color:#d4e4da; box-shadow:0 5px 20px rgb(27 49 78 / 9%); }
+.attendance-manual-page .manual-summary .badge { padding:8px 10px; font-weight:500; border-radius:6px; }
+.attendance-manual-page .manual-summary .bg-success { background:#e5f3eb !important; color:#226b4f; }
+.attendance-manual-page .manual-summary .bg-secondary { background:#fff1d8 !important; color:#805512; }
+.attendance-manual-page .manual-summary .bg-primary { background:#e8f0fc !important; color:#245c9e; }
+.attendance-manual-page .manual-summary .bg-danger { background:#fbe9eb !important; color:#a93e4a; }
+.attendance-manual-page .manual-summary .badge b { margin-left:4px; }
+.attendance-manual-page :is(button,a,select,input):focus-visible { outline:3px solid #86b7fe; outline-offset:2px; }
+@media(min-width:992px) {
+ .attendance-manual-page .manual-content { padding:24px 28px 32px !important; }
+ .attendance-manual-page .top-navbar { padding:18px 28px !important; }
+ .attendance-manual-page .manual-card .card-body { padding:22px !important; }
+ .attendance-manual-page #formPilihPengajaran { align-items:start !important; }
+ .attendance-manual-page #formPilihPengajaran > .col-md-3 { padding-top:32px; }
+}
+@media(min-width:992px) and (max-width:1199.98px) {
+ .attendance-manual-page .status-option label::before { display:none; }
+ .attendance-manual-page .status-option label,
+ .attendance-manual-page .reset-student { font-size:11px; }
+}
+@media(max-width:767.98px) {
+ .attendance-manual-page .attendance-header > div:first-child { flex-basis:100%; }
+ .attendance-manual-page .attendance-header > .btn { min-height:44px; }
+ .attendance-manual-page .attendance-roster-heading > .d-flex { gap:6px !important; }
+ .attendance-manual-page .attendance-session { padding:10px; }
+ .attendance-manual-page .student-list-toolbar { position:relative; }
+ .attendance-manual-page .manual-summary { position:relative; bottom:auto; }
+}
+@media(max-width:575.98px) {
+ .attendance-manual-page .manual-card .form-control,
+ .attendance-manual-page .manual-card .form-select { font-size:16px; }
+ .attendance-manual-page .status-option label,
+ .attendance-manual-page .reset-student { min-height:46px; }
+ .attendance-manual-page .manual-summary .badge { padding:8px 3px; font-size:11px; }
+ .attendance-manual-page .manual-summary .badge i { display:none; }
+}
