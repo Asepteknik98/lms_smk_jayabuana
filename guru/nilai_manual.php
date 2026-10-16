@@ -41,7 +41,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
   }
   if(!$target)throw new RuntimeException('Pilih atau buat target penilaian terlebih dahulu.');
   if($action==='template'){
-   $xml=nm_template($context,$id);header('Content-Type: application/vnd.ms-excel; charset=UTF-8');header('Content-Disposition: attachment; filename="Template_Manual_'.$kind.'_'.$target['nomor'].'_Kelas_'.$pid.'.xls"');header('Cache-Control: no-store');echo $xml;exit;
+   $className=trim(preg_replace('/[^A-Za-z0-9_-]+/','_',(string)$context['info']['nama_kelas']),'_');
+   if($className==='')$className=(string)$pid;
+   $filename='Template_Manual_'.$kind.'_'.$target['nomor'].'_Kelas_'.$className.'_ID_'.$pid.'.xls';
+   $xml=nm_template($context,$id);header('Content-Type: application/vnd.ms-excel; charset=UTF-8');header('Content-Disposition: attachment; filename="'.$filename.'"');header('Cache-Control: no-store');echo $xml;exit;
   }elseif($action==='preview'){
    unset($_SESSION['manual_target_import']);$file=$_FILES['excel']??[];
    if(($file['error']??null)!==UPLOAD_ERR_OK||!is_uploaded_file($file['tmp_name']??'')||($file['size']??0)>5*1024*1024||!in_array(strtolower(pathinfo($file['name']??'',PATHINFO_EXTENSION)),['xlsx','xls'],true))throw new RuntimeException('Unggah file Excel .xlsx atau .xls, maksimal 5 MB.');
