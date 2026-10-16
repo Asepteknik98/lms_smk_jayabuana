@@ -35,6 +35,18 @@ foreach(['uts'=>1,'uas'=>2,'praktik'=>3] as $kind=>$id){
  nm_save($db,1,1,1,$kind,$id,[2=>'80']);
  check((float)$db->query('SELECT nilai FROM nilai_komponen WHERE komponen_id='.$id.' AND siswa_id=2')->fetchColumn()===80.0,'Recap storage not updated');
 }
+check(nmc_status(0)==='Remedial'&&nmc_status(74.99)==='Remedial'&&nmc_status(75)==='Tuntas'&&nmc_status(100)==='Tuntas','Threshold must include exactly 75');
+nmc_update($db,1,1,1,'uts',1,1,'74.99','0');
+nmc_update($db,1,1,1,'uts',1,1,'75','74.99');
+check((float)$db->query('SELECT nilai FROM nilai_komponen WHERE komponen_id=1 AND siswa_id=1')->fetchColumn()===75.0,'Period grade edit did not reach recap');
+$q=$db->query('SELECT nilai_lama,nilai_baru FROM riwayat_nilai WHERE komponen_id=1 AND siswa_id=1 AND nilai_baru=75')->fetch();
+check((float)$q['nilai_lama']===74.99,'Edit history missing old value');
+reject(fn()=>nmc_update($db,1,1,1,'uts',1,1,'90','74.99'));
+reject(fn()=>nmc_update($db,1,1,1,'uts',1,1,'','75'));
+reject(fn()=>nmc_update($db,1,1,1,'uts',1,1,'101','75'));
+reject(fn()=>nmc_update($db,1,1,1,'praktik',3,1,'75','0'));
+reject(fn()=>nmc_update($db,2,2,1,'uts',1,1,'80','75'));
+nmc_update($db,1,1,1,'uas',2,1,'0','0');
 reject(fn()=>nm_context($db,2,1,'uts'));
 reject(fn()=>nm_save($db,1,1,1,'uts',2,[2=>'90']));
 reject(fn()=>nm_save($db,1,3,1,'uts',1,[2=>'90']));
@@ -57,6 +69,9 @@ foreach(['uts','uas','praktik'] as $kind){
  $_GET=['pengajaran_id'=>1,'jenis'=>$kind];ob_start();require 'guru/nilai_manual.php';$html=ob_get_clean();
  check(str_contains($html,'value="'.$kind.'" selected')&&str_contains($html,'Daftar nilai siswa'),'Component view not rendered');
  check(!str_contains($html,'id="buat-target-manual"'),'Component view offers task creation');
+ if($kind!=='praktik')check(str_contains($html,'Edit Nilai')&&str_contains($html,'period-edit-form'),'Period edit controls missing');
+ if($kind==='uas')check(str_contains($html,'Remedial')&&str_contains($html,'Tuntas')&&str_contains($html,'period-remedial'),'Grade status/color missing');
+ if($kind==='praktik')check(!str_contains($html,'period-edit-input'),'Practical grades unexpectedly editable');
 }
 $db->exec('DELETE FROM nilai_komponen WHERE komponen_id=3;DELETE FROM komponen_penilaian WHERE id=3');
 $_GET=['pengajaran_id'=>1,'jenis'=>'praktik'];ob_start();require 'guru/nilai_manual.php';$html=ob_get_clean();check(str_contains($html,'belum tersedia'),'Missing component guidance absent');
@@ -64,4 +79,25 @@ restore_error_handler();session_destroy();echo 'PASS component grades';
 `;
 const r=spawnSync('C:/xampp/php/php.exe',[],{cwd:path.join(__dirname,'..'),input:php,encoding:'utf8'});
 assert.equal(r.status,0,r.stderr+r.stdout);assert.match(r.stdout,/PASS component grades/);
+});
+
+test('Edit and cancel toggle only the selected student and restore its saved score',()=>{
+ const fs=require('node:fs');const vm=require('node:vm');
+ function makeRow(value){
+  const elements={};
+  for(const cls of ['period-score','period-edit-input','period-edit','period-save','period-cancel'])elements[cls]={value,events:{},hidden:false,disabled:false,focus(){},select(){},addEventListener(event,fn){this.events[event]=fn;}};
+  return {elements,querySelector:selector=>elements[selector.slice(1)]};
+ }
+ const first=makeRow('30.00'),second=makeRow('75.00');
+ vm.runInNewContext(fs.readFileSync(path.join(__dirname,'../assets/js/nilai-manual-edit.js'),'utf8'),{document:{querySelectorAll:()=>[first,second]}});
+ first.elements['period-edit'].events.click();
+ assert.equal(first.elements['period-edit-input'].disabled,false);
+ assert.equal(first.elements['period-score'].hidden,true);
+ assert.equal(first.elements['period-save'].hidden,false);
+ assert.equal(second.elements['period-edit-input'].value,'75.00');
+ first.elements['period-edit-input'].value='80';first.elements['period-cancel'].events.click();
+ assert.equal(first.elements['period-edit-input'].value,'30.00');
+ assert.equal(first.elements['period-edit-input'].disabled,true);
+ assert.equal(first.elements['period-score'].hidden,false);
+ assert.equal(first.elements['period-save'].hidden,true);
 });

@@ -18,9 +18,10 @@ function nmc_context(PDO $db,int $guru,int $pid,string $kind): array {
     $meetings=[];return compact('info','targets','students','scores','meetings','kind','pid');
 }
 
-function nmc_save(PDO $db,int $guru,int $user,int $pid,string $kind,int $id,array $values): array {
+function nmc_save(PDO $db,int $guru,int $user,int $pid,string $kind,int $id,array $values,array $expected=[]): array {
     $name=nm_component_name($kind);
     if($name===null||count($values)>5000)throw new RuntimeException('Format penilaian tidak valid.');
+    if($expected&&!in_array($kind,['uts','uas'],true))throw new RuntimeException('Edit nilai hanya tersedia untuk PSTS dan PSAS.');
     $entries=[];
     foreach($values as $sid=>$raw){
         if(!preg_match('/^[1-9][0-9]*$/D',(string)$sid))throw new RuntimeException('ID siswa tidak valid.');
@@ -39,7 +40,11 @@ function nmc_save(PDO $db,int $guru,int $user,int $pid,string $kind,int $id,arra
             $q=$db->prepare('SELECT id FROM siswa WHERE id=? AND kelas_id=? FOR UPDATE');$q->execute([$sid,$kelas]);
             if(!$q->fetchColumn())throw new RuntimeException('Siswa bukan anggota kelas ini.');
             $q=$db->prepare('SELECT nilai FROM nilai_komponen WHERE komponen_id=? AND siswa_id=? FOR UPDATE');$q->execute([$id,$sid]);$old=$q->fetch();
-            if($old&&$old['nilai']!==null){$skipped++;continue;}
+            if($expected){
+                $previous=nm_score($expected[$sid]??'');
+                if(!$old||$old['nilai']===null||$previous===null||abs((float)$old['nilai']-$previous)>.001)throw new RuntimeException('Nilai sudah berubah. Muat ulang halaman sebelum mengedit kembali.');
+                if(abs((float)$old['nilai']-$score)<.001){$skipped++;continue;}
+            }elseif($old&&$old['nilai']!==null){$skipped++;continue;}
             $db->prepare('INSERT INTO nilai_komponen(komponen_id,siswa_id,nilai) VALUES(?,?,?) ON DUPLICATE KEY UPDATE nilai=VALUES(nilai)')->execute([$id,$sid,$score]);
             $db->prepare('INSERT INTO riwayat_nilai(pengajaran_id,siswa_id,komponen_id,guru_id,nilai_lama,nilai_baru) VALUES(?,?,?,?,?,?)')->execute([$pid,$sid,$id,$guru,$old['nilai']??null,$score]);
             $saved++;
@@ -47,3 +52,10 @@ function nmc_save(PDO $db,int $guru,int $user,int $pid,string $kind,int $id,arra
         $db->commit();return compact('saved','skipped');
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
+
+function nmc_update(PDO $db,int $guru,int $user,int $pid,string $kind,int $id,int $sid,mixed $value,mixed $previous): array {
+    if(!in_array($kind,['uts','uas'],true)||nm_score($value)===null||nm_score($previous)===null)throw new RuntimeException('Isi nilai PSTS atau PSAS antara 0 sampai 100.');
+    return nmc_save($db,$guru,$user,$pid,$kind,$id,[$sid=>$value],[$sid=>$previous]);
+}
+
+function nmc_status(float $score): string { return $score>=75?'Tuntas':'Remedial'; }

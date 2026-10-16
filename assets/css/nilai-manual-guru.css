@@ -1,4 +1,10 @@
 /* Presentation for the teacher's manual grading page only. */
+.manual-grade-page .manual-students .period-pass { color:#226b4f !important; background:#e8f3ee !important; }
+.manual-grade-page .manual-students .period-remedial { color:#b02a37 !important; background:#fcebed !important; }
+.manual-grade-page .manual-students .period-actions { min-width:180px; }
+.manual-grade-page .period-actions .btn { margin:3px; white-space:nowrap; }
+.manual-grade-page .period-edit-form { display:none; }
+.manual-grade-page .period-grade-row [hidden] { display:none !important; }
 .manual-grade-page {
  --manual-blue:#245c9e; --manual-line:#dfe7f0; --manual-ink:#263b53;
  min-width:0; background:#f3f6fa; color:var(--manual-ink);
