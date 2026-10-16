@@ -1,0 +1,47 @@
+/* Scoped to the teacher recap; score calculations and shared pages stay unchanged. */
+.rekap-grade-page .top-navbar { display:flex; flex-wrap:wrap; gap:16px; align-items:center; }
+.rekap-grade-page .top-navbar > div:first-child { flex:1 1 320px; }
+.rekap-grade-page .top-navbar small { display:block; line-height:1.6; }
+.rekap-grade-page .nm-content { max-width:1600px; }
+.rekap-grade-page .nm-card { border-radius:14px; }
+.rekap-grade-page .rekap-guide { padding:16px 20px; border:1px solid #cfe2fa; border-radius:12px; background:#edf5ff; color:#24527c; line-height:1.7; }
+.rekap-grade-page summary { font-size:14px; font-weight:600; }
+.rekap-grade-page summary:focus-visible,
+.rekap-grade-page .rekap-table-scroll:focus-visible { outline:3px solid #86b7fe; outline-offset:2px; }
+.rekap-grade-page .rekap-actions { align-items:center; }
+.rekap-grade-page .rekap-actions .btn { padding:9px 13px; background:#fff; }
+.rekap-grade-page .rekap-actions .btn:hover { background:#edf5ff; color:#174f97; }
+.rekap-table-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:20px 22px; border-bottom:1px solid #e6ebf2; }
+.rekap-table-heading h2 { font-size:16px; font-weight:700; margin:0 0 5px; color:#24354b; }
+.rekap-table-heading p { font-size:13px; color:#64748b; margin:0; }
+.rekap-scroll-hint { font-size:12px; color:#64748b; }
+.rekap-grade-page .rekap-table-scroll { isolation:isolate; }
+.rekap-grade-page .rekap-results .table { width:100%; font-variant-numeric:tabular-nums; }
+.rekap-grade-page .rekap-results .table thead th { background:#f6f8fc; color:#475569; vertical-align:middle; min-width:160px; padding:16px; }
+.rekap-grade-page .rekap-results .table th small { min-width:0; font-size:11px; font-weight:500; color:#64748b; }
+.rekap-grade-page .rekap-results .table td { padding:16px; min-width:160px; }
+.rekap-grade-page .rekap-results .table tr > :first-child { position:sticky; left:0; z-index:1; width:200px; min-width:180px; max-width:240px; white-space:normal; overflow-wrap:anywhere; background:#fff; border-right:1px solid #e6ebf2; }
+.rekap-grade-page .rekap-results .table thead th:first-child { z-index:2; background:#f6f8fc; }
+.rekap-grade-page .rekap-results .rekap-student { font-size:13px; font-weight:600; color:#334155; vertical-align:middle; }
+.rekap-grade-page .rekap-results tbody tr:nth-child(even) > * { background-color:#fafbfd; }
+.rekap-grade-page .rekap-results tbody tr:hover > * { background-color:#f0f6ff; }
+.rekap-grade-page .rekap-results .nm-score { width:108px; text-align:center; font-weight:600; }
+.rekap-grade-page .score-input:disabled { background:#eef3f8; color:#476078; opacity:1; }
+.rekap-grade-page .score-label { width:max-content; padding:3px 8px; border-radius:5px; font-size:11px; background:#eef3f8; color:#476078 !important; }
+.rekap-grade-page td:has(.score-toggle[aria-pressed="true"]) .score-label { background:#fff3db; color:#87540c !important; }
+.rekap-grade-page .score-toggle { display:block; min-height:36px; font-size:12px; text-align:left; text-decoration:none; }
+.rekap-grade-page .score-toggle:hover { text-decoration:underline; }
+.rekap-grade-page .rekap-final strong { display:inline-block; padding:7px 10px; border-radius:8px; background:#eaf2ff; color:#2058a0; font-size:14px; }
+.rekap-grade-page .rekap-save { background:#f8faff; }
+.rekap-grade-page .rekap-save .btn { min-height:44px; padding:10px 20px; }
+@media(max-width:767.98px) {
+ .rekap-grade-page .top-navbar > div:first-child { flex-basis:100%; }
+ .rekap-grade-page .top-navbar > .btn { margin:0 !important; }
+ .rekap-grade-page .rekap-actions { display:grid !important; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .rekap-grade-page .rekap-actions .btn { display:flex; justify-content:center; align-items:center; font-size:12px; min-height:44px; }
+ .rekap-grade-page .rekap-table-heading { padding:16px; }
+ .rekap-grade-page .rekap-results .table tr > :first-child { width:130px; min-width:130px; max-width:150px; padding:12px; }
+ .rekap-grade-page .rekap-results .table td,
+ .rekap-grade-page .rekap-results .table thead th:not(:first-child) { min-width:145px; padding:12px; }
+ .rekap-grade-page .rekap-save .btn { width:100%; }
+}
