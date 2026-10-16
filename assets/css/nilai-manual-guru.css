@@ -1,0 +1,101 @@
+/* Presentation for the teacher's manual grading page only. */
+.manual-grade-page {
+ --manual-blue:#245c9e; --manual-line:#dfe7f0; --manual-ink:#263b53;
+ min-width:0; background:#f3f6fa; color:var(--manual-ink);
+}
+.manual-grade-page .nm-content { width:100%; min-width:0; max-width:1760px; flex:0 0 auto; }
+.manual-grade-page .top-navbar { display:flex; flex:0 0 auto; flex-wrap:wrap; align-items:center; gap:12px; border-bottom:1px solid var(--manual-line); box-shadow:none; }
+.manual-grade-page .top-navbar > div:first-child { flex:1 1 320px; min-width:0; }
+.manual-grade-page .top-navbar h1 { display:flex; gap:10px; align-items:center; color:#203d60; letter-spacing:-.3px; }
+.manual-grade-page .top-navbar small { display:block; line-height:1.6; }
+.manual-grade-page .manual-title-icon { display:inline-grid; place-items:center; width:36px; height:36px; flex-shrink:0; border-radius:10px; color:#fff; background:var(--manual-blue); font-size:17px; }
+.manual-grade-page .top-navbar > a { background:#edf3fb; color:var(--manual-blue); border-color:#cbdcf0; }
+.manual-grade-page .top-navbar > [data-install-pwa] { margin-left:0 !important; }
+.manual-grade-page .nm-card { border-color:var(--manual-line); border-radius:12px; box-shadow:0 3px 14px rgb(27 49 78 / 3%); }
+.manual-grade-page .manual-filter { border-left:4px solid #7052ad; }
+.manual-grade-page .manual-section-heading { display:flex; gap:10px; align-items:center; margin-bottom:20px; }
+.manual-grade-page .manual-section-heading h2 { font-size:16px; font-weight:700; margin:0 0 4px; }
+.manual-grade-page .manual-section-heading p { font-size:12px; color:#61738a; margin:0; line-height:1.6; }
+.manual-grade-page .manual-section-icon { display:inline-grid; place-items:center; width:32px; height:32px; border-radius:8px; flex-shrink:0; font-size:15px; vertical-align:middle; margin-right:9px; }
+.manual-grade-page .manual-section-heading > .manual-section-icon { width:38px; height:38px; margin:0; }
+.manual-grade-page .tone-blue { color:#245c9e; background:#e8f1ff; }
+.manual-grade-page .tone-purple { color:#7046aa; background:#eee7fb; }
+.manual-grade-page .tone-teal { color:#1f6e8c; background:#e2f1f5; }
+.manual-grade-page .tone-green { color:#226b55; background:#e6f4ed; }
+.manual-grade-page .tone-slate { color:#536880; background:#edf1f6; }
+.manual-grade-page .form-label { color:#38516d; font-size:13px; }
+.manual-grade-page .form-label > i { width:15px; color:#6c7f98; text-align:center; }
+.manual-grade-page .manual-filter .form-label > i { color:#7052ad; }
+.manual-grade-page .form-control,
+.manual-grade-page .form-select { min-height:44px; border-color:#d4deeb; color:var(--manual-ink); }
+.manual-grade-page .form-select { background-color:#fbfcfe; }
+.manual-grade-page .form-control:focus,
+.manual-grade-page .form-select:focus { border-color:#6e9bcf; box-shadow:0 0 0 3px rgb(36 92 158 / 12%); }
+.manual-grade-page .form-control:disabled { color:#61738a; background:#f0f3f7; opacity:1; }
+.manual-grade-page .form-control::placeholder { color:#7b8ba0; }
+.manual-grade-page :is(summary,button,a,[tabindex]):focus-visible { outline:3px solid #86b7fe; outline-offset:3px; }
+.manual-grade-page .manual-empty-hint { padding:12px 14px; border:1px solid #eadcb8; border-radius:9px; background:#fffbf0; color:#7c602b; font-size:13px; line-height:1.7; }
+.manual-grade-page .manual-target { padding:14px 16px; background:#edf5ff; border-color:#d5e4f8; color:#315c8e; line-height:1.7; }
+.manual-grade-page .manual-create { border-left:4px solid #4b83c1; }
+.manual-grade-page summary { cursor:pointer; font-size:14px; line-height:1.8; }
+.manual-grade-page summary::marker { color:#8192a7; }
+.manual-grade-page .manual-create > summary { color:#245c9e !important; }
+.manual-grade-page .manual-create > p { line-height:1.8; }
+.manual-grade-page .manual-create small { display:block; font-size:12px; margin-top:6px; line-height:1.6; }
+.manual-grade-page .manual-student-heading { align-items:center; gap:14px !important; }
+.manual-grade-page .manual-student-heading h2 { display:flex; align-items:center; }
+.manual-grade-page .manual-student-heading small { display:block; font-size:12px; margin-top:7px; line-height:1.6; }
+.manual-grade-page .manual-score-scroll { isolation:isolate; height:auto; max-height:none; overflow-x:auto; scrollbar-width:thin; scrollbar-color:#b9c9dc #f3f6fa; }
+.manual-grade-page .table { --bs-table-border-color:#e6ebf2; font-variant-numeric:tabular-nums; }
+.manual-grade-page .table thead th { background:#f0f4f9; color:#405873; vertical-align:middle; padding:14px 18px; font-weight:600; }
+.manual-grade-page .table td { vertical-align:middle; }
+.manual-grade-page .table tbody tr:nth-child(even) > * { background-color:#fafcfe; }
+.manual-grade-page .table tbody tr:hover > * { background-color:#f0f6ff; }
+.manual-grade-page .manual-students .table th:first-child,
+.manual-grade-page .manual-students .table td:first-child { width:56px; min-width:45px; color:#61738a; text-align:center; }
+.manual-grade-page .manual-students .table th:nth-child(2),
+.manual-grade-page .manual-students .table td:nth-child(2) { min-width:185px; }
+.manual-grade-page .manual-students .table td:nth-child(2) small { margin-top:4px; font-size:11px; }
+.manual-grade-page .manual-students .table th:nth-child(3),
+.manual-grade-page .manual-students .table td:nth-child(3) { min-width:150px; text-align:center; }
+.manual-grade-page .manual-students .table th:nth-child(4),
+.manual-grade-page .manual-students .table td:nth-child(4) { width:150px; min-width:130px; text-align:center; }
+.manual-grade-page .manual-students .nm-score { width:100px; margin-inline:auto; text-align:center; }
+.manual-grade-page .manual-students .table td:nth-child(4) > strong { display:inline-block; padding:7px 12px; min-width:60px; border-radius:7px; background:#e8f3ee; color:#25634c; }
+.manual-grade-page .badge { font-size:11px; border:1px solid transparent; }
+.manual-grade-page .badge.bg-success { background:#e8f3ee !important; border-color:#cce5d9; color:#25634c; }
+.manual-grade-page .badge.bg-secondary { background:#f0f3f7 !important; border-color:#e0e6ee; color:#536880; }
+.manual-grade-page .manual-save { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; background:#f8fafd; }
+.manual-grade-page .manual-save > span { font-size:12px; color:#61738a; line-height:1.6; }
+.manual-grade-page .btn { min-height:40px; padding:9px 14px; font-size:13px; font-weight:500; }
+.manual-grade-page .btn-primary { background:var(--manual-blue); border-color:var(--manual-blue); }
+.manual-grade-page .btn-primary:hover { background:#1b487d; border-color:#1b487d; }
+.manual-grade-page .btn-primary:disabled { background:#6984a5; border-color:#6984a5; }
+.manual-grade-page .btn-outline-primary { color:#245c9e; border-color:#cbdef5; background:#f3f8ff; }
+.manual-grade-page .btn-outline-primary:hover { color:#1b487d; background:#e5efff; }
+.manual-grade-page .btn-outline-success { color:#226b55; border-color:#c5e5d8; background:#eaf6f1; }
+.manual-grade-page .btn-outline-success:hover { color:#17553f; background:#dbefe4; }
+.manual-grade-page .manual-import { border-left:4px solid #38876b; scroll-margin-top:20px; }
+.manual-grade-page .manual-import > p { line-height:1.7; margin-top:10px; }
+.manual-grade-page .manual-import form[enctype] { padding:16px; border:1px dashed #c5ddcf; border-radius:10px; background:#f7fbf9; align-items:center; }
+.manual-grade-page .manual-import .nm-upload { max-width:540px; flex:1 1 260px; width:auto; background:#fff; }
+.manual-grade-page .manual-history h2 { line-height:1.7; }
+@media(min-width:992px) {
+ .manual-grade-page .nm-content { padding:24px 28px 32px !important; }
+ .manual-grade-page .top-navbar { padding:18px 28px !important; }
+ .manual-grade-page .nm-card.p-4 { padding:22px !important; }
+ .manual-grade-page .manual-student-heading { padding:18px 22px !important; }
+ .manual-grade-page .manual-save { padding:16px 22px !important; }
+}
+@media(max-width:767.98px) {
+ .manual-grade-page .top-navbar > div:first-child { flex-basis:100%; }
+ .manual-grade-page .top-navbar > .btn { min-height:44px; }
+ .manual-grade-page .manual-section-heading { margin-bottom:16px; }
+ .manual-grade-page .manual-save .btn { width:100%; min-height:44px; }
+ .manual-grade-page .manual-import form[enctype] { padding:12px; }
+ .manual-grade-page .manual-import .nm-upload { max-width:100%; min-width:0; flex-basis:100%; }
+ .manual-grade-page .manual-import form[enctype] .btn { width:100%; }
+ .manual-grade-page .manual-students .table th:nth-child(2),
+ .manual-grade-page .manual-students .table td:nth-child(2) { min-width:160px; }
+ .manual-grade-page .manual-student-heading { padding:18px !important; }
+}
