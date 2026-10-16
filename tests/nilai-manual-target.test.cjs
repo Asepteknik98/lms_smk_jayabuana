@@ -80,6 +80,12 @@ ini_set('session.save_path',sys_get_temp_dir());require 'config/session.php';$_S
 set_error_handler(function($severity,$message,$file,$line){if(error_reporting()&$severity)throw new ErrorException($message,0,$severity,$file,$line);});
 ob_start();require 'guru/nilai_manual.php';$html=ob_get_clean();
 check(!str_contains($html,'Riwayat penilaian tugas')&&str_contains($html,'Pengenalan Algoritma')&&str_contains($html,'Arsip nilai manual lama'),'Task history must be hidden while topic and archive remain');
+preg_match('~<select id="nmTarget"[^>]*>(.*?)</select>~s',$html,$taskSelect);
+check(!str_contains($html,'id="nmPertemuan"')&&substr_count($html,'name="target_id" class="form-select"')===1,'Duplicate meeting/task selectors remain');
+check(str_contains($taskSelect[1],'Tugas 1')&&str_contains($taskSelect[1],'Praktik')&&str_contains($taskSelect[1],'Tugas 2')&&str_contains($taskSelect[1],'Essai'),'Task numbers or titles missing');
+$_GET=['pengajaran_id'=>1,'jenis'=>'tugas','target_id'=>2,'pertemuan'=>1];ob_start();require 'guru/nilai_manual.php';$oldLinkHtml=ob_get_clean();
+preg_match('~<select id="nmTarget"[^>]*>(.*?)</select>~s',$oldLinkHtml,$oldLinkSelect);
+check(str_contains($oldLinkSelect[1],'value="2" selected')&&str_contains($oldLinkSelect[1],'Tugas 1'),'Old meeting parameter hides tasks or changes explicit selection');
 check(str_contains($html,'Unduh Template Excel')&&str_contains($html,'Sudah dinilai')&&str_contains($html,'Belum dinilai'),'Input or import statuses missing');
 file_put_contents(sys_get_temp_dir().'/lms_manual_target_preview.html',str_replace('<head>','<head><base href="file:///C:/xampp/htdocs/lms/guru/">',$html));
 $_GET=['pengajaran_id'=>1];ob_start();require 'guru/nilai_manual.php';$autoHtml=ob_get_clean();check(str_contains($autoHtml,'Daftar nilai siswa')&&str_contains($autoHtml,'Buat Target dan Mulai Menilai')&&$id>0,'Student list or auto-selected target is missing');

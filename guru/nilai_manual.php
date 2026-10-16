@@ -9,14 +9,14 @@ $q=$db->prepare('SELECT id FROM guru WHERE user_id=?');$q->execute([$_SESSION['u
 if(!$guru){http_response_code(403);exit('Data guru tidak ditemukan.');}
 $q=$db->prepare('SELECT p.id,p.semester,p.tahun_ajaran,k.nama_kelas,m.nama_mapel FROM pengajaran p JOIN kelas k ON k.id=p.kelas_id JOIN mapel m ON m.id=p.mapel_id WHERE p.guru_id=? ORDER BY p.tahun_ajaran DESC,k.nama_kelas,m.nama_mapel');$q->execute([$guru]);$assignments=$q->fetchAll();
 $input=$_SERVER['REQUEST_METHOD']==='POST'?$_POST:$_GET;
-$pid=(int)($input['pengajaran_id']??($assignments[0]['id']??0));$kind=($input['jenis']??'tugas')==='ujian'?'ujian':'tugas';$id=(int)($input['target_id']??0);$meeting=max(0,(int)($input['pertemuan']??0));
+$pid=(int)($input['pengajaran_id']??($assignments[0]['id']??0));$kind=($input['jenis']??'tugas')==='ujian'?'ujian':'tugas';$id=(int)($input['target_id']??0);$meeting=0;
 $context=null;$target=null;$error='';$preview=null;
 try{
  if($pid)$context=nm_context($db,$guru,$pid,$kind);
  if($id&&$context)$target=nm_target($context,$id);
 }catch(Throwable $e){http_response_code(403);exit('Kelas atau target penilaian tidak dapat diakses.');}
 if($context&&!$target&&$_SERVER['REQUEST_METHOD']==='GET'){
- $candidates=$kind==='tugas'&&$meeting?array_values(array_filter($context['targets'],static fn($t)=>(int)$t['pertemuan_ke']===$meeting)):$context['targets'];
+ $candidates=$context['targets'];
  foreach($candidates as $candidate){
   $target=$candidate;
   if(array_filter($context['students'],static fn($student)=>!isset($context['scores'][$student['id']][$candidate['id']]['nilai'])))break;
@@ -24,7 +24,7 @@ if($context&&!$target&&$_SERVER['REQUEST_METHOD']==='GET'){
  if($target)$id=(int)$target['id'];
 }
 if(!isset($_SESSION['manual_create_token']))$_SESSION['manual_create_token']=bin2hex(random_bytes(24));
-$url='nilai_manual.php?'.http_build_query(['pengajaran_id'=>$pid,'jenis'=>$kind,'target_id'=>$id,'pertemuan'=>$meeting]);
+$url='nilai_manual.php?'.http_build_query(['pengajaran_id'=>$pid,'jenis'=>$kind,'target_id'=>$id]);
 if($_SERVER['REQUEST_METHOD']==='POST'){
  try{
   if(!is_string($_POST['csrf_token']??null)||!verify_csrf($_POST['csrf_token']))throw new RuntimeException('Sesi keamanan berakhir. Muat ulang halaman.');
@@ -37,7 +37,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
    $created=nm_create_target($db,$guru,(int)$_SESSION['user_id'],$pid,$kind,$_POST['judul_manual'],$newMeeting,$_POST['tanggal_manual']);
    $_SESSION['manual_create_token']=bin2hex(random_bytes(24));
    $_SESSION['manual_target_success']='Target manual dibuat. Silakan isi atau impor nilai siswa.';
-   header('Location: nilai_manual.php?'.http_build_query(['pengajaran_id'=>$pid,'jenis'=>$kind,'target_id'=>$created,'pertemuan'=>$kind==='tugas'?$newMeeting:0]));exit;
+   header('Location: nilai_manual.php?'.http_build_query(['pengajaran_id'=>$pid,'jenis'=>$kind,'target_id'=>$created]));exit;
   }
   if(!$target)throw new RuntimeException('Pilih atau buat target penilaian terlebih dahulu.');
   if($action==='template'){
@@ -64,10 +64,10 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
 $plan=$_SESSION['manual_target_import']??null;
 if($plan&&($plan['user']===(int)$_SESSION['user_id']&&$plan['guru']===$guru&&$plan['pid']===$pid&&$plan['kind']===$kind&&$plan['id']===$id&&$plan['expires']>=time()))$preview=$plan;
 $success=$_SESSION['manual_target_success']??'';unset($_SESSION['manual_target_success']);
-$hidden=static function()use($pid,$kind,$id,$meeting):void{
- foreach(['csrf_token'=>$_SESSION['csrf_token'],'pengajaran_id'=>$pid,'jenis'=>$kind,'target_id'=>$id,'pertemuan'=>$meeting] as $name=>$value)echo '<input type="hidden" name="'.sanitize($name).'" value="'.sanitize((string)$value).'">';
+$hidden=static function()use($pid,$kind,$id):void{
+ foreach(['csrf_token'=>$_SESSION['csrf_token'],'pengajaran_id'=>$pid,'jenis'=>$kind,'target_id'=>$id] as $name=>$value)echo '<input type="hidden" name="'.sanitize($name).'" value="'.sanitize((string)$value).'">';
 };
-$targets=$context['targets']??[];$filtered=$kind==='tugas'&&$meeting?array_values(array_filter($targets,static fn($t)=>(int)$t['pertemuan_ke']===$meeting)):$targets;
+$targets=$context['targets']??[];$filtered=$targets;
 $legacy=[];if($context){$q=$db->prepare('SELECT n.*,s.nama_lengkap FROM nilai_tugas_manual n JOIN siswa s ON s.id=n.siswa_id AND s.kelas_id=? WHERE n.pengajaran_id=? ORDER BY n.pertemuan_ke,s.nama_lengkap');$q->execute([$context['info']['kelas_id'],$pid]);$legacy=$q->fetchAll();}
 require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../includes/sidebar.php';
 ?>
@@ -80,8 +80,7 @@ require_once __DIR__.'/../includes/header.php';require_once __DIR__.'/../include
 <section class="nm-card manual-filter p-4 mb-4"><div class="manual-section-heading"><span class="manual-section-icon tone-purple"><i class="fa-solid fa-filter" aria-hidden="true"></i></span><div><h2>Pilih penilaian</h2><p>Tentukan kelas dan tugas atau ujian yang akan dinilai.</p></div></div><form method="get" class="row g-3">
 <div class="col-md-8"><label for="nmKelas" class="form-label fw-semibold"><i class="fa-solid fa-book-open me-2" aria-hidden="true"></i>Mata pelajaran dan kelas</label><select name="pengajaran_id" id="nmKelas" class="form-select" onchange="this.form.target_id.value='';this.form.submit()"><option value="">Pilih kelas</option><?php foreach($assignments as $a): ?><option value="<?= (int)$a['id'] ?>" <?= (int)$a['id']===$pid?'selected':'' ?>><?= sanitize($a['nama_mapel'].' - '.$a['nama_kelas'].' ('.$a['semester'].', '.$a['tahun_ajaran'].')') ?></option><?php endforeach ?></select></div>
 <div class="col-md-4"><label for="nmJenis" class="form-label fw-semibold"><i class="fa-solid fa-layer-group me-2" aria-hidden="true"></i>Jenis penilaian</label><select name="jenis" id="nmJenis" class="form-select" onchange="this.form.target_id.value='';this.form.submit()"><option value="tugas" <?= $kind==='tugas'?'selected':'' ?>>Nilai Tugas</option><option value="ujian" <?= $kind==='ujian'?'selected':'' ?>>Ujian Harian</option></select></div>
-<?php if($kind==='tugas'): ?><div class="col-md-5"><label for="nmPertemuan" class="form-label fw-semibold"><i class="fa-solid fa-calendar-days me-2" aria-hidden="true"></i>Pertemuan dan materi</label><select id="nmPertemuan" name="pertemuan" class="form-select" onchange="this.form.target_id.value='';this.form.submit()"><option value="0">Semua pertemuan</option><?php $maxMeeting=max(array_merge([20],array_map(static fn($t)=>(int)$t['pertemuan_ke'],$targets)));for($n=1;$n<=$maxMeeting;$n++): ?><option value="<?= $n ?>" <?= $meeting===$n?'selected':'' ?>>Pertemuan <?= $n ?> &mdash; <?= sanitize(implode('; ',$context['meetings'][$n]??['Belum ada materi'])) ?></option><?php endfor ?></select></div><?php endif ?>
-<div class="<?= $kind==='tugas'?'col-md-7':'col-12' ?>"><label for="nmTarget" class="form-label fw-semibold"><i class="fa-solid fa-bullseye me-2" aria-hidden="true"></i>Target <?= $kind==='tugas'?'tugas':'ujian harian' ?></label><select id="nmTarget" name="target_id" class="form-select" onchange="this.form.submit()"><option value="">Pilih target penilaian</option><?php foreach($filtered as $t): ?><option value="<?= (int)$t['id'] ?>" <?= (int)$t['id']===$id?'selected':'' ?>><?= sanitize($t['label']) ?></option><?php endforeach ?></select></div></form>
+<div class="col-12"><label for="nmTarget" class="form-label fw-semibold"><i class="fa-solid fa-list-check me-2" aria-hidden="true"></i><?= $kind==='tugas'?'Tugas':'Ujian Harian' ?></label><select id="nmTarget" name="target_id" class="form-select" onchange="this.form.submit()"><option value="">Pilih <?= $kind==='tugas'?'tugas':'ujian harian' ?></option><?php foreach($filtered as $t): ?><option value="<?= (int)$t['id'] ?>" <?= (int)$t['id']===$id?'selected':'' ?>><?= sanitize($t['label']) ?></option><?php endforeach ?></select></div></form>
 <?php if(!$filtered): ?><p class="manual-empty-hint mt-3 mb-0"><i class="fa-solid fa-circle-info me-2" aria-hidden="true"></i>Belum ada target pada pilihan ini. Buat target manual melalui form di bawah untuk mulai menilai siswa.</p><?php endif ?>
 <?php if($target): ?><div class="alert alert-primary manual-target mt-3 mb-0"><i class="fa-solid fa-bullseye me-2" aria-hidden="true"></i><strong><?= sanitize($target['label']) ?></strong><?php if($kind==='tugas'): ?><div class="small mt-1">Pertemuan <?= (int)$target['pertemuan_ke'] ?> &mdash; <?= sanitize(implode('; ',$context['meetings'][(int)$target['pertemuan_ke']]??['Belum ada materi'])) ?></div><?php endif ?><div class="small mt-1">Nilai tersimpan diteruskan ke <?= $kind==='tugas'?'Rekap Tugas dan rata-rata Tugas Harian':'rata-rata Ulangan Harian' ?>. Nilai kosong dilewati; angka 0 tetap disimpan.</div></div><?php endif ?></section>
 <?php if($context): ?>
