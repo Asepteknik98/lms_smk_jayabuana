@@ -78,6 +78,24 @@
 .rekap-grade-page .btn-primary:hover { background:#1b487d; border-color:#1b487d; }
 .rekap-grade-page .btn-primary:disabled { background:#6984a5; border-color:#6984a5; }
 /* Laptop layout: more working space and a compact, aligned table. */
+.rekap-grade-page .rekap-component-table { min-width:620px; margin-bottom:0; }
+.rekap-grade-page .rekap-component-table th,
+.rekap-grade-page .rekap-component-table td { vertical-align:middle; padding:14px 12px; }
+.rekap-grade-page .rekap-component-table th:first-child { width:40%; }
+.rekap-grade-page .rekap-component-table th:nth-child(2) { width:20%; }
+.rekap-grade-page .rekap-component-table th:nth-child(3) { width:40%; }
+.rekap-grade-page .rekap-component-table tbody th { color:#334155; font-size:13px; }
+.rekap-grade-page .rekap-component-table tbody th small { font-size:11px; }
+.rekap-grade-page .component-weight[readonly] { background:#f2f5f9; border-color:transparent; color:#475569; }
+.rekap-grade-page .rekap-component-actions,
+.rekap-grade-page .component-edit-form { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.rekap-grade-page .rekap-component-actions .btn { min-height:40px; padding:8px 11px; font-size:13px; white-space:nowrap; }
+.rekap-grade-page .rekap-component-actions [hidden] { display:none !important; }
+.rekap-grade-page .rekap-component-actions .btn-outline-danger { color:#a93e4a; background:#fff0f1; border-color:#efcfd3; }
+.rekap-grade-page .rekap-component-actions .btn-outline-danger:hover { background:#fbe0e3; }
+.rekap-grade-page .rekap-component-actions .btn:disabled { opacity:.5; }
+.rekap-grade-page .rekap-component-row.is-editing { background:#f3f8ff; }
+.rekap-grade-page .rekap-component-help { line-height:1.7; }
 @media(min-width:992px) {
  .rekap-grade-page .nm-content { padding:24px 28px 32px !important; }
  .rekap-grade-page .top-navbar { padding:18px 28px !important; gap:12px; }

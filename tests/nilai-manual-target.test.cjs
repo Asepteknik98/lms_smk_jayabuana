@@ -30,6 +30,8 @@ $tables=[
 'detail_absensi'=>'sesi_absensi_id INT,siswa_id INT,status VARCHAR(20)',
 'komponen_penilaian'=>'id INT PRIMARY KEY,pengajaran_id INT,nama_komponen VARCHAR(100),bobot DECIMAL(5,2),urutan INT',
 'nilai_komponen'=>'siswa_id INT,komponen_id INT,nilai DECIMAL(5,2)',
+'riwayat_nilai'=>'komponen_id INT',
+'capaian_penilaian'=>'komponen_id INT',
 'log_aktivitas'=>'user_id INT,aktivitas VARCHAR(255),ip_address VARCHAR(45),user_agent TEXT'
 ];
 foreach($tables as $name=>$schema)$db->exec("CREATE TEMPORARY TABLE $name ($schema) ENGINE=InnoDB");

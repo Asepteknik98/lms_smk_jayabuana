@@ -32,8 +32,9 @@ try {
    else{$stmt=$db->prepare('SELECT id FROM komponen_penilaian WHERE id=? AND pengajaran_id=?');$stmt->execute([$id,$pengajaran_id]);if(!$stmt->fetchColumn())throw new RuntimeException('Komponen tidak ditemukan.');$stmt=$db->prepare('UPDATE komponen_penilaian SET nama_komponen=?,bobot=? WHERE id=? AND pengajaran_id=?');$stmt->execute([$nama,$bobot,$id,$pengajaran_id]);}
    $_SESSION['flash_success']='Komponen penilaian berhasil disimpan.';
  } elseif($action==='delete'){
-   $stmt=$db->prepare('DELETE FROM komponen_penilaian WHERE id=? AND pengajaran_id=?');$stmt->execute([(int)($_POST['id']??0),$pengajaran_id]);
-   $_SESSION['flash_success']='Komponen beserta nilainya berhasil dihapus.';
+   require_once __DIR__.'/../includes/komponen_penilaian_tools.php';
+   kp_delete_empty($db,$guru_id,$pengajaran_id,(int)($_POST['id']??0));
+   $_SESSION['flash_success']='Komponen kosong berhasil dihapus. Sesuaikan kembali total bobot hingga 100%.';
  } elseif($action==='save_settings'){
    $kkm=(float)($_POST['kkm']??0);if($kkm<1||$kkm>100)throw new RuntimeException('KKM harus berada di antara 1 sampai 100.');
    $stmt=$db->prepare('UPDATE pengajaran SET kkm=? WHERE id=? AND guru_id=?');$stmt->execute([$kkm,$pengajaran_id,$guru_id]);
