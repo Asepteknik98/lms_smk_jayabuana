@@ -1,97 +1,127 @@
-/* Scoped to the teacher recap; score calculations and shared pages stay unchanged. */
-.rekap-grade-page .top-navbar { display:flex; flex-wrap:wrap; gap:16px; align-items:center; }
-.rekap-grade-page .top-navbar > div:first-child { flex:1 1 320px; }
-.rekap-grade-page .top-navbar small { display:block; line-height:1.6; }
-.rekap-grade-page .nm-content { max-width:1600px; }
-.rekap-grade-page .nm-card { border-radius:14px; }
-.rekap-grade-page .rekap-guide { padding:16px 20px; border:1px solid #cfe2fa; border-radius:12px; background:#edf5ff; color:#24527c; line-height:1.7; }
-.rekap-grade-page summary { font-size:14px; font-weight:600; }
-.rekap-grade-page summary:focus-visible,
-.rekap-grade-page .rekap-table-scroll:focus-visible { outline:3px solid #86b7fe; outline-offset:2px; }
-.rekap-grade-page .rekap-actions { align-items:center; }
-.rekap-grade-page .rekap-actions .btn { padding:9px 13px; background:#fff; }
-.rekap-grade-page .rekap-actions .btn:hover { background:#edf5ff; color:#174f97; }
-.rekap-table-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; padding:20px 22px; border-bottom:1px solid #e6ebf2; }
-.rekap-table-heading h2 { font-size:16px; font-weight:700; margin:0 0 5px; color:#24354b; }
-.rekap-table-heading p { font-size:13px; color:#64748b; margin:0; }
-.rekap-scroll-hint { font-size:12px; color:#64748b; }
-.rekap-grade-page .rekap-table-scroll { isolation:isolate; }
-.rekap-grade-page .rekap-results .table { width:100%; font-variant-numeric:tabular-nums; }
-.rekap-grade-page .rekap-results .table thead th { background:#f6f8fc; color:#475569; vertical-align:middle; min-width:160px; padding:16px; }
-.rekap-grade-page .rekap-results .table th small { min-width:0; font-size:11px; font-weight:500; color:#64748b; }
-.rekap-grade-page .rekap-results .table td { padding:16px; min-width:160px; }
-.rekap-grade-page .rekap-results .table tr > :first-child { position:sticky; left:0; z-index:1; width:200px; min-width:180px; max-width:240px; white-space:normal; overflow-wrap:anywhere; background:#fff; border-right:1px solid #e6ebf2; }
-.rekap-grade-page .rekap-results .table thead th:first-child { z-index:2; background:#f6f8fc; }
-.rekap-grade-page .rekap-results .rekap-student { font-size:13px; font-weight:600; color:#334155; vertical-align:middle; }
-.rekap-grade-page .rekap-results tbody tr:nth-child(even) > * { background-color:#fafbfd; }
-.rekap-grade-page .rekap-results tbody tr:hover > * { background-color:#f0f6ff; }
-.rekap-grade-page .rekap-results .nm-score { width:108px; text-align:center; font-weight:600; }
-.rekap-grade-page .score-input:disabled { background:#eef3f8; color:#476078; opacity:1; }
-.rekap-grade-page .score-label { width:max-content; padding:3px 8px; border-radius:5px; font-size:11px; background:#eef3f8; color:#476078 !important; }
-.rekap-grade-page td:has(.score-toggle[aria-pressed="true"]) .score-label { background:#fff3db; color:#87540c !important; }
-.rekap-grade-page .score-toggle { display:block; min-height:36px; font-size:12px; text-align:left; text-decoration:none; }
-.rekap-grade-page .score-toggle:hover { text-decoration:underline; }
-.rekap-grade-page .rekap-final strong { display:inline-block; padding:7px 10px; border-radius:8px; background:#eaf2ff; color:#2058a0; font-size:14px; }
-.rekap-grade-page .rekap-save { background:#f8faff; }
-.rekap-grade-page .rekap-save .btn { min-height:44px; padding:10px 20px; }
-@media(max-width:767.98px) {
- .rekap-grade-page .top-navbar > div:first-child { flex-basis:100%; }
- .rekap-grade-page .top-navbar > .btn { margin:0 !important; }
- .rekap-grade-page .rekap-actions .btn { display:flex; justify-content:center; align-items:center; font-size:12px; min-height:44px; }
- .rekap-grade-page .rekap-table-heading { padding:16px; }
- .rekap-grade-page .rekap-results .table tr > :first-child { width:130px; min-width:130px; max-width:150px; padding:12px; }
- .rekap-grade-page .rekap-results .table td,
- .rekap-grade-page .rekap-results .table thead th:not(:first-child) { min-width:145px; padding:12px; }
- .rekap-grade-page .rekap-save .btn { width:100%; }
+/* Teacher recap only. Keep shared pages and grading behavior independent. */
+.rekap-grade-page {
+ --rk-blue:#245c9e; --rk-ink:#263b53; --rk-line:#dfe7f0;
+ background:#f3f6fa; color:var(--rk-ink); min-width:0;
 }
-
-/* A quieter palette and clear groups for daily teacher workflows. */
-.rekap-grade-page { background:#f3f6fa; color:#263b53; --rekap-blue:#245c9e; }
-.rekap-grade-page .top-navbar { box-shadow:none; border-bottom:1px solid #e2e8f0; }
-.rekap-grade-page .top-navbar h1 { color:#203d60; letter-spacing:-.3px; }
-.rekap-grade-page .top-navbar > a { background:#edf3fb; color:#245c9e; border-color:#d1dff0; }
-.rekap-grade-page .nm-card { box-shadow:0 3px 14px rgb(27 49 78 / 3%); border-color:#e0e7f0; }
-.rekap-grade-page .rekap-class-picker { border-top:3px solid var(--rekap-blue); }
-.rekap-grade-page .form-select { color:#263b53; min-height:46px; background-color:#fbfcfe; }
+.rekap-grade-page .nm-content { max-width:1760px; width:100%; min-width:0; flex:0 0 auto; }
+.rekap-grade-page .top-navbar { display:flex; flex:0 0 auto; flex-wrap:wrap; align-items:center; gap:16px; background:#fff; border-bottom:1px solid var(--rk-line); box-shadow:none; }
+.rekap-grade-page .top-navbar > div:first-child { flex:1 1 300px; min-width:0; }
+.rekap-grade-page .top-navbar h1 { display:flex; align-items:center; gap:10px; color:#203d60; letter-spacing:-.3px; }
+.rekap-grade-page .top-navbar small { display:block; line-height:1.6; }
+.rekap-grade-page .top-navbar > a { background:#edf3fb; border-color:#cbdcf0; color:var(--rk-blue); }
+.rekap-grade-page .rekap-title-icon { display:inline-grid; place-items:center; width:36px; height:36px; border-radius:10px; background:#245c9e; color:#fff; font-size:17px; flex-shrink:0; }
+.rekap-grade-page .nm-card { border:1px solid var(--rk-line); border-radius:12px; box-shadow:0 3px 14px rgb(27 49 78 / 3%); }
+.rekap-grade-page .rekap-class-picker { border-left:4px solid #6551b3; }
+.rekap-grade-page .rekap-class-picker .form-label > i { color:#7052ad; }
+.rekap-grade-page .form-select { min-height:46px; color:var(--rk-ink); background-color:#fbfcfe; }
 .rekap-grade-page .form-control:focus,
 .rekap-grade-page .form-select:focus { border-color:#6e9bcf; box-shadow:0 0 0 3px rgb(36 92 158 / 12%); }
-.rekap-grade-page .rekap-settings { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:12px; align-items:start; }
-.rekap-grade-page .rekap-guide,
-.rekap-grade-page .rekap-weights { padding:14px 18px !important; background:#fff; border:1px solid #e0e7f0; border-radius:10px; color:#475d76; box-shadow:none; }
-.rekap-grade-page .rekap-settings summary { line-height:1.7; }
+.rekap-grade-page :is(summary,button,a,[tabindex]):focus-visible { outline:3px solid #86b7fe; outline-offset:3px; }
+.rekap-grade-page .rekap-settings { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; align-items:start; }
+.rekap-grade-page .rekap-settings details { margin-bottom:16px !important; padding:14px 16px !important; border:1px solid var(--rk-line); border-radius:10px; background:#fff; }
 .rekap-grade-page .rekap-settings details[open] { grid-column:1 / -1; }
-.rekap-grade-page .rekap-weight-total { display:inline-block; margin-left:7px; padding:0 8px; background:#edf3fb; color:#245c9e; border-radius:5px; font-size:12px; }
-.rekap-grade-page .rekap-actions { display:flex; flex-wrap:wrap; justify-content:space-between; gap:12px; margin:4px 0 18px; }
-.rekap-action-group { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
-.rekap-action-label { font-size:12px; color:#64748b; margin-right:4px; }
-.rekap-grade-page .rekap-actions .btn { min-height:40px; font-size:13px; border-color:#dbe3ee; color:#385575; }
-.rekap-grade-page .rekap-actions .btn-outline-primary { color:#245c9e; border-color:#cedef0; background:#f5f9ff; }
-.rekap-grade-page .dropdown-menu { padding:6px; border:1px solid #dfe6ef; border-radius:10px; box-shadow:0 8px 24px rgb(27 49 78 / 12%); }
+.rekap-grade-page summary { cursor:pointer; font-size:13px; font-weight:600; line-height:1.7; }
+.rekap-grade-page summary::marker { color:#7b8da4; }
+.rekap-grade-page .rekap-guide { color:#77551a; }
+.rekap-grade-page .rekap-guide > div { color:#52647a; line-height:1.8; }
+.rekap-grade-page .rekap-weights { color:#62418e; }
+.rekap-grade-page .rekap-section-icon { display:inline-grid; place-items:center; width:28px; height:28px; margin:0 8px 0 4px; border-radius:7px; vertical-align:middle; }
+.rekap-grade-page .rekap-guide .rekap-section-icon { background:#fff1cb; color:#886117; }
+.rekap-grade-page .rekap-weights .rekap-section-icon { background:#eee7fb; color:#7046aa; }
+.rekap-grade-page .rekap-weight-total { display:inline-block; margin-left:6px; padding:1px 7px; background:#eee7fb; color:#62418e; border-radius:5px; font-size:12px; }
+.rekap-grade-page .rekap-actions { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; margin:2px 0 18px; }
+.rekap-grade-page .rekap-action-group { display:flex; flex-wrap:wrap; gap:8px; align-items:center; min-width:0; }
+.rekap-grade-page .rekap-action-label { font-size:12px; color:#61738a; margin-right:4px; }
+.rekap-grade-page .rekap-actions .btn { display:inline-flex; align-items:center; justify-content:center; min-height:44px; padding:8px 12px; border-radius:9px; font-size:13px; font-weight:500; background:var(--action-bg); color:var(--action-ink); border-color:var(--action-border); }
+.rekap-grade-page .rekap-actions .btn > i { font-size:15px; width:18px; flex-shrink:0; }
+.rekap-grade-page .rekap-task-action { --action-bg:#edf5ff; --action-ink:#225b9c; --action-border:#cbdef5; }
+.rekap-grade-page .rekap-exam-action { --action-bg:#f2edff; --action-ink:#6c419d; --action-border:#dfd3f7; }
+.rekap-grade-page .rekap-import-action { --action-bg:#eaf6f1; --action-ink:#226b55; --action-border:#c5e5d8; }
+.rekap-grade-page .rekap-download-action { --action-bg:#fff4e8; --action-ink:#8c551d; --action-border:#f1d8b8; }
+.rekap-grade-page .rekap-actions .btn:hover { filter:brightness(.96); }
+.rekap-grade-page .dropdown-menu { padding:6px; border:1px solid var(--rk-line); border-radius:10px; box-shadow:0 8px 24px rgb(27 49 78 / 12%); }
 .rekap-grade-page .dropdown-item { padding:10px 14px; border-radius:6px; font-size:13px; color:#385575; }
-.rekap-grade-page .dropdown-item:focus,
-.rekap-grade-page .dropdown-item:hover { background:#edf3fb; }
-.rekap-grade-page .rekap-table-heading { background:#fff; }
-.rekap-table-help { display:flex; flex-direction:column; gap:6px; color:#64748b; font-size:12px; }
-.rekap-grade-page .rekap-results .table thead th { background:#eaf0f7; color:#385575; border-bottom-color:#dbe4ef; }
-.rekap-grade-page .rekap-results .table thead th:first-child { background:#eaf0f7; }
-.rekap-grade-page .rekap-results .table th small { color:#516984; }
-.rekap-grade-page .rekap-results .nm-score { border-color:#d4deeb; font-weight:500; }
-.rekap-grade-page .score-input:disabled { background:#f0f5f4; color:#366359; border-color:#e0eae7; }
-.rekap-grade-page .score-label { background:#eaf3ef; color:#366359 !important; }
-.rekap-grade-page td:has(.score-toggle[aria-pressed="true"]) .score-input { background:#fffdf7; border-color:#dcca9e; }
-.rekap-grade-page .score-toggle { color:#245c9e; }
-.rekap-grade-page .rekap-final strong { background:#e8f0fa; color:#234e82; font-size:15px; }
+.rekap-grade-page .dropdown-item:is(:focus,:hover) { background:#edf3fb; }
+.rekap-grade-page .fa-file-excel { color:#237c53; }
+.rekap-grade-page .fa-file-pdf { color:#b94747; }
+.rekap-grade-page .rekap-table-heading { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px; padding:20px; border-bottom:1px solid var(--rk-line); }
+.rekap-grade-page .rekap-table-heading h2 { display:flex; align-items:center; gap:9px; font-size:16px; font-weight:700; margin:0 0 6px; }
+.rekap-grade-page .rekap-table-heading p { font-size:12px; color:#61738a; margin:0; }
+.rekap-grade-page .rekap-table-icon { display:inline-grid; place-items:center; width:30px; height:30px; border-radius:8px; color:#1f6e8c; background:#e2f1f5; }
+.rekap-grade-page .rekap-table-help { display:flex; flex-direction:column; gap:6px; color:#61738a; font-size:12px; line-height:1.6; }
+.rekap-grade-page .rekap-scroll-hint { font-size:11px; }
+.rekap-grade-page .rekap-table-scroll { isolation:isolate; overflow-x:auto; height:auto; max-height:none; overscroll-behavior-x:contain; scrollbar-width:thin; scrollbar-color:#b9c9dc #f3f6fa; }
+.rekap-grade-page .rekap-results .table { width:100%; font-size:13px; font-variant-numeric:tabular-nums; --bs-table-border-color:#e6ebf2; }
+.rekap-grade-page .rekap-results .table thead th { min-width:140px; padding:14px; color:#405873; background:#f0f4f9; vertical-align:middle; font-weight:600; }
+.rekap-grade-page .rekap-results .table th small { min-width:0; font-size:11px; font-weight:400; color:#61738a; }
+.rekap-grade-page .rekap-results .table td { min-width:140px; padding:14px; vertical-align:middle; }
+.rekap-grade-page .rekap-results .table thead th:first-child,
+.rekap-grade-page .rekap-results .rekap-student { position:sticky; left:0; z-index:1; width:190px; min-width:170px; max-width:240px; border-right:1px solid var(--rk-line); white-space:normal; overflow-wrap:anywhere; }
+.rekap-grade-page .rekap-results .table thead th:first-child { z-index:2; background:#f0f4f9; }
+.rekap-grade-page .rekap-results .rekap-student { padding:14px; background:#fff; color:#334155; font-size:13px; font-weight:600; vertical-align:middle; }
+.rekap-grade-page .rekap-results tbody tr:nth-child(even) > * { background-color:#fafcfe; }
+.rekap-grade-page .rekap-results tbody tr:hover > * { background-color:#f0f6ff; }
+.rekap-grade-page .rekap-results .nm-score { width:100px; min-height:40px; border-color:#ccd8e6; text-align:center; font-weight:500; }
+.rekap-grade-page .score-input:disabled { background:#f0f5f4; color:#366359; border-color:#dce7e2; opacity:1; }
+.rekap-grade-page td:has(.score-source[value="manual"]) .score-input { background:#fffdf7; border-color:#d9c598; }
+.rekap-grade-page .score-label { width:max-content; padding:3px 7px; border-radius:5px; font-size:11px; background:#eaf3ef; color:#366359 !important; }
+.rekap-grade-page td:has(.score-source[value="manual"]) .score-label { background:#fff1d7; color:#805512 !important; }
+.rekap-grade-page .score-label::before { content:''; display:inline-block; width:6px; height:6px; margin-right:5px; border-radius:50%; background:currentColor; vertical-align:middle; }
+.rekap-grade-page .score-toggle { display:block; min-height:36px; font-size:12px; color:var(--rk-blue); text-align:left; text-decoration:none; }
+.rekap-grade-page .score-toggle:hover { text-decoration:underline; }
+.rekap-grade-page .rekap-results .table thead .rekap-final-heading { background:#e8f3ee; color:#25634c; }
+.rekap-grade-page .rekap-final strong { display:inline-block; padding:7px 10px; border-radius:7px; background:#e8f3ee; color:#25634c; font-size:14px; }
 .rekap-grade-page .rekap-save { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:center; gap:12px; background:#f8fafd; }
-.rekap-save-note { color:#61738a; font-size:12px; }
-.rekap-grade-page .btn-primary { background:#245c9e; border-color:#245c9e; }
+.rekap-grade-page .rekap-save-note { color:#61738a; font-size:12px; line-height:1.6; }
+.rekap-grade-page .rekap-save .btn { min-height:44px; padding:10px 18px; }
+.rekap-grade-page .btn-primary { background:var(--rk-blue); border-color:var(--rk-blue); }
 .rekap-grade-page .btn-primary:hover { background:#1b487d; border-color:#1b487d; }
 .rekap-grade-page .btn-primary:disabled { background:#6984a5; border-color:#6984a5; }
+/* Laptop layout: more working space and a compact, aligned table. */
+@media(min-width:992px) {
+ .rekap-grade-page .nm-content { padding:24px 28px 32px !important; }
+ .rekap-grade-page .top-navbar { padding:18px 28px !important; gap:12px; }
+ .rekap-grade-page .top-navbar > [data-install-pwa] { margin-left:0 !important; }
+ .rekap-grade-page .rekap-class-picker { padding:18px 22px !important; }
+ .rekap-grade-page .rekap-class-picker .form-label { margin-bottom:10px; }
+ .rekap-grade-page .rekap-settings { gap:16px; }
+ .rekap-grade-page .rekap-settings details { padding:12px 16px !important; }
+ .rekap-grade-page .rekap-actions { padding:4px 0; margin-bottom:16px; }
+ .rekap-grade-page .rekap-table-heading { padding:18px 22px; }
+ .rekap-grade-page .rekap-table-help { text-align:right; max-width:400px; }
+ .rekap-grade-page .rekap-results .table { border-collapse:separate; border-spacing:0; }
+ .rekap-grade-page .rekap-results .table thead th:not(:first-child),
+ .rekap-grade-page .rekap-results .table td { text-align:center; }
+ .rekap-grade-page .rekap-results .table thead th { padding:14px 16px; }
+ .rekap-grade-page .rekap-results .table td { padding:12px 16px; }
+ .rekap-grade-page .rekap-results .rekap-student { padding:16px 20px; min-width:180px; width:22%; font-size:14px; }
+ .rekap-grade-page .rekap-results .table thead th:first-child { padding-left:20px; width:22%; }
+ .rekap-grade-page .rekap-results .nm-score { width:104px; margin-inline:auto; font-size:14px; }
+ .rekap-grade-page .score-label { margin-inline:auto; }
+ .rekap-grade-page .score-toggle { margin-inline:auto; padding-top:5px; padding-bottom:3px; min-height:30px; text-align:center; white-space:nowrap; }
+ .rekap-grade-page .rekap-final strong { min-width:68px; padding:9px 12px; font-size:15px; }
+ .rekap-grade-page .rekap-save { padding:16px 22px !important; }
+}
+@media(min-width:992px) and (max-width:1199.98px) {
+ .rekap-grade-page .nm-content { padding:20px !important; }
+ .rekap-grade-page .rekap-results .table td,
+ .rekap-grade-page .rekap-results .table thead th { min-width:126px; padding:12px; }
+ .rekap-grade-page .rekap-results .rekap-student,
+ .rekap-grade-page .rekap-results .table thead th:first-child { min-width:150px; }
+ .rekap-grade-page .rekap-table-help { max-width:300px; }
+}
 @media(max-width:767.98px) {
+ .rekap-grade-page .top-navbar > div:first-child { flex-basis:100%; }
+ .rekap-grade-page .top-navbar > .btn { margin:0 !important; min-height:44px; }
  .rekap-grade-page .rekap-settings { grid-template-columns:minmax(0,1fr); gap:0; }
- .rekap-grade-page .rekap-actions { gap:10px; }
- .rekap-action-group { width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
- .rekap-action-label { grid-column:1 / -1; }
- .rekap-action-group .dropdown > .btn { width:100%; }
- .rekap-grade-page .rekap-save { gap:10px; }
- .rekap-save-note { line-height:1.6; }
+ .rekap-grade-page .rekap-action-group { width:100%; display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); }
+ .rekap-grade-page .rekap-action-label { grid-column:1 / -1; }
+ .rekap-grade-page .rekap-actions .btn { width:100%; padding:8px; font-size:12px; }
+ .rekap-grade-page .rekap-table-heading { padding:16px; }
+ .rekap-grade-page .rekap-results .table thead th:first-child,
+ .rekap-grade-page .rekap-results .rekap-student { width:125px; min-width:125px; max-width:150px; padding:12px; }
+ .rekap-grade-page .rekap-results .table td,
+ .rekap-grade-page .rekap-results .table thead th:not(:first-child) { min-width:140px; padding:12px; }
+ .rekap-grade-page .rekap-save .btn { width:100%; }
+ .rekap-grade-page .rekap-weights form > strong { flex-basis:100%; }
 }
