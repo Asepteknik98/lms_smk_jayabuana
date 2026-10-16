@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/rekap_tugas_module.php';
 require_once __DIR__.'/nilai_excel_reader.php';
+require_once __DIR__.'/nilai_manual_komponen.php';
 
 function nm_create_target(PDO $db,int $guru,int $user,int $pid,string $kind,string $title,int $meeting,string $when): int {
     $title=trim($title);$date=DateTimeImmutable::createFromFormat('!Y-m-d\TH:i',$when);
@@ -25,6 +26,7 @@ function nm_create_target(PDO $db,int $guru,int $user,int $pid,string $kind,stri
 }
 
 function nm_context(PDO $db,int $guru,int $pid,string $kind): array {
+    if(nm_component_name($kind)!==null)return nmc_context($db,$guru,$pid,$kind);
     if(!in_array($kind,['tugas','ujian'],true))throw new RuntimeException('Jenis penilaian tidak valid.');
     $q=$db->prepare('SELECT p.*,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.id=? AND p.guru_id=?');$q->execute([$pid,$guru]);$info=$q->fetch();
     if(!$info)throw new RuntimeException('Pengajaran bukan milik Anda.');
@@ -49,6 +51,7 @@ function nm_score(mixed $raw): ?float {
 }
 
 function nm_save(PDO $db,int $guru,int $user,int $pid,string $kind,int $id,array $values,array $notes=[]): array {
+    if(nm_component_name($kind)!==null)return nmc_save($db,$guru,$user,$pid,$kind,$id,$values);
     if(!in_array($kind,['tugas','ujian'],true)||count($values)>5000)throw new RuntimeException('Format penilaian tidak valid.');
     $entries=[];
     foreach($values as $sid=>$raw){
