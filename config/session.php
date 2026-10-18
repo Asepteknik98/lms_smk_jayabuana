@@ -1,6 +1,6 @@
 <?php
 // Samakan seluruh perhitungan jadwal aplikasi dengan zona waktu sekolah/database.
-date_default_timezone_set('Asia/Bangkok');
+date_default_timezone_set('Asia/Jakarta');
 
 if (session_status() === PHP_SESSION_NONE) {
     $is_https = !empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off';

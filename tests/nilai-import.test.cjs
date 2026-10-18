@@ -27,6 +27,7 @@ $db->exec("INSERT INTO pengajaran VALUES(1,1,1,1,'Ganjil','2026/2027'),(2,2,1,1,
 $db->exec("INSERT INTO komponen_penilaian VALUES(1,1,'UTS',1),(2,1,'Kehadiran',2)");
 $db->exec("INSERT INTO siswa VALUES(1,1,'Siswa Uji')");
 $db->exec("INSERT INTO capaian_penilaian VALUES(1,1,'Teks lama','Saran lama')");
+require 'tests/fixtures/auth-account.php';test_auth_accounts($db,[101=>2]);
 register_shutdown_function(static function(){session_destroy();});
 `;
  const run=code=>{

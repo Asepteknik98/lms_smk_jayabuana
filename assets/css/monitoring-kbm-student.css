@@ -1,0 +1,71 @@
+/* Antarmuka pengguna pelapor; tidak mengubah state JP atau aksi server. */
+.kbm-student-page{color:#29435e}
+.kbm-student-page>.top-navbar h1{font-size:1.25rem}
+.kbm-student-page>.top-navbar .text-muted{font-size:.83rem;color:#7c8fa4!important}
+.kbm-student-page .kbm-simple{max-width:1050px}
+.kbm-student-page .kbm-simple .card{border-color:#e0e8f2;border-radius:13px;box-shadow:none}
+.kbm-student-page .kbm-simple .card-body{padding:20px!important}
+.kbm-student-page .kbm-simple h2{font-size:.95rem;line-height:1.5}
+.kbm-student-page .kbm-simple .h5{font-size:1.05rem}
+.kbm-student-page .kbm-simple .btn{font-size:.84rem;min-height:44px}
+.kbm-student-class .muted{font-size:.8rem}.kbm-student-class small{font-size:.7rem!important}
+.kbm-student-page .kbm-simple .jp-nav{gap:7px}
+.kbm-student-page .kbm-simple .jp-nav a,.kbm-student-page .kbm-simple .jp-nav button{min-height:62px;padding:10px 4px;font-size:.9rem;display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.4}
+.kbm-student-page .kbm-simple .jp-nav small{font-size:.62rem;margin-top:3px;line-height:1.3}
+.kbm-jp-guide,.kbm-report-guide{font-size:.75rem;color:#7187a1;margin-top:12px}
+.kbm-jp-guide>summary,.kbm-report-guide>summary{cursor:pointer;padding:7px 0;min-height:36px;width:fit-content}
+.kbm-student-page .kbm-simple .jp-note{font-size:.75rem;line-height:1.8}
+.kbm-student-teacher .small{font-size:.73rem;line-height:1.7}
+.kbm-student-teacher .form-label{font-size:.83rem}
+.kbm-student-page .kbm-simple .alert{font-size:.83rem;line-height:1.7;border-radius:10px;padding:13px 15px}
+.kbm-student-page .kbm-simple .alert strong{font-size:.86rem}
+.kbm-student-page .kbm-simple .schedule-list{margin-top:12px;border:1px solid #e1e8f2;border-radius:10px}
+.kbm-student-page .kbm-simple table{font-size:.8rem;margin-bottom:0}
+.kbm-student-page .kbm-simple th{background:#f1f5fa;color:#617996;font-size:.74rem;font-weight:600;padding:12px}
+.kbm-student-page .kbm-simple td{padding:13px 12px;border-color:#edf1f6}
+.kbm-student-page .kbm-simple .status{font-size:.71rem;line-height:1.5}
+.kbm-jp-mobile{display:none}
+.kbm-student-page .kbm-simple>p.small{font-size:.7rem;line-height:1.8;color:#8595a7}
+.kbm-student-page a:focus-visible,.kbm-student-page button:focus-visible,.kbm-student-page summary:focus-visible{outline:3px solid #8bb9ef;outline-offset:2px}
+@media(max-width:767px){
+ .kbm-student-page>.top-navbar{padding:13px 16px!important}
+ .kbm-student-page>.top-navbar h1{font-size:1.1rem}
+ .kbm-student-page>.top-navbar .text-muted{font-size:.75rem;line-height:1.6;display:block;max-width:320px}
+ .kbm-student-page .kbm-simple{padding:12px!important}
+ .kbm-student-page .kbm-simple .card{margin-bottom:12px!important;border-radius:12px}
+ .kbm-student-page .kbm-simple .card-body{padding:15px!important}
+ .kbm-student-page .kbm-simple .kbm-student-class .card-body{flex-wrap:nowrap!important;gap:9px!important}
+ .kbm-student-class h2{font-size:.98rem!important}
+ .kbm-student-class .btn{font-size:.7rem!important;white-space:nowrap;padding:8px 9px}
+ .kbm-student-class .muted{font-size:.73rem;line-height:1.7}
+ .kbm-student-class small{font-size:.64rem!important}
+ .kbm-student-page .kbm-simple .jp-nav{grid-template-columns:repeat(3,minmax(0,1fr));gap:7px}
+ .kbm-student-page .kbm-simple .jp-nav a,.kbm-student-page .kbm-simple .jp-nav button{min-height:59px;border-radius:9px}
+ .kbm-jp-guide>summary,.kbm-report-guide>summary{min-height:44px;padding:12px 0}
+ .kbm-jp-guide,.kbm-report-guide{margin-top:5px}
+ .kbm-student-page .kbm-simple .teacher-select-row{margin-top:10px;gap:9px}
+ .kbm-student-page .kbm-simple .form-control,.kbm-student-page .kbm-simple .form-select{font-size:16px;min-height:46px}
+ .kbm-student-page .kbm-simple .teacher-select-row .btn{min-height:46px}
+ .kbm-student-teacher .alert{margin-bottom:0}
+ .kbm-student-page #kbmTodayTable{scroll-margin-top:12px}
+ .kbm-student-page .kbm-simple .schedule-list{overflow:visible;border:0;margin-top:6px}
+ .kbm-student-page .kbm-simple table{display:block;min-width:0;width:100%}
+ .kbm-student-page .kbm-simple thead{display:none}
+ .kbm-student-page .kbm-simple tbody{display:block}
+ .kbm-student-page .kbm-simple tbody tr{display:grid;grid-template-columns:70px minmax(0,1fr);gap:10px 12px;padding:14px;margin-bottom:12px;border:1px solid #e1e8f2;border-radius:11px;background:#fbfcff}
+ .kbm-student-page .kbm-simple tbody tr.kbm-row-continuation{display:none}
+ .kbm-student-page .kbm-simple tbody td{display:block;border:0;padding:0;min-width:0;overflow-wrap:anywhere}
+ .kbm-student-page .kbm-simple tbody td[data-label]::before{content:attr(data-label);display:block;font-size:.65rem;color:#8495aa;margin-bottom:5px;font-weight:500}
+ .kbm-student-page .kbm-simple tbody td:nth-child(n+3){grid-column:1/-1}
+ .kbm-student-page .kbm-simple tbody td:nth-child(2){font-weight:600;font-size:.86rem}
+ .kbm-student-page .kbm-jp-desktop{display:none}
+ .kbm-student-page .kbm-jp-mobile{display:block;font-weight:700;color:#365f91;font-size:.86rem;line-height:1.7}
+ .kbm-student-page .kbm-simple .kbm-table-action,.kbm-student-page .kbm-simple .kbm-table-delete{min-width:0;max-width:none}
+ .kbm-student-page .kbm-simple .kbm-table-delete details[open]{min-width:0}
+ .kbm-student-page .kbm-simple .kbm-table-delete summary{display:flex;align-items:center;justify-content:center;width:100%;font-size:.73rem;min-height:44px}
+ .kbm-student-page .kbm-simple .kbm-table-action form .btn{min-height:46px}
+ .kbm-student-page .kbm-simple .kbm-table-delete form .btn{width:100%}
+ .kbm-student-page .kbm-simple tbody tr:last-child{margin-bottom:0}
+ .kbm-student-page .kbm-simple .kbm-table-delete{border-top:1px solid #e6edf5;padding-top:10px}
+}
+@media(max-width:359px){.kbm-student-page .kbm-simple .kbm-student-class .card-body{flex-wrap:wrap!important}.kbm-student-class .btn{width:100%}.kbm-student-page .kbm-simple .card-body{padding:12px!important}}

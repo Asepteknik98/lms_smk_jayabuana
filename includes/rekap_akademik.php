@@ -64,20 +64,46 @@ function ra_export_rows(array $rows): array {
 }
 
 function ra_excel(string $title, array $headers, array $rows): string {
-    $x=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_XML1,'UTF-8');
-    $out='<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet"><Styles><Style ss:ID="Wrap"><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style><Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:WrapText="1"/></Style></Styles><Worksheet ss:Name="Rekap"><Table ss:DefaultColumnWidth="110">';
-    foreach ([35,95,150,160,150,80,280,280,110,110] as $width) $out.='<Column ss:Width="'.$width.'"/>';
-    $out.='<Row><Cell ss:MergeAcross="9" ss:StyleID="Header"><Data ss:Type="String">'.$x($title).'</Data></Cell></Row>';
-    foreach (array_merge([$headers],$rows) as $index=>$row) {
-        $out.='<Row>';
-        foreach ($row as $col=>$value) {
-            // Explicit string cells preserve NISN and prevent formula interpretation.
-            $type=$index>0 && ($col===0 || ($col===5 && is_numeric($value)))?'Number':'String';
-            $out.='<Cell ss:StyleID="'.($index===0?'Header':'Wrap').'"><Data ss:Type="'.$type.'">'.$x($value).'</Data></Cell>';
-        }
-        $out.='</Row>';
+    return implode('',iterator_to_array(ra_excel_parts($title,$headers,$rows),false));
+}
+
+/** Writer Excel LMS yang sama, dengan mode iterable untuk unduhan besar. */
+function ra_excel_parts(string $title,array $headers,iterable $rows,array $options=[]): Generator {
+    $x=static fn($v)=>htmlspecialchars(preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F]/u','',(string)$v),ENT_QUOTES|ENT_XML1|ENT_SUBSTITUTE,'UTF-8');
+    $widths=$options['widths']??[35,95,150,160,150,80,280,280,110,110];
+    $types=$options['types']??null;$formats=$options['formats']??[];
+    // Pewarnaan nilai opsional; pemanggil lama tetap memakai format yang sama.
+    $statusStyles=[];$extraStyles='';$statusColumns=$options['status_columns']??[];
+    foreach($options['status_colors']??[] as $value=>$color){
+        if(!is_string($color)||!preg_match('/^#[0-9a-fA-F]{6}$/D',$color))throw new InvalidArgumentException('Warna sel Excel tidak valid.');
+        $styleId='Status'.count($statusStyles);$statusStyles[(string)$value]=$styleId;
+        $extraStyles.='<Style ss:ID="'.$styleId.'"><Alignment ss:Horizontal="Center" ss:Vertical="Center"/><Font ss:FontName="Calibri" ss:Bold="1" ss:Size="14" ss:Color="'.$color.'"/></Style>';
     }
-    return $out.'</Table></Worksheet></Workbook>';
+
+    yield '<?xml version="1.0" encoding="UTF-8"?><?mso-application progid="Excel.Sheet"?><Workbook xmlns="urn:schemas-microsoft-com:office:spreadsheet" xmlns:ss="urn:schemas-microsoft-com:office:spreadsheet" xmlns:x="urn:schemas-microsoft-com:office:excel"><Styles><Style ss:ID="Wrap"><Alignment ss:Vertical="Top" ss:WrapText="1"/></Style><Style ss:ID="Header"><Font ss:Bold="1"/><Interior ss:Color="#DBEAFE" ss:Pattern="Solid"/><Alignment ss:WrapText="1"/></Style><Style ss:ID="Date"><Alignment ss:Vertical="Top"/><NumberFormat ss:Format="dd/mm/yyyy"/></Style><Style ss:ID="DateTime"><Alignment ss:Vertical="Top"/><NumberFormat ss:Format="dd/mm/yyyy hh:mm:ss"/></Style><Style ss:ID="Duration"><Alignment ss:Vertical="Top"/><NumberFormat ss:Format="[h]:mm:ss"/></Style>'.$extraStyles.'</Styles><Worksheet ss:Name="'.$x($options['sheet']??'Rekap').'"><Table ss:DefaultColumnWidth="110">';
+    foreach($widths as $width) yield '<Column ss:Width="'.max(20,min(500,(int)$width)).'"/>';
+    $merge=max(0,count($headers)-1);
+    yield '<Row><Cell ss:MergeAcross="'.$merge.'" ss:StyleID="Header"><Data ss:Type="String">'.$x($title).'</Data></Cell></Row>';
+    $frozen=2;
+    foreach($options['metadata']??[] as $line) {yield '<Row><Cell ss:MergeAcross="'.$merge.'" ss:StyleID="Wrap"><Data ss:Type="String">'.$x($line).'</Data></Cell></Row>';$frozen++;}
+    yield '<Row ss:AutoFitHeight="1">';foreach($headers as $h) yield '<Cell ss:StyleID="Header"><Data ss:Type="String">'.$x($h).'</Data></Cell>';yield '</Row>';
+    foreach($rows as $row) {
+        yield '<Row ss:AutoFitHeight="1">';
+        foreach($row as $col=>$value) {
+            $type=$types[$col]??($types===null&&($col===0||($col===5&&is_numeric($value)))?'Number':'String');
+            $style=$formats[$col]??'Wrap';
+            if(in_array($col,$statusColumns,true)&&isset($statusStyles[(string)$value]))$style=$statusStyles[(string)$value];
+            if($value===null||$value==='') {yield '<Cell ss:StyleID="'.$x($style).'"/>';continue;}
+            if(!in_array($type,['String','Number','DateTime'],true)) throw new InvalidArgumentException('Tipe sel Excel tidak didukung.');
+            if($type==='Number'&&!is_numeric($value)) throw new InvalidArgumentException('Sel angka Excel tidak valid.');
+            // Teks selalu bertipe String. Tidak ada ss:Formula atau interpretasi otomatis.
+            yield '<Cell ss:StyleID="'.$x($style).'"><Data ss:Type="'.$type.'">'.$x($value).'</Data></Cell>';
+        }
+        yield '</Row>';
+    }
+    yield '</Table>';
+    if(!empty($options['freeze'])) yield '<WorksheetOptions xmlns="urn:schemas-microsoft-com:office:excel"><FreezePanes/><FrozenNoSplit/><SplitHorizontal>'.$frozen.'</SplitHorizontal><TopRowBottomPane>'.$frozen.'</TopRowBottomPane><ActivePane>2</ActivePane></WorksheetOptions>';
+    yield '</Worksheet></Workbook>';
 }
 
 function ra_pdf(string $title, array $rows): string {

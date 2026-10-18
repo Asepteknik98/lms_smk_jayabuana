@@ -3,11 +3,24 @@ $current_page = basename($_SERVER['PHP_SELF']);
 $role_id = (int)($_SESSION['role_id'] ?? 0);
 $sidebar_profile_name = $_SESSION['username'] ?? 'Pengguna';
 $sidebar_profile_role = [1 => 'Administrator', 2 => 'Guru', 3 => 'Siswa'][$role_id] ?? 'Pengguna';
+if(($_SESSION['role_nama']??'')==='Akademik')$sidebar_profile_role='Wakasek Bidang Akademik';
 $sidebar_mapel_siswa = [];
+$sidebar_kbm_ketua = false;
+if ($role_id === 3 && class_exists('Database')) {
+    try {
+        require_once __DIR__.'/monitoring_kbm_siswa.php';
+        $sidebar_kbm_db=Database::getInstance();
+        $sidebar_kbm_ketua=kbm_admin_ready($sidebar_kbm_db) && (bool)kbm_student_assignments($sidebar_kbm_db,(int)($_SESSION['user_id']??0));
+    } catch (Throwable $e) { error_log('Menu ketua kelas KBM: '.$e->getMessage()); }
+}
 if (class_exists('Database')) {
     try {
         $sidebar_db = Database::getInstance();
-        if ($role_id === 2) {
+        if (($_SESSION['role_nama']??'')==='Akademik') {
+            $sidebar_profile_stmt=$sidebar_db->prepare('SELECT nama_lengkap FROM akademik_profil WHERE user_id=?');
+            $sidebar_profile_stmt->execute([$_SESSION['user_id']]);
+            $sidebar_profile_name=$sidebar_profile_stmt->fetchColumn()?:$sidebar_profile_name;
+        } elseif ($role_id === 2) {
             $sidebar_profile_stmt = $sidebar_db->prepare('SELECT nama_lengkap FROM guru WHERE user_id = ?');
             $sidebar_profile_stmt->execute([$_SESSION['user_id']]);
             $sidebar_profile_name = $sidebar_profile_stmt->fetchColumn() ?: $sidebar_profile_name;
@@ -73,6 +86,17 @@ if ($role_id === 3 && class_exists('Database')) {
         line-height: 1.3;
         text-transform: uppercase;
         overflow-wrap: anywhere;
+    }
+    .sidebar-profile-info .sidebar-academic-avatar {
+        display: block;
+        width: 72px;
+        height: 72px;
+        margin: 0 auto 11px;
+        border: 3px solid rgba(255,255,255,.85);
+        border-radius: 50%;
+        object-fit: cover;
+        object-position: center top;
+        box-shadow: 0 3px 10px rgba(0,0,0,.15);
     }
     .sidebar-profile-role {
         display: block;
@@ -231,10 +255,15 @@ if ($role_id === 3 && class_exists('Database')) {
 </style>
 <div id="sidebar-wrapper" class="<?= $role_id === 1 ? 'admin-sidebar' : '' ?>">
     <div class="sidebar-profile">
+        <?php if (($_SESSION['role_nama']??'')!=='Akademik'): ?>
         <div class="sidebar-profile-logo">
             <img src="../assets/img/jb-mobile.png" alt="Logo SMKS Jaya Buana">
         </div>
+        <?php endif ?>
         <div class="sidebar-profile-info">
+            <?php if (($_SESSION['role_nama']??'')==='Akademik'): ?>
+            <img class="sidebar-academic-avatar" src="../assets/img/mehi.png" alt="Foto Wakil Kepala Sekolah Bidang Akademik" width="72" height="72" decoding="async">
+            <?php endif ?>
             <span class="sidebar-profile-name"><?= sanitize($sidebar_profile_name) ?></span>
             <span class="sidebar-profile-role"><?= sanitize($sidebar_profile_role) ?></span>
         </div>
@@ -249,24 +278,28 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page == 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i><span class="sidebar-menu-label">Dashboard</span>
         </a>
-        <?php $admin_master_aktif = in_array($current_page, ['users.php','guru.php','siswa.php','kelas.php','mapel.php','pengajaran.php'], true); ?>
+        <?php $admin_master_aktif = in_array($current_page, ['users.php','akun_akademik.php','monitoring_kbm.php','guru.php','siswa.php','kelas.php','mapel.php','pengajaran.php'], true); ?>
         <a href="#sidebarAdminMaster" class="list-group-item list-group-item-action <?= $admin_master_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_master_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminMaster">
             <i class="fa-solid fa-database me-2"></i><span class="sidebar-menu-label flex-grow-1">Master Data</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
         <div class="collapse sidebar-submenu <?= $admin_master_aktif ? 'show' : '' ?>" id="sidebarAdminMaster">
             <a href="users.php" class="list-group-item list-group-item-action <?= $current_page === 'users.php' ? 'active' : '' ?>"><i class="fa-solid fa-users-gear me-2"></i><span class="sidebar-menu-label">Manajemen User</span></a>
+            <a href="akun_akademik.php" class="list-group-item list-group-item-action <?= $current_page==='akun_akademik.php'?'active':'' ?>"><i class="fa-solid fa-user-tie me-2"></i><span class="sidebar-menu-label">Akun Akademik</span></a>
+            <a href="monitoring_kbm.php" class="list-group-item list-group-item-action <?= $current_page==='monitoring_kbm.php'?'active':'' ?>"><i class="fa-solid fa-sliders me-2"></i><span class="sidebar-menu-label">Pengaturan Monitoring KBM</span></a>
             <a href="guru.php" class="list-group-item list-group-item-action <?= $current_page === 'guru.php' ? 'active' : '' ?>"><i class="fa-solid fa-chalkboard-user me-2"></i><span class="sidebar-menu-label">Data Guru</span></a>
             <a href="siswa.php" class="list-group-item list-group-item-action <?= $current_page === 'siswa.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-graduate me-2"></i><span class="sidebar-menu-label">Data Siswa</span></a>
             <a href="kelas.php" class="list-group-item list-group-item-action <?= $current_page === 'kelas.php' ? 'active' : '' ?>"><i class="fa-solid fa-school me-2"></i><span class="sidebar-menu-label">Kelas &amp; Jurusan</span></a>
             <a href="mapel.php" class="list-group-item list-group-item-action <?= $current_page === 'mapel.php' ? 'active' : '' ?>"><i class="fa-solid fa-book me-2"></i><span class="sidebar-menu-label">Mata Pelajaran</span></a>
             <a href="pengajaran.php" class="list-group-item list-group-item-action <?= $current_page === 'pengajaran.php' ? 'active' : '' ?>"><i class="fa-solid fa-person-chalkboard me-2"></i><span class="sidebar-menu-label">Pengajaran</span></a>
         </div>
-        <?php $admin_monitor_aktif = in_array($current_page, ['monitoring.php','monitoring_materi.php','monitoring_tugas.php','monitoring_ujian.php','aktivitas_guru.php'], true); ?>
+        <?php $admin_monitor_aktif = in_array($current_page, ['monitoring.php','monitoring_kbm_status.php','riwayat_kbm.php','monitoring_materi.php','monitoring_tugas.php','monitoring_ujian.php','aktivitas_guru.php'], true); ?>
         <a href="#sidebarAdminMonitoring" class="list-group-item list-group-item-action <?= $admin_monitor_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_monitor_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminMonitoring">
             <i class="fa-solid fa-binoculars me-2"></i><span class="sidebar-menu-label flex-grow-1">Monitoring</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
         </a>
         <div class="collapse sidebar-submenu <?= $admin_monitor_aktif ? 'show' : '' ?>" id="sidebarAdminMonitoring">
             <a href="monitoring.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring.php' ? 'active' : '' ?>"><i class="fa-solid fa-chart-line me-2"></i><span class="sidebar-menu-label">Monitoring LMS</span></a>
+            <a href="monitoring_kbm_status.php" class="list-group-item list-group-item-action <?= $current_page==='monitoring_kbm_status.php'?'active':'' ?>"><i class="fa-solid fa-chalkboard-user me-2"></i><span class="sidebar-menu-label">Monitoring KBM</span></a>
+            <a href="riwayat_kbm.php" class="list-group-item list-group-item-action <?= $current_page==='riwayat_kbm.php'?'active':'' ?>"><i class="fa-solid fa-clock-rotate-left me-2"></i><span class="sidebar-menu-label">Riwayat KBM</span></a>
             <a href="monitoring_materi.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_materi.php' ? 'active' : '' ?>"><i class="fa-solid fa-book-open me-2"></i><span class="sidebar-menu-label">Monitoring Materi</span></a>
             <a href="monitoring_tugas.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_tugas.php' ? 'active' : '' ?>"><i class="fa-solid fa-list-check me-2"></i><span class="sidebar-menu-label">Monitoring Tugas</span></a>
             <a href="monitoring_ujian.php" class="list-group-item list-group-item-action <?= $current_page === 'monitoring_ujian.php' ? 'active' : '' ?>"><i class="fa-solid fa-file-circle-question me-2"></i><span class="sidebar-menu-label">Monitoring Ulangan</span></a>
@@ -334,11 +367,16 @@ if ($role_id === 3 && class_exists('Database')) {
             <i class="fa-solid fa-person-chalkboard me-2"></i> Rekap Mengajar
         </a>
         <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> Kredit Aktivitas Siswa</a>
+        <?php elseif (($_SESSION['role_nama']??'')==='Akademik'): ?>
+        <a href="index.php" class="list-group-item list-group-item-action <?= $current_page==='index.php'?'active':'' ?>"><i class="fa-solid fa-gauge me-2"></i>Dashboard Akademik</a>
+        <a href="riwayat_kbm.php" class="list-group-item list-group-item-action <?= $current_page==='riwayat_kbm.php'?'active':'' ?>"><i class="fa-solid fa-clock-rotate-left me-2"></i>Riwayat KBM</a>
+        <a href="profil.php" class="list-group-item list-group-item-action <?= $current_page==='profil.php'?'active':'' ?>"><i class="fa-solid fa-id-card me-2"></i>Profil Saya</a>
         <?php elseif ($role_id === 3): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page === 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i> Dashboard Siswa
         </a>
         <div class="px-4 pt-3 pb-1 text-uppercase small fw-bold text-secondary" style="letter-spacing:.08em;">Mata Pelajaran</div>
+        <?php if($sidebar_kbm_ketua): ?><a href="monitoring_kbm.php" class="list-group-item list-group-item-action <?= $current_page==='monitoring_kbm.php'?'active':'' ?>"><i class="fa-solid fa-chalkboard-user me-2"></i>Monitoring KBM</a><?php endif ?>
         <a href="#sidebarMapelSiswa" class="list-group-item list-group-item-action d-flex align-items-center <?= in_array($current_page, ['materi.php','materi_review.php'], true) ? 'active' : '' ?>" data-bs-toggle="collapse" role="button" aria-expanded="<?= in_array($current_page, ['materi.php','materi_review.php'], true) ? 'true' : 'false' ?>" aria-controls="sidebarMapelSiswa">
             <i class="fa-solid fa-book-open-reader me-2"></i><span class="flex-grow-1">Semua Materi</span><i class="fa-solid fa-chevron-down small"></i>
         </a>
@@ -404,7 +442,7 @@ if ($role_id === 3 && class_exists('Database')) {
         .admin-sidebar-toggle { display:none; }
     }
 </style>
-<button type="button" class="portal-sidebar-trigger" id="portalMenuButton" aria-label="Buka menu <?= $role_id === 1 ? 'admin' : ($role_id === 2 ? 'guru' : 'siswa') ?>" aria-controls="sidebar-wrapper" aria-expanded="false">
+<button type="button" class="portal-sidebar-trigger" id="portalMenuButton" aria-label="Buka menu <?= $role_id === 1 ? 'admin' : ($role_id === 2 ? 'guru' : (($_SESSION['role_nama']??'')==='Akademik'?'akademik':'siswa')) ?>" aria-controls="sidebar-wrapper" aria-expanded="false">
     <i class="fa-solid fa-bars"></i>
 </button>
 <div class="portal-sidebar-overlay" id="menuOverlay" aria-hidden="true"></div>

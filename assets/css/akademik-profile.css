@@ -1,0 +1,37 @@
+.academic-profile-page{color:#263f5b;background:#f4f7fb}
+.academic-profile-page>.top-navbar{box-shadow:0 1px 0 #e3eaf3;gap:12px}
+.academic-profile-page>.top-navbar h1{font-size:1.2rem;color:#203c60}
+.academic-profile-page .profile-subtitle{font-size:.8rem;color:#8090a3}
+.academic-profile-page>.top-navbar .btn{border:1px solid #d9e3ef;background:#fff;color:#56728f;border-radius:8px;min-height:38px;font-size:.8rem;padding:8px 13px}
+.academic-profile-page>main{max-width:1060px;margin:0 auto}
+.academic-profile-card{border:1px solid #dfe7f1;border-radius:17px;background:#fff;overflow:hidden;box-shadow:0 8px 30px #193f6b07;margin-top:8px}
+.profile-banner{height:126px;background:linear-gradient(115deg,#16375b,#244f79);color:#e1ecfa;padding:25px 30px;display:flex;justify-content:space-between;align-items:flex-start;gap:15px;position:relative;isolation:isolate}
+.profile-banner::after{content:'';position:absolute;right:-45px;top:-105px;width:300px;height:300px;border:1px solid #ffffff13;border-radius:50%;box-shadow:0 0 0 40px #ffffff04,0 0 0 80px #ffffff03;z-index:-1;pointer-events:none}
+.profile-banner>span:first-child{font-size:.86rem;font-weight:600;letter-spacing:.01em}
+.profile-banner-label{font-size:.6rem;letter-spacing:.16em;border:1px solid #ffffff32;border-radius:6px;padding:5px 9px;color:#d0dfef}
+.profile-identity{position:relative;display:flex;align-items:flex-start;gap:20px;padding:0 30px 25px;border-bottom:1px solid #edf1f6}
+.profile-avatar{display:grid;place-items:center;flex:0 0 88px;height:88px;border:5px solid #fff;border-radius:20px;background:#edf4fc;color:#365e89;font-size:2rem;margin-top:-33px;box-shadow:0 3px 12px #1a3d6520;position:relative}
+.profile-avatar{overflow:hidden}
+.profile-avatar img{display:block;width:100%;height:100%;object-fit:cover;object-position:center top}
+.profile-identity-text{min-width:0;padding-top:18px;flex:1}
+.profile-eyebrow{font-size:.7rem;color:#8a99ab;display:block;margin-bottom:5px}
+.profile-identity h2{font-size:1.35rem;font-weight:700;line-height:1.45;margin:0 0 4px;color:#203e61;overflow-wrap:anywhere}
+.profile-identity p{font-size:.85rem;margin:0;color:#6f849d}
+.profile-active{display:inline-flex;align-items:center;gap:7px;padding:6px 10px;border-radius:20px;background:#eef8f2;border:1px solid #d9eee2;color:#287952;font-size:.7rem;font-weight:600;margin-top:24px;white-space:nowrap}
+.profile-active>span,.profile-status-dot{display:inline-block;width:6px;height:6px;background:#3b9566;border-radius:50%;flex-shrink:0}
+.profile-status-dot{margin-right:8px;vertical-align:middle}
+.profile-content{padding:27px 30px 30px}
+.profile-section-title{display:flex;align-items:center;gap:9px;margin-bottom:22px;color:#52749b}
+.profile-section-title h3{font-size:.9rem;font-weight:600;color:#345374;margin:0}
+.profile-info-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:35px;row-gap:22px;margin:0}
+.profile-info-grid>div{min-width:0;border-bottom:1px solid #edf2f7;padding-bottom:16px}
+.profile-info-grid dt{font-size:.72rem;font-weight:500;color:#8392a5;margin-bottom:7px}
+.profile-info-grid dd{font-size:.86rem;line-height:1.65;margin:0;color:#2f4b6a;overflow-wrap:anywhere}
+.profile-username{font-variant-numeric:tabular-nums}
+.profile-support{display:flex;align-items:flex-start;gap:12px;margin-top:26px;padding:16px;border:1px solid #e3eaf4;background:#f8fafd;border-radius:10px}
+.profile-support-icon{display:grid;place-items:center;flex:0 0 34px;height:34px;background:#eaf1fa;border-radius:9px;color:#6083ad;font-size:.95rem}
+.profile-support h3{font-size:.78rem;font-weight:600;margin:1px 0 5px;color:#486482}
+.profile-support p{font-size:.76rem;line-height:1.7;color:#7b8ba0;margin:0}
+.academic-profile-page a:focus-visible{outline:3px solid #85b6ed;outline-offset:3px}
+@media(max-width:767px){.profile-banner{padding:20px;height:112px}.profile-identity{padding:0 20px 22px;gap:13px;flex-wrap:wrap}.profile-avatar{flex-basis:70px;height:70px;border-radius:17px;font-size:1.6rem;margin-top:-25px}.profile-identity-text{padding-top:14px;flex-basis:calc(100% - 90px)}.profile-identity h2{font-size:1.1rem}.profile-active{margin-top:0;margin-left:83px}.profile-content{padding:22px 20px}.profile-info-grid{column-gap:20px}.academic-profile-page>.top-navbar .btn{min-height:44px}}
+@media(max-width:479px){.profile-info-grid{grid-template-columns:1fr;row-gap:15px}.profile-banner>span:first-child{font-size:.78rem}.profile-banner-label{font-size:.55rem}.profile-support{padding:13px;gap:9px}.profile-identity h2{font-size:1rem}}

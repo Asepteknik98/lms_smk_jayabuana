@@ -62,6 +62,7 @@ $db->exec('UPDATE komponen_penilaian SET bobot=30 WHERE id=1');
 $db->exec('ALTER TABLE riwayat_nilai ADD CONSTRAINT reject_new_grade CHECK(nilai_baru<90)');
 reject(fn()=>nm_save($db,1,1,1,'uts',1,[2=>'95']));
 check(!$db->inTransaction()&&!$db->query('SELECT nilai FROM nilai_komponen WHERE komponen_id=1 AND siswa_id=2')->fetch(),'History failure did not roll back');
+require 'tests/fixtures/auth-account.php';test_auth_accounts($db,[]);
 ini_set('session.save_path',sys_get_temp_dir());require 'config/session.php';$_SESSION['user_id']=1;$_SESSION['role_id']=2;$_SESSION['username']='Guru A';$_SESSION['milad_announcement_shown']=true;
 $_SERVER['REQUEST_METHOD']='GET';$_SERVER['SCRIPT_NAME']='/lms/guru/nilai_manual.php';$_SERVER['PHP_SELF']=$_SERVER['SCRIPT_NAME'];
 set_error_handler(function($severity,$message,$file,$line){if(error_reporting()&$severity)throw new ErrorException($message,0,$severity,$file,$line);});

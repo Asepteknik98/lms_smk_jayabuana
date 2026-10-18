@@ -161,6 +161,7 @@ check(po_automatic($db,1,1)['Ulangan Harian']===30.0,'Print and reset share auto
 $db->exec('UPDATE komponen_penilaian SET bobot=9 WHERE id=10');
 reject(fn()=>po_save($db,1,1,[1=>[10=>'90']],[]));
 $db->exec('UPDATE komponen_penilaian SET bobot=10 WHERE id=10');
+require 'tests/fixtures/auth-account.php';test_auth_accounts($db,[1=>1]);
 require 'config/auth.php';$_SESSION['user_id']=1;$_SESSION['role_id']=1;
 $_SERVER['PHP_SELF']='/admin/rekap_nilai.php';$_SERVER['SCRIPT_NAME']=$_SERVER['PHP_SELF'];
 $_GET=['kelas_id'=>1,'tahun_ajaran'=>'2026/2027','semester'=>'Ganjil'];

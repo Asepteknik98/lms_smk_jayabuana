@@ -1,0 +1,55 @@
+.kbm-history-page{color:#243c57}
+.kbm-history-page>.top-navbar{padding:18px 24px!important;box-shadow:0 1px 0 #e5ebf2}
+.kbm-history-page>.top-navbar h1{font-size:1.25rem;line-height:1.5}
+.kbm-history-page>.top-navbar .text-muted{font-size:.85rem;color:#78879a!important}
+.kbm-history{max-width:1600px;margin:auto}
+.kbm-history .card{border:1px solid #e1e8f1;border-radius:13px;box-shadow:none}
+.kbm-history .card-body{padding:20px!important}
+.kbm-history .form-control,.kbm-history .form-select{min-height:40px;border-radius:8px;border-color:#dce5f0;font-size:.85rem;color:#344f70}
+.kbm-history .form-label{font-size:.78rem;font-weight:600;color:#526a85;margin-bottom:7px}
+.kbm-history .btn{min-height:38px;border-radius:8px;font-size:.8rem;padding:8px 12px;font-weight:600}
+.kbm-history .btn-outline-primary{border-color:#ccdced;color:#35659c}
+.kbm-history-section-title{display:flex;align-items:center;gap:9px;margin-bottom:16px}
+.kbm-history-section-title>i{color:#6084af;font-size:.9rem}
+.kbm-history-section-title h2{font-size:.9rem;margin:0;font-weight:700}
+.kbm-history-section-title>span{font-size:.73rem;color:#8592a4;margin-left:auto}
+.kbm-history-advanced{border-top:1px solid #edf1f6;padding-top:10px}
+.kbm-history-advanced>summary{cursor:pointer;font-size:.77rem;color:#496c96;width:fit-content}
+.kbm-history-advanced>summary span{margin-left:8px;color:#8a97a8;font-size:.7rem}
+.kbm-history-advanced[open]{padding-bottom:6px}
+.kbm-history .kbm-history-help{font-size:.69rem;line-height:1.7;color:#8390a2!important}
+.kbm-history-export{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 18px;border:1px solid #e1e8f1;background:#fff;border-radius:11px;margin-bottom:18px}
+.kbm-history-export strong{display:block;font-size:.85rem;font-weight:600;color:#3e5876}
+.kbm-history-export .small{display:block;margin-top:4px;font-size:.72rem;color:#8390a2!important}
+.kbm-history-export .btn{white-space:nowrap;background:#21815b;border-color:#21815b}
+.kbm-history-results h2{font-size:.9rem}
+.kbm-history-results .small{font-size:.73rem}
+.kbm-history-table-wrap{border:1px solid #e4eaf3;border-radius:10px;max-height:650px;scrollbar-gutter:stable}
+.kbm-history-table-wrap:focus-visible{outline:3px solid #8db8ec;outline-offset:3px}
+.kbm-history .table{min-width:1120px;margin-bottom:0}
+.kbm-history .table th{position:sticky;top:0;z-index:1;background:#f0f4fa;color:#5b7190;font-size:.72rem;font-weight:600;padding:12px 13px;border-bottom:1px solid #dfe7f1}
+.kbm-history .table td{vertical-align:top;font-size:.78rem;line-height:1.65;padding:14px 13px;border-color:#edf1f6;color:#38516e;background:#fff}
+.kbm-history .table tbody tr:nth-child(even) td{background:#fbfcfe}
+.kbm-history .table tbody tr:hover td{background:#f5f8fc}
+.kbm-history .table tbody tr:last-child td{border-bottom:0}
+.kbm-history .table th:nth-child(1){width:145px}.kbm-history .table th:nth-child(2){width:195px}.kbm-history .table th:nth-child(3){width:110px}.kbm-history .table th:nth-child(5){width:135px}.kbm-history .table th:nth-child(6){width:190px}.kbm-history .table th:nth-child(7){width:115px}
+.kbm-history .table td>strong{font-weight:600;color:#223f60}
+.kbm-history small{display:block;color:#8190a3;font-size:.69rem;line-height:1.65;margin-top:3px}
+.kbm-history .actual-times{line-height:1.8;white-space:nowrap;font-variant-numeric:tabular-nums;font-size:.74rem}
+.kbm-history .badge{white-space:normal;text-align:left;line-height:1.5;padding:5px 9px;border-radius:6px;font-size:.67rem;font-weight:600;border:1px solid transparent}
+.kbm-history .badge.bg-warning{background:#fff6df!important;color:#8f650f!important;border-color:#f1e1b7}
+.kbm-history .badge.bg-success{background:#eaf7ef!important;color:#246a49!important;border-color:#cbe9d7}
+.kbm-history .badge.bg-danger{background:#fff0f2!important;color:#ae3547!important;border-color:#f3d1d8}
+.kbm-history .badge.bg-primary{background:#edf4ff!important;color:#315e98!important;border-color:#d7e5f8}
+.kbm-history .badge.bg-secondary{background:#eff2f6!important;color:#64758b!important;border-color:#e0e6ee}
+.kbm-history-row-notes{font-size:.72rem;margin-top:8px;max-width:230px}
+.kbm-history-row-notes>summary{color:#6d83a0;cursor:pointer;font-size:.68rem}
+.kbm-history-row-notes[open]{padding-bottom:4px}
+.kbm-history .pagination{gap:5px;flex-wrap:wrap;justify-content:flex-end}
+.kbm-history .page-link{font-size:.76rem;min-width:33px;text-align:center;padding:7px 10px;border-radius:7px!important;border-color:#dce5f0;color:#54749a}
+.kbm-history .page-item.active .page-link{background:#2e629e;border-color:#2e629e;color:#fff}
+.kbm-history .audit-entry{border-left:3px solid #7e9ec5;padding:13px 16px;background:#f7f9fc;border-radius:0 10px 10px 0;margin-bottom:12px;font-size:.83rem}
+.kbm-history .audit-entry p{white-space:pre-wrap;overflow-wrap:anywhere}
+.kbm-history #detail p,.kbm-history #detail .row{font-size:.84rem;line-height:1.7}
+.kbm-history>p.small{font-size:.7rem;line-height:1.7;color:#8492a4!important}
+@media(max-width:767.98px){.kbm-history-page>.top-navbar{padding:14px 16px!important}.kbm-history-page>.top-navbar h1{font-size:1.1rem}.kbm-history .card-body{padding:15px!important}.kbm-history .form-control,.kbm-history .form-select{font-size:16px;min-height:44px}.kbm-history .btn{min-height:44px}.kbm-history-section-title>span{display:none}.kbm-history-advanced>summary span{display:block;margin:4px 0 0 12px}.kbm-history-export{flex-wrap:wrap;padding:14px}.kbm-history-export .btn{width:100%}.kbm-history-table-wrap{border:0;max-height:none;overflow:visible}.kbm-history .table{min-width:0}.kbm-history .table thead{display:none}.kbm-history .table tbody tr{display:block;border:1px solid #e1e8f1;border-radius:10px;margin-bottom:12px;padding:8px;background:#fff}.kbm-history .table tbody tr td{display:block;border:0;padding:7px;background:transparent}.kbm-history .table td[data-label]::before{content:attr(data-label);display:block;font-size:.67rem;font-weight:600;color:#8796a8;margin-bottom:2px}.kbm-history .actual-times{white-space:normal}.kbm-history .kbm-history-row-notes{max-width:none}.kbm-history .pagination{justify-content:flex-start}}

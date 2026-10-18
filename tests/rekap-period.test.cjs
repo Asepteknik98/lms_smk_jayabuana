@@ -37,6 +37,7 @@ session_save_path(sys_get_temp_dir());require 'config/session.php';
 $_GET=json_decode(getenv('LMS_REKAP_TEST_QUERY'),true);
 $rm_is_admin=!empty($_GET['test_admin']);
 if(!empty($_GET['test_validated']))$db->exec("INSERT INTO validasi_rekap_mengajar VALUES(1,'2026-08-01',3,1,NOW())");
+require 'tests/fixtures/auth-account.php';test_auth_accounts($db,[101=>($rm_is_admin?1:2)]);
 $_SESSION['user_id']=101;$_SESSION['role_id']=$rm_is_admin?1:2;
 $_SERVER['REQUEST_METHOD']='GET';$_SERVER['SCRIPT_NAME']=$rm_is_admin?'/admin/rekap_guru_mengajar.php':'/guru/rekap_mengajar.php';
 ob_start();register_shutdown_function(function(){

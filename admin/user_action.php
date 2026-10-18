@@ -12,9 +12,17 @@ $action = $_GET['action'] ?? '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf_token = $_POST['csrf_token'] ?? '';
-    if (!verify_csrf($csrf_token)) {
+    if (!is_string($csrf_token) || !verify_csrf($csrf_token)) {
         echo json_encode(['status' => 'error', 'message' => 'Invalid CSRF Token']);
         exit();
+    }
+
+    // Academic accounts require a name/profile and use the dedicated admin workflow.
+    $academicRole=akademik_role_id($db);
+    $targetRole=0;
+    if(isset($_POST['id'])){$q=$db->prepare('SELECT role_id FROM users WHERE id=?');$q->execute([(int)$_POST['id']]);$targetRole=(int)$q->fetchColumn();}
+    if($academicRole>0&&((int)($_POST['role_id']??0)===$academicRole||$targetRole===$academicRole)){
+        http_response_code(400);echo json_encode(['status'=>'error','message'=>'Gunakan menu Akun Akademik untuk mengelola akun ini.']);exit;
     }
 
     // CREATE USER

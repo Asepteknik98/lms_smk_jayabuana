@@ -2,54 +2,45 @@
 require_once 'config/session.php';
 require_once 'config/database.php';
 require_once 'config/helper.php';
+require_once 'config/auth.php';
 
 // 1. Generate CSRF token jika belum ada di Session
 if (empty($_SESSION['csrf_token'])) {
     $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
 }
 
-// 2. Jika user SUDAH LOGIN, cegah mereka buka halaman login lagi (Auto Redirect)
-if (isset($_SESSION['user_id']) && !empty($_SESSION['user_id'])) {
-    $base_url = '';
-    switch ((int)$_SESSION['role_id']) {
-        case 1:
-            header("Location: " . $base_url . "/admin/index.php");
-            exit();
-        case 2:
-            header("Location: " . $base_url . "/guru/index.php");
-            exit();
-        case 3:
-            header("Location: " . $base_url . "/siswa/index.php");
-            exit();
-    }
+// Existing sessions are also rechecked against the current account state.
+if(auth_refresh_session()){
+    $home=auth_home((int)$_SESSION['role_id'],$_SESSION['role_nama']);
+    if($home){header('Location: '.$home);exit;}
 }
 
 $error = '';
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $csrf_token = $_POST['csrf_token'] ?? '';
-    $username   = trim($_POST['username'] ?? '');
-    $password   = $_POST['password'] ?? '';
+    $username   = is_string($_POST['username']??null)?trim($_POST['username']):'';
+    $password   = is_string($_POST['password']??null)?$_POST['password']:'';
 
-    if (!verify_csrf($csrf_token)) {
+    if (!is_string($csrf_token) || !verify_csrf($csrf_token)) {
         $error = "Token Keamanan Tidak Valid! Silakan refresh halaman.";
     } elseif (empty($username) || empty($password)) {
         $error = "Username dan Password wajib diisi!";
     } else {
         try {
             $db = Database::getInstance();
-            
+
             $stmt = $db->prepare("
-                SELECT u.*, COALESCE(r.nama_role, 'Admin') as nama_role 
-                FROM users u 
-                LEFT JOIN roles r ON u.role_id = r.id 
+                SELECT u.*, r.nama_role
+                FROM users u
+                JOIN roles r ON u.role_id = r.id
                 WHERE u.username = ?
             ");
             $stmt->execute([$username]);
             $user = $stmt->fetch();
 
-            if ($user && (int)$user['is_active'] === 1 && password_verify($password, $user['password'])) {
-                    
+            if ($user && (int)$user['is_active'] === 1 && password_verify($password, $user['password']) && auth_home((int)$user['role_id'],$user['nama_role'])!==null && (in_array((int)$user['role_id'],[1,2,3],true)||(int)$user['role_id']===akademik_role_id($db))) {
+
                     // Regenerasi Session ID untuk keamanan
                     session_regenerate_id(true);
 
@@ -57,29 +48,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $_SESSION['username']  = $user['username'];
                     $_SESSION['role_id']   = $user['role_id'];
                     $_SESSION['role_nama'] = $user['nama_role'];
+                    $_SESSION['auth_password_version']=hash('sha256',$user['password']);
+                    $_SESSION['csrf_token']=bin2hex(random_bytes(32));
 
                     if (function_exists('catat_log')) {
                         catat_log($user['id'], "Login Berhasil");
                     }
 
-                    // Absolute Redirect sesuai Role
-                    $base_url = '';
-                    switch ((int)$user['role_id']) {
-                        case 1:
-                            header("Location: " . $base_url . "/admin/index.php");
-                            break;
-                        case 2:
-                            header("Location: " . $base_url . "/guru/index.php");
-                            break;
-                        case 3:
-                            header("Location: " . $base_url . "/siswa/index.php");
-                            break;
-                        default:
-                            session_unset();
-                            session_destroy();
-                            header("Location: " . $base_url . "/login.php?error=unauthorized");
-                            break;
-                    }
+                    header('Location: '.auth_home((int)$user['role_id'],$user['nama_role']));
                     exit();
             } else {
                 // Pesan dibuat generik agar status username/akun tidak dapat ditebak.
@@ -165,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     <form action="login.php" method="POST" id="loginForm">
         <input type="hidden" name="csrf_token" value="<?= htmlspecialchars($_SESSION['csrf_token'] ?? '', ENT_QUOTES, 'UTF-8') ?>">
-        
+
         <div class="mb-3">
             <label class="form-label" for="username">Username / NIS</label>
             <div class="field-wrap">

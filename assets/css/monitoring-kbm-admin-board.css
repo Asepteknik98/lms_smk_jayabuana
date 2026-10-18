@@ -1,0 +1,62 @@
+/* Tampilan admin saja; ID/form/status/polling tetap memakai modul bersama. */
+.kbm-admin-monitor{color:#243b53}
+.kbm-admin-monitor>.top-navbar{padding:18px 24px!important;box-shadow:0 1px 0 #e5ebf3}
+.kbm-admin-monitor>.top-navbar h1{font-size:1.25rem;line-height:1.5}
+.kbm-admin-monitor>.top-navbar .text-muted{font-size:.85rem;color:#728197!important}
+.kbm-admin-monitor .kbm-board{padding-top:18px!important}
+.kbm-admin-monitor .kbm-board .btn{min-height:38px;border-radius:8px;font-size:.82rem;padding:8px 12px}
+.kbm-admin-monitor .kbm-history-link{margin-bottom:14px!important;background:#fff;border-color:#dae4f1;color:#315f98}
+.kbm-admin-filters{background:#fff;border:1px solid #e0e7f0;border-radius:11px;margin-bottom:14px}
+.kbm-admin-filters>summary{display:flex;justify-content:space-between;align-items:center;gap:12px;cursor:pointer;padding:13px 16px;font-size:.85rem;font-weight:600;list-style:none}
+.kbm-admin-filters>summary::-webkit-details-marker{display:none}
+.kbm-admin-filters>summary::after{content:'+';font-size:1.1rem;color:#7085a1;font-weight:400}
+.kbm-admin-filters[open]>summary::after{content:'−'}
+.kbm-admin-filter-hint{margin-left:auto;font-size:.75rem;font-weight:400;color:#7c8a9c}
+.kbm-admin-monitor .kbm-admin-filters .toolbar{border:0;border-top:1px solid #edf1f6;border-radius:0 0 11px 11px;padding:16px;margin-bottom:0!important}
+.kbm-admin-monitor .kbm-board .form-label{font-size:.78rem;color:#536a84}
+.kbm-admin-monitor .kbm-board .form-control,.kbm-admin-monitor .kbm-board .form-select{font-size:.85rem;min-height:40px;border-radius:8px;border-color:#dce4ef}
+.kbm-admin-monitor .kbm-update-line{font-size:.73rem;color:#778699!important;line-height:1.7;margin-bottom:12px!important}
+.kbm-admin-monitor .kbm-update-line strong{font-weight:500;color:#47617e}
+.kbm-admin-monitor #kbmPollingNote{display:block;font-size:.7rem;color:#8390a1}
+.kbm-admin-monitor .kbm-summary{--bs-gutter-x:12px;--bs-gutter-y:8px;margin-bottom:12px!important}
+.kbm-admin-monitor .summary-tile{display:flex;align-items:center;gap:9px;padding:11px 14px;border:1px solid #e1e7ef!important;border-radius:10px;box-shadow:none;background:#fff}
+.kbm-admin-monitor .summary-tile::before{content:'';width:7px;height:7px;flex:0 0 7px;border-radius:50%;background:#c38b12}
+.kbm-admin-monitor .summary-tile.border-danger::before{background:#d94354}
+.kbm-admin-monitor .summary-tile.border-success::before{background:#25865d}
+.kbm-admin-monitor .summary-tile>span{font-size:.78rem;font-weight:500!important;color:#526781!important}
+.kbm-admin-monitor .summary-tile strong{margin-left:auto;font-size:1.35rem;line-height:1.3;font-variant-numeric:tabular-nums;color:#1f3857}
+.kbm-admin-monitor .summary-tile small{font-size:.7rem;color:#8090a3}
+.kbm-admin-monitor .kbm-scope-line{font-size:.72rem;margin-bottom:8px!important;color:#74859a;gap:10px!important}
+.kbm-admin-monitor #kbmIncomplete{font-weight:500;background:#f8fafc!important;color:#718197!important;border-color:#e2e8f0!important;padding:5px 8px}
+.kbm-admin-legend{margin:0 0 20px;color:#75859a;font-size:.72rem}
+.kbm-admin-legend>summary{cursor:pointer;padding:4px 0;width:fit-content}
+.kbm-admin-legend .legend{padding:10px 12px;background:#fff;border:1px solid #e4eaf2;border-radius:8px;margin:8px 0 0!important;font-size:.72rem;line-height:1.8}
+.kbm-admin-monitor .kbm-session>div:first-child{margin-bottom:12px!important}
+.kbm-admin-monitor .kbm-session h2{font-size:1rem;color:#344f70}
+.kbm-admin-monitor .kbm-session>div:first-child .badge{font-size:.65rem;font-weight:500;color:#75869a!important}
+.kbm-admin-monitor .kbm-grid{gap:14px}
+.kbm-admin-monitor .kbm-class-card{padding:16px;border-radius:13px;box-shadow:none;border-color:#0000000b}
+.kbm-admin-monitor .kbm-class-card h3{font-size:1.1rem;font-weight:700}
+.kbm-admin-monitor .kbm-class-card .teacher{font-size:.9rem;font-weight:600}
+.kbm-admin-monitor .kbm-class-card .state-label{font-size:.8rem;margin-top:10px;padding-top:9px}
+.kbm-admin-monitor .kbm-class-card .config-note,.kbm-admin-monitor .kbm-class-card .pending-note{font-size:.72rem;padding:8px;border-radius:8px}
+.kbm-admin-monitor .kbm-board>p.text-muted{font-size:.7rem;line-height:1.7;max-width:1000px}
+/* Kartu ringkas: rincian tetap tersedia dalam dialog bersama yang sudah ada. */
+.kbm-admin-monitor #kbmCards .kbm-grid{grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:10px;align-items:start}
+.kbm-admin-monitor #kbmCards .kbm-class-card{position:relative;height:140px;min-width:0;padding:13px 12px 30px;display:flex;flex-direction:column;border-radius:11px;overflow:hidden}
+.kbm-admin-monitor #kbmCards .kbm-class-card>div:not(:first-child):not(.teacher),.kbm-admin-monitor #kbmCards .kbm-class-card>details{display:none}
+.kbm-admin-monitor #kbmCards .kbm-class-card>div:first-child{align-items:center;gap:6px!important}
+.kbm-admin-monitor #kbmCards .kbm-class-card h3{font-size:1rem;margin:0;line-height:1.4;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kbm-admin-monitor #kbmCards .kbm-class-card>div:first-child>i{font-size:.8rem;flex-shrink:0;opacity:.85}
+.kbm-admin-monitor #kbmCards .teacher{font-size:.76rem;line-height:1.5;margin-top:5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex-shrink:0;font-weight:500}
+.kbm-admin-monitor #kbmCards .state-label{font-size:.7rem;line-height:1.4;margin-top:8px;padding-top:7px;border-color:#00000016;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kbm-admin-monitor #kbmCards .kbm-card-open{display:block;position:absolute;inset:0;width:100%;height:100%;border:0;border-radius:inherit;background:transparent;color:inherit;text-align:left}
+.kbm-admin-monitor #kbmCards .kbm-card-open::after{content:'Detail';position:absolute;right:12px;bottom:9px;font-size:.65rem;font-weight:600;text-decoration:underline;text-underline-offset:2px;opacity:.75}
+.kbm-admin-monitor #kbmCards .kbm-card-open:hover{background:#ffffff22}
+.kbm-admin-monitor #kbmCards .kbm-card-open:focus-visible{outline:3px solid #265c9b;outline-offset:-3px}
+.kbm-admin-monitor #kbmCards .kbm-card-flags{position:absolute;left:12px;bottom:9px;right:52px;font-size:.6rem;font-weight:600;white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.kbm-admin-monitor #kbmClassDialog{padding:22px;border-radius:15px;color:#243b53;background:#fff}
+.kbm-admin-monitor #kbmClassDialog .kbm-class-card{padding:18px;border-radius:12px;height:auto}
+.kbm-admin-monitor #kbmClassDialog .kbm-card-open{display:none}
+@media(max-width:575px){.kbm-admin-monitor #kbmCards .kbm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.kbm-admin-monitor #kbmCards .kbm-class-card{height:140px;padding:11px 10px 30px}.kbm-admin-monitor #kbmCards .kbm-class-card h3{font-size:.92rem}.kbm-admin-monitor #kbmClassDialog{padding:16px}}
+@media(max-width:575px){.kbm-admin-monitor>.top-navbar{padding:14px 16px!important}.kbm-admin-monitor>.top-navbar h1{font-size:1.05rem}.kbm-admin-filter-hint{display:none}.kbm-admin-monitor .summary-tile{padding:10px 8px;gap:5px;flex-wrap:wrap}.kbm-admin-monitor .summary-tile small{display:none}.kbm-admin-monitor .summary-tile strong{font-size:1.2rem}.kbm-admin-monitor .kbm-board .form-control,.kbm-admin-monitor .kbm-board .form-select{font-size:16px;min-height:44px}.kbm-admin-monitor .kbm-admin-filters .btn{min-height:44px}.kbm-admin-monitor .summary-tile>span{font-size:.72rem}}

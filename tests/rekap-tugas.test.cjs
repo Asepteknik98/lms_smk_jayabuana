@@ -251,6 +251,7 @@ $db->exec("ALTER TABLE tugas ADD deskripsi TEXT NULL,ADD jenis_tugas VARCHAR(20)
 $db->exec("ALTER TABLE guru ADD nama_lengkap VARCHAR(100) DEFAULT 'Guru Fixture'");
 $db->exec('CREATE TEMPORARY TABLE pertanyaan_tugas(id INT,tugas_id INT,pertanyaan TEXT,urutan INT)');
 $db->exec('CREATE TEMPORARY TABLE opsi_tugas(id INT,pertanyaan_id INT,label_opsi VARCHAR(10),teks_opsi TEXT,is_benar INT)');
+require 'tests/fixtures/auth-account.php';test_auth_accounts($db,[]);
 ini_set('session.save_path',sys_get_temp_dir());require 'config/session.php';
 $_SESSION['user_id']=1;$_SESSION['role_id']=2;$_SESSION['username']='Guru Fixture';$_SESSION['milad_announcement_shown']=true;
 $_SERVER['REQUEST_METHOD']='GET';$_SERVER['SCRIPT_NAME']='/lms/guru/tugas.php';$_SERVER['PHP_SELF']=$_SERVER['SCRIPT_NAME'];

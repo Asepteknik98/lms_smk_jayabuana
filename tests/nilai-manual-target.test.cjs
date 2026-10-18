@@ -76,6 +76,7 @@ $createdContext=nm_context($db,1,1,'tugas');$created=nm_target($createdContext,$
 nm_save($db,1,1,1,'tugas',$createdTask,[1=>'90']);nm_save($db,1,1,1,'ujian',$createdExam,[1=>'75']);
 check(nm_context($db,1,1,'tugas')['scores'][1][$createdTask]['nilai']==='90.00','New manual task grade missing');
 $db->exec('DELETE FROM pengumpulan_tugas WHERE tugas_id='.$createdTask.';DELETE FROM rekap_tugas_status WHERE tugas_id='.$createdTask.';DELETE FROM tugas WHERE id='.$createdTask.';DELETE FROM nilai_ujian WHERE ujian_id='.$createdExam.';DELETE FROM ujian WHERE id='.$createdExam);
+require 'tests/fixtures/auth-account.php';test_auth_accounts($db,[]);
 ini_set('session.save_path',sys_get_temp_dir());require 'config/session.php';$_SESSION['user_id']=1;$_SESSION['role_id']=2;$_SESSION['username']='Guru A';$_SESSION['milad_announcement_shown']=true;$_SERVER['REQUEST_METHOD']='GET';$_SERVER['SCRIPT_NAME']='/lms/guru/nilai_manual.php';$_SERVER['PHP_SELF']=$_SERVER['SCRIPT_NAME'];$_GET=['pengajaran_id'=>1,'jenis'=>'tugas','target_id'=>2];
 set_error_handler(function($severity,$message,$file,$line){if(error_reporting()&$severity)throw new ErrorException($message,0,$severity,$file,$line);});
 ob_start();require 'guru/nilai_manual.php';$html=ob_get_clean();

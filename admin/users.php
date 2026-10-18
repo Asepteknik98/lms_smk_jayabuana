@@ -18,6 +18,7 @@ $roles = $db->query("SELECT * FROM roles")->fetchAll();
         <div class="card border-0 shadow-sm p-4">
             <div class="d-flex justify-content-between align-items-center mb-3">
                 <h6 class="fw-bold m-0"><i class="fa-solid fa-users me-2 text-primary"></i> Daftar Pengguna</h6>
+                <a href="akun_akademik.php" class="btn btn-outline-primary btn-sm ms-auto me-2"><i class="fa-solid fa-user-tie me-1" aria-hidden="true"></i>Akun Akademik</a>
                 <button class="btn btn-primary btn-sm rounded-2" onclick="openModalCreate()">
                     <i class="fa-solid fa-plus me-1"></i> Tambah User
                 </button>
@@ -40,7 +41,7 @@ $roles = $db->query("SELECT * FROM roles")->fetchAll();
                         <tr>
                             <td><?= $index + 1 ?></td>
                             <td class="fw-semibold"><?= sanitize($u['username']) ?></td>
-                            <td><?= sanitize($u['email']) ?></td>
+                            <td><?= sanitize((string)($u['email']??'')) ?></td>
                             <td><span class="badge bg-secondary"><?= sanitize($u['nama_role']) ?></span></td>
                             <td>
                                 <?php if($u['is_active']): ?>
@@ -50,6 +51,7 @@ $roles = $db->query("SELECT * FROM roles")->fetchAll();
                                 <?php endif; ?>
                             </td>
                             <td>
+                                <?php if($u['nama_role']==='Akademik'): ?><a class="btn btn-outline-primary btn-sm" href="akun_akademik.php?edit=<?= (int)$u['id'] ?>">Kelola Akademik</a><?php else: ?>
                                 <button class="btn btn-warning btn-sm text-white me-1" onclick="openModalEdit(<?= $u['id'] ?>)">
                                     <i class="fa-solid fa-pen-to-square"></i>
                                 </button>
@@ -57,6 +59,7 @@ $roles = $db->query("SELECT * FROM roles")->fetchAll();
                                 <button class="btn btn-danger btn-sm" onclick="deleteUser(<?= $u['id'] ?>, '<?= sanitize($u['username']) ?>')">
                                     <i class="fa-solid fa-trash"></i>
                                 </button>
+                                <?php endif; ?>
                                 <?php endif; ?>
                             </td>
                         </tr>
@@ -96,7 +99,7 @@ $roles = $db->query("SELECT * FROM roles")->fetchAll();
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Role</label>
                         <select name="role_id" id="role_id" class="form-select" required>
-                            <?php foreach($roles as $r): ?>
+                            <?php foreach($roles as $r): if($r['nama_role']==='Akademik')continue; ?>
                                 <option value="<?= $r['id'] ?>"><?= $r['nama_role'] ?></option>
                             <?php endforeach; ?>
                         </select>

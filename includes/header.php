@@ -12,6 +12,7 @@ $role_per_folder = [
     '/siswa/' => [3],
 ];
 
+if(strpos($script_path,'/akademik/')!==false)$role_per_folder['/akademik/']=[akademik_role_id(Database::getInstance())];
 $allowed_roles = [];
 foreach ($role_per_folder as $folder => $roles) {
     if (strpos($script_path, $folder) !== false) {
