@@ -9,7 +9,7 @@ if($ready) {
 }
 require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 ?>
-<link rel="stylesheet" href="../assets/css/monitoring-kbm-dashboard.css?v=17">
+<link rel="stylesheet" href="../assets/css/monitoring-kbm-dashboard.css?v=18">
 <?php if(empty($kbmAcademicBoard)): ?><link rel="stylesheet" href="../assets/css/monitoring-kbm-admin-board.css?v=2"><?php endif ?>
 <div id="page-content-wrapper" <?= empty($kbmAcademicBoard)?'class="kbm-admin-monitor"':'' ?>>
 <?php if(!empty($kbmAcademicBoard)): ?>
@@ -20,7 +20,7 @@ require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 <?php if(!$ready): ?><section class="alert alert-warning"><h2 class="h5">Monitoring KBM belum dikonfigurasi</h2>Pengelola perlu melengkapi migrasi fondasi dan pengaturan KBM terlebih dahulu.</section>
 <?php elseif($boardError): ?><div class="alert alert-danger" role="alert"><?= kbm_board_h($boardError) ?></div><a class="btn btn-outline-primary" href="?">Coba Lagi / Hari Ini</a>
 <?php else: ?>
-<?php if(!empty($kbmAcademicBoard)): ?><div class="kbm-date-badge"><i class="fa-regular fa-calendar me-2" aria-hidden="true"></i><span id="kbmDisplayDate"><?= kbm_board_h(kbm_date($payload['date'])->format('j').' '.[1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][(int)substr($payload['date'],5,2)].' '.substr($payload['date'],0,4)) ?></span><span class="small text-muted ms-2">WIB</span></div><?php endif ?>
+<?php if(!empty($kbmAcademicBoard)): ?><div class="kbm-date-badge"><i class="fa-regular fa-calendar me-2" aria-hidden="true"></i><span id="kbmDisplayDate"><?= kbm_board_h(kbm_date($payload['date'])->format('j').' '.[1=>'Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'][(int)substr($payload['date'],5,2)].' '.substr($payload['date'],0,4)) ?></span><span class="kbm-clock-divider" aria-hidden="true"></span><time id="kbmLiveClock" class="kbm-live-clock" aria-label="Jam saat ini dalam WIB"><?= kbm_board_h(substr($payload['server_time'],11,8)) ?></time><span class="small text-muted ms-2">WIB</span></div><?php endif ?>
 <div id="kbmConnection" class="alert alert-warning d-none" role="status" aria-live="polite"></div>
 <?php if(!empty($kbmAcademicBoard)): ?>
 <nav class="kbm-session-menu mb-3" aria-label="Pilih sesi monitoring">
@@ -48,7 +48,7 @@ require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 <dialog id="kbmClassDialog" aria-labelledby="kbmDialogTitle"><div class="d-flex justify-content-between align-items-center gap-3 mb-3"><h2 id="kbmDialogTitle" class="h5 mb-0">Detail monitoring kelas</h2><button id="kbmDialogClose" class="btn btn-outline-secondary" type="button">Tutup</button></div><div id="kbmDialogContent"></div></dialog>
 <p class="small text-muted mt-4">Warna menunjukkan status laporan ketua kelas, bukan deteksi keberadaan fisik guru. Peringatan belum check-out sebelumnya tidak menggantikan status jadwal berjalan.</p>
 <noscript><style>.kbm-admin-monitor #kbmCards .kbm-class-card{height:auto;min-height:140px}.kbm-admin-monitor #kbmCards .kbm-class-card>div,.kbm-admin-monitor #kbmCards .kbm-class-card>details{display:block!important}.kbm-admin-monitor #kbmCards .kbm-card-open{display:none}</style><div class="alert alert-info">JavaScript tidak aktif. Gunakan Terapkan Filter atau muat ulang halaman untuk memperbarui data.</div></noscript>
-<script id="kbmDashboardConfig" type="application/json"><?= json_encode(['endpoint'=>'monitoring_kbm_data.php','today'=>$payload['today'],'interval_ms'=>12000],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
-<script src="../assets/js/monitoring-kbm-dashboard.js?v=17" defer></script>
+<script id="kbmDashboardConfig" type="application/json"><?= json_encode(['endpoint'=>'monitoring_kbm_data.php','today'=>$payload['today'],'interval_ms'=>12000,'server_time'=>$payload['server_time']],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
+<script src="../assets/js/monitoring-kbm-dashboard.js?v=18" defer></script>
 <?php endif ?>
 </main></div><?php require_once __DIR__.'/footer.php'; ?>

@@ -1,8 +1,20 @@
 const {test}=require('node:test');
 const assert=require('node:assert/strict');
-const {createPoller,mount}=require('../assets/js/monitoring-kbm-dashboard.js');
+const {createPoller,createServerClock,mount}=require('../assets/js/monitoring-kbm-dashboard.js');
 function clock(){let id=0;const timers=new Map();return {setTimeout(fn,ms){timers.set(++id,{fn,ms});return id;},clearTimeout(id){timers.delete(id);},timers,async fire(ms){const entry=[...timers].find(([,t])=>t.ms===ms);assert.ok(entry,'Missing timer '+ms);timers.delete(entry[0]);await entry[1].fn();}};}
 function deferred(){let resolve,reject;const promise=new Promise((a,b)=>{resolve=a;reject=b;});return {promise,resolve,reject};}
+test('WIB clock advances from server time, crosses midnight and resumes without duplicate timers',async()=>{
+ const time=clock(),node={textContent:''};let elapsed=100;
+ const live=createServerClock(node,{...time,now:()=>elapsed});
+ live.sync('2026-10-19 23:59:59');live.start();assert.equal(node.textContent,'23:59:59');
+ elapsed+=1000;await time.fire(1000);assert.equal(node.textContent,'00:00:00');
+ elapsed+=61000;await time.fire(1000);assert.equal(node.textContent,'00:01:01');
+ live.stop();assert.equal(time.timers.size,0);elapsed+=60000;live.start();assert.equal(node.textContent,'00:02:01');
+ live.start();assert.equal(time.timers.size,1);
+ live.sync('2026-10-20 07:08:09');assert.equal(node.textContent,'07:08:09');
+ live.sync('invalid');assert.equal(node.textContent,'07:08:09');
+ elapsed+=1000;await time.fire(1000);assert.equal(node.textContent,'07:08:10');live.stop();assert.equal(time.timers.size,0);
+});
 test('Polling coalesces changes and ignores stale responses without overlapping requests',async()=>{
  const time=clock(),calls=[],applied=[];
  const poller=createPoller({...time,hidden:()=>false,fetchData:()=>{const p=deferred();calls.push(p);return p.promise;},apply:r=>applied.push(r),error:()=>assert.fail('Unexpected failure')});

@@ -33,10 +33,25 @@
         function visibility(){clear();if(!options.hidden())refresh(true);}
         return {refresh,visibility,start:()=>{stopped=false;schedule();},stop:()=>{stopped=true;clear();},state:()=>({inflight,pending,stopped})};
     }
+    // Acuan server WIB + waktu berlalu monoton; jam perangkat tidak menjadi sumber waktu.
+    function createServerClock(node,options={}){
+        const now=options.now||(()=>performance.now()),timer=options.setTimeout||setTimeout,cancel=options.clearTimeout||clearTimeout;
+        const format=new Intl.DateTimeFormat('en-GB',{timeZone:'Asia/Jakarta',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});
+        let base=NaN,origin=0,scheduled=null,running=false;
+        function draw(){if(Number.isFinite(base))node.textContent=format.format(new Date(base+Math.max(0,now()-origin)));}
+        function tick(){scheduled=null;draw();if(running)scheduled=timer(tick,1000);}
+        function stop(){running=false;if(scheduled!==null)cancel(scheduled);scheduled=null;}
+        return {
+            sync(value){if(typeof value!=='string'||!/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(value))return;const stamp=Date.parse(value.replace(' ','T')+'+07:00');if(!Number.isFinite(stamp))return;base=stamp;origin=now();draw();},
+            start(){stop();running=true;tick();},stop
+        };
+    }
     function mount(doc){
         const configNode=doc.getElementById('kbmDashboardConfig');if(!configNode)return;
         const config=JSON.parse(configNode.textContent),form=doc.getElementById('kbmFilters'),cards=doc.getElementById('kbmCards'),notice=doc.getElementById('kbmConnection');
         const date=doc.getElementById('kbmDate'),classSelect=doc.getElementById('kbmClass');let today=config.today;
+        const clockNode=doc.getElementById('kbmLiveClock'),liveClock=clockNode?createServerClock(clockNode):null;
+        liveClock?.sync(config.server_time);if(!doc.hidden)liveClock?.start();
         const sessionChoices=Array.from(doc.querySelectorAll?.('[data-kbm-session]')||[]);
         const dialog=doc.getElementById('kbmClassDialog');let dialogClass=null,dialogTrigger=null;
         function updateDialog(){
@@ -78,6 +93,7 @@
                 doc.getElementById('kbmIncomplete').textContent=data.summary.incomplete+' kelas perlu konfigurasi';
                 doc.getElementById('kbmScope').textContent=data.shown+' dari '+data.total+' kelas · ringkasan sesuai filter';
                 doc.getElementById('kbmUpdated').textContent=data.server_time+' WIB';
+                liveClock?.sync(data.server_time);
                 const selected=classSelect.value;classSelect.replaceChildren();
                 for(const option of [{id:'',name:'Semua kelas'},...data.class_options]){const node=doc.createElement('option');node.value=String(option.id);node.textContent=option.name;classSelect.appendChild(node);}
                 classSelect.value=selected;today=data.today;date.value=data.date;date.max=data.today;
@@ -100,10 +116,10 @@
         });
         for(const field of form.querySelectorAll('select,input'))field.addEventListener('change',()=>poller.refresh(true));
         doc.getElementById('kbmRefresh').addEventListener('click',()=>poller.refresh(true));
-        doc.addEventListener('visibilitychange',()=>{doc.getElementById('kbmPollingNote').textContent=doc.hidden?'Pembaruan dijeda selama tab tidak aktif.':'Data diperbarui sekitar setiap 12 detik; keterbaruan mengikuti interval dan koneksi.';poller.visibility();});
-        window.addEventListener('pagehide',()=>poller.stop());
-        window.addEventListener('pageshow',event=>{if(event.persisted){poller.start();poller.refresh(true);}});
+        doc.addEventListener('visibilitychange',()=>{doc.getElementById('kbmPollingNote').textContent=doc.hidden?'Pembaruan dijeda selama tab tidak aktif.':'Data diperbarui sekitar setiap 12 detik; keterbaruan mengikuti interval dan koneksi.';if(doc.hidden)liveClock?.stop();else liveClock?.start();poller.visibility();});
+        window.addEventListener('pagehide',()=>{poller.stop();liveClock?.stop();});
+        window.addEventListener('pageshow',event=>{if(event.persisted){poller.start();if(!doc.hidden)liveClock?.start();poller.refresh(true);}});
         poller.start();return poller;
     }
-    return {createPoller,mount};
+    return {createPoller,createServerClock,mount};
 });

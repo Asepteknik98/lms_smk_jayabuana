@@ -21,3 +21,6 @@ html:has(.kbm-wall){color-scheme:light}html:has(.kbm-wall) #page-content-wrapper
 .kbm-wall #kbmCards .kbm-class-card h3,.kbm-wall #kbmCards .teacher,.kbm-wall #kbmCards .kbm-card-flags{color:var(--card-ink)}
 .kbm-wall #kbmCards .kbm-card-open:hover{background:#ffffff18}
 .kbm-reference-header .kbm-header-logo{display:block;width:54px;height:46px;object-fit:contain;padding:3px;background:#edf2f8;border-radius:6px;margin-left:6px;flex-shrink:0}@media(max-width:575.98px){.kbm-reference-header .kbm-header-logo{width:46px;height:42px}}
+
+/* Jam berjalan pada tanggal dashboard akademik. */
+.kbm-date-badge .kbm-clock-divider{width:1px;height:16px;background:#d4deeb;margin:0 10px;flex-shrink:0}.kbm-date-badge .kbm-live-clock{font-variant-numeric:tabular-nums;letter-spacing:.04em;white-space:nowrap;color:#244b7a;font-weight:700}.kbm-date-badge{flex-wrap:wrap;row-gap:4px}@media(max-width:575px){.kbm-date-badge .kbm-clock-divider{margin:0 7px}.kbm-date-badge .kbm-live-clock{font-size:12px}}
