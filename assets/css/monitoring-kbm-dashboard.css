@@ -23,4 +23,12 @@ html:has(.kbm-wall){color-scheme:light}html:has(.kbm-wall) #page-content-wrapper
 .kbm-reference-header .kbm-header-logo{display:block;width:54px;height:46px;object-fit:contain;padding:3px;background:#edf2f8;border-radius:6px;margin-left:6px;flex-shrink:0}@media(max-width:575.98px){.kbm-reference-header .kbm-header-logo{width:46px;height:42px}}
 
 /* Jam berjalan pada tanggal dashboard akademik. */
+/* Nomor kelas, guru dan status harus tetap terlihat pada kartu ringkas. */
+@media(min-width:1024px) and (min-height:600px){
+ .kbm-wall #kbmCards{grid-template-rows:repeat(5,minmax(74px,1fr))}
+ .kbm-wall #kbmCards .kbm-class-card{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:auto 14px auto;grid-template-areas:'class' 'teacher' 'status';align-content:center;gap:3px;padding:6px 8px 12px}
+ .kbm-wall #kbmCards .kbm-class-card>div:first-child{grid-area:class;min-width:0}
+ .kbm-wall #kbmCards .kbm-class-card>.teacher{grid-area:teacher;display:block!important;visibility:visible;min-width:0;height:14px;min-height:14px;line-height:14px;margin:0;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ .kbm-wall #kbmCards .state-label{grid-area:status;min-height:18px;max-height:24px;margin:0;padding:2px 4px}
+}
 .kbm-date-badge .kbm-clock-divider{width:1px;height:16px;background:#d4deeb;margin:0 10px;flex-shrink:0}.kbm-date-badge .kbm-live-clock{font-variant-numeric:tabular-nums;letter-spacing:.04em;white-space:nowrap;color:#244b7a;font-weight:700}.kbm-date-badge{flex-wrap:wrap;row-gap:4px}@media(max-width:575px){.kbm-date-badge .kbm-clock-divider{margin:0 7px}.kbm-date-badge .kbm-live-clock{font-size:12px}}

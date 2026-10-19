@@ -9,7 +9,7 @@ if($ready) {
 }
 require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 ?>
-<link rel="stylesheet" href="../assets/css/monitoring-kbm-dashboard.css?v=18">
+<link rel="stylesheet" href="../assets/css/monitoring-kbm-dashboard.css?v=<?= (int)filemtime(__DIR__.'/../assets/css/monitoring-kbm-dashboard.css') ?>">
 <?php if(empty($kbmAcademicBoard)): ?><link rel="stylesheet" href="../assets/css/monitoring-kbm-admin-board.css?v=2"><?php endif ?>
 <div id="page-content-wrapper" <?= empty($kbmAcademicBoard)?'class="kbm-admin-monitor"':'' ?>>
 <?php if(!empty($kbmAcademicBoard)): ?>
