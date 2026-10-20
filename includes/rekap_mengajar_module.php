@@ -2,7 +2,6 @@
 require_once __DIR__ . '/../config/session.php';
 require_once __DIR__ . '/../config/auth.php';
 require_once __DIR__ . '/../config/helper.php';
-require_once __DIR__ . '/target_jp_guru.php';
 
 $isAdmin = !empty($rm_is_admin);
 check_access([$isAdmin ? 1 : 2]);
@@ -10,6 +9,25 @@ $db = Database::getInstance();
 $pageName = $isAdmin ? 'rekap_guru_mengajar.php' : 'rekap_mengajar.php';
 $pageTitle = $isAdmin ? 'Monitoring JP Guru' : 'Rekap JP Mengajar';
 $days = ['Sunday'=>'Minggu','Monday'=>'Senin','Tuesday'=>'Selasa','Wednesday'=>'Rabu','Thursday'=>'Kamis','Friday'=>'Jumat','Saturday'=>'Sabtu'];
+
+class RekapSetupException extends RuntimeException {}
+
+function rm_load_error(Throwable $error, bool $isAdmin): never {
+    error_log('Rekap mengajar gagal dimuat: '.get_class($error).': '.$error->getMessage().' di '.$error->getFile().':'.$error->getLine());
+    http_response_code(503);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    $message = $isAdmin
+        ? 'Periksa log error server, kelengkapan file rekap, dan migrasi database 2026_08_18_rekap_jam_mengajar.sql serta 2026_09_02_revisi_rekap_jp_bulanan.sql.'
+        : 'Rekap belum dapat dimuat. Silakan hubungi administrator sekolah.';
+    if ($isAdmin && $error instanceof RekapSetupException) {
+        $message = $error->getMessage();
+    } elseif ($isAdmin && $error instanceof PDOException) {
+        $message = 'Query database rekap gagal (SQLSTATE '.(string)$error->getCode().'). Cari pesan "Rekap mengajar gagal dimuat" pada error_log hosting untuk mengetahui query yang bermasalah.';
+    }
+    echo '<!doctype html><html lang="id"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Rekap belum tersedia</title><body><main style="max-width:720px;margin:60px auto;padding:24px;font-family:Arial,sans-serif"><h1>Rekap mengajar belum tersedia</h1><p>'.sanitize($message).'</p><p>Data rekap tidak ditampilkan karena proses pemuatan gagal.</p><a href="index.php">Kembali ke dashboard</a></main></body></html>';
+    exit;
+}
 
 function rm_month_valid(string $value): bool { return (bool) preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $value); }
 function rm_number(mixed $value): string { return number_format((float)$value, 0, ',', '.'); }
@@ -28,6 +46,30 @@ function rm_locked(PDO $db,int $guruId,string $date): bool {
     $stmt=$db->prepare("SELECT EXISTS(SELECT 1 FROM validasi_rekap_mengajar v JOIN users u ON u.id=v.divalidasi_oleh AND u.role_id=1 WHERE v.guru_id=? AND v.periode_bulan=DATE_FORMAT(?,'%Y-%m-01'))");$stmt->execute([$guruId,$date]);return (bool)$stmt->fetchColumn();
 }
 
+try {
+    foreach (['target_jp_guru.php', 'target_jp_guru_page.php', ...($isAdmin ? ['rekap_mengajar_input.php'] : [])] as $requiredFile) {
+        if (!is_file(__DIR__.'/'.$requiredFile)) {
+            throw new RekapSetupException('File includes/'.$requiredFile.' belum tersedia. Unggah file tersebut ke folder includes di hosting.');
+        }
+    }
+    require_once __DIR__.'/target_jp_guru.php';
+    // Periksa struktur sebelum membaca laporan atau memproses perubahan data.
+    $schema = $db->query("SELECT TABLE_NAME AS table_name, COLUMN_NAME AS column_name FROM information_schema.columns WHERE TABLE_SCHEMA=DATABASE() AND TABLE_NAME IN ('rekap_mengajar','validasi_rekap_mengajar')")->fetchAll(PDO::FETCH_ASSOC);
+    $columns = [];
+    foreach ($schema as $column) $columns[$column['table_name']][] = $column['column_name'];
+    $requiredColumns = [
+        'rekap_mengajar' => ['id','pengajaran_id','tanggal','jenis_sesi','jam_ke_mulai','jam_ke_selesai','jam_mulai','jam_selesai','sesi','jumlah_jp','dibuat_oleh'],
+        'validasi_rekap_mengajar' => ['guru_id','periode_bulan','total_jp','divalidasi_oleh','divalidasi_pada'],
+    ];
+    foreach ($requiredColumns as $table => $required) {
+        $missing = array_diff($required, $columns[$table] ?? []);
+        if ($missing) {
+            $migration = $table === 'rekap_mengajar' && !isset($columns[$table])
+                ? '2026_08_18_rekap_jam_mengajar.sql, lalu 2026_09_02_revisi_rekap_jp_bulanan.sql'
+                : '2026_09_02_revisi_rekap_jp_bulanan.sql';
+            throw new RekapSetupException('Struktur tabel '.$table.' belum lengkap. Kolom yang belum tersedia: '.implode(', ', $missing).'. Terapkan migrasi database/'.$migration.' pada database yang digunakan website.');
+        }
+    }
 $ownGuruId=0;
 if(!$isAdmin){$stmt=$db->prepare('SELECT id FROM guru WHERE user_id=?');$stmt->execute([$_SESSION['user_id']]);$ownGuruId=(int)$stmt->fetchColumn();if(!$ownGuruId){http_response_code(403);exit('Profil Guru tidak ditemukan.');}}
 $month=is_string($_GET['bulan']??null)?trim($_GET['bulan']):date('Y-m');if(!rm_month_valid($month))$month=date('Y-m');
@@ -36,6 +78,8 @@ $monthStart=$month.'-01';$monthEnd=date('Y-m-t',strtotime($monthStart));
 $isRange = !$isAdmin && ($_GET['periode'] ?? '') === 'rentang';
 $periodStart = $monthStart;
 $periodEnd = $monthEnd;
+$startInput = $periodStart;
+$endInput = $periodEnd;
 $periodError = '';
 if ($isRange) {
     $startInput = is_string($_GET['tanggal_mulai'] ?? null) ? trim($_GET['tanggal_mulai']) : '';
@@ -137,6 +181,9 @@ if($isAdmin){$classes=$db->query('SELECT id,nama_kelas FROM kelas ORDER BY nama_
 else{$stmt=$db->prepare('SELECT DISTINCT k.id,k.nama_kelas FROM pengajaran p JOIN kelas k ON k.id=p.kelas_id WHERE p.guru_id=? ORDER BY k.nama_kelas');$stmt->execute([$ownGuruId]);$classes=$stmt->fetchAll();$stmt=$db->prepare('SELECT DISTINCT m.id,m.nama_mapel FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id WHERE p.guru_id=? ORDER BY m.nama_mapel');$stmt->execute([$ownGuruId]);$subjects=$stmt->fetchAll();}
 $teachingSql='SELECT p.id,p.guru_id,p.mapel_id,p.kelas_id,p.semester,p.tahun_ajaran,g.nama_lengkap,k.nama_kelas,m.nama_mapel FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN kelas k ON k.id=p.kelas_id JOIN mapel m ON m.id=p.mapel_id';$teachingParams=[];if(!$isAdmin){$teachingSql.=' WHERE p.guru_id=?';$teachingParams[]=$ownGuruId;}$teachingSql.=' ORDER BY g.nama_lengkap,m.nama_mapel,k.nama_kelas,p.tahun_ajaran DESC,p.semester';$stmt=$db->prepare($teachingSql);$stmt->execute($teachingParams);$teachings=$stmt->fetchAll();
 $edit=null;if($isAdmin&&($editId=(int)($_GET['edit_id']??0))){$stmt=$db->prepare($select.$joins.' WHERE r.id=?');$stmt->execute([$editId]);$edit=$stmt->fetch()?:null;}
+} catch (Throwable $loadError) {
+    rm_load_error($loadError, $isAdmin);
+}
 $success=$_SESSION['flash_success']??'';$error=$_SESSION['flash_error']??'';unset($_SESSION['flash_success'],$_SESSION['flash_error']);require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 ?>
 <style>.rm-page .card{border-radius:16px}.rm-page .table-responsive table{min-width:760px}.rm-status{font-size:.76rem}@media(max-width:575.98px){.rm-page .card-body{padding:1rem}.rm-export{display:grid;grid-template-columns:1fr 1fr;width:100%;gap:.5rem}.rm-page .table-responsive table{font-size:.82rem}}</style>
