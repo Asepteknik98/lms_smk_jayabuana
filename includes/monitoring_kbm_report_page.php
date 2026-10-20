@@ -4,7 +4,7 @@ $periodQuery=['tab'=>'jadwal','periode_laporan'=>$reportPeriod['mode'],'tanggal'
 $exportQuery=['tanggal_mulai'=>$reportPeriod['tanggal_mulai'],'tanggal_selesai'=>$reportPeriod['tanggal_selesai']];
 $dayNames=[1=>'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 ?>
-<link rel="stylesheet" href="../assets/css/monitoring-kbm-report.css">
+<link rel="stylesheet" href="../assets/css/monitoring-kbm-report.css?v=2">
 <div class="kbm-report">
 <p class="kbm-report-intro">Pilih harian, mingguan (Senin–Minggu), atau bulanan. Periode berjalan ditampilkan sampai hari ini. Waktu laporan menggunakan WIB.</p>
 <form method="get" class="row g-3 align-items-end kbm-report-filters">
@@ -20,7 +20,7 @@ $dayNames=[1=>'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu'];
 </div>
 <div class="kbm-report-table-heading"><div><h3>Rincian laporan</h3><p>Catatan kegiatan belajar mengajar berdasarkan konfirmasi pengguna.</p></div><span class="kbm-report-zone"><i class="fa-regular fa-clock" aria-hidden="true"></i> Waktu Indonesia Barat</span></div>
 <div class="table-responsive kbm-report-table-wrap" role="region" aria-label="Rincian laporan KBM, geser untuk melihat semua kolom" tabindex="0"><table class="table kbm-report-table"><thead><tr><th scope="col">Hari / Tanggal</th><th scope="col">Kelas / Sesi</th><th scope="col">JP</th><th scope="col">Guru</th><th scope="col">Check-in (WIB)</th><th scope="col">Check-out (WIB)</th><th scope="col">Durasi</th><th scope="col">Status</th></tr></thead><tbody>
-<?php foreach($reports as $r): $statusTone=in_array($r['status']['color'],['merah','hijau','kuning'],true)?$r['status']['color']:'kuning'; ?><tr>
+<?php foreach($reports as $r): $statusTone=in_array($r['status']['color'],['merah','hijau','kuning','abu'],true)?$r['status']['color']:'kuning'; ?><tr>
 <td><span class="kbm-report-primary"><?= $dayNames[(int)kbm_date($r['tanggal'])->format('N')] ?></span><span class="kbm-report-secondary"><?= kbm_simple_h(kbm_date($r['tanggal'])->format('d-m-Y')) ?></span></td>
 <td><span class="kbm-report-primary"><?= kbm_simple_h($r['nama_kelas']) ?></span><span class="kbm-report-session"><?= kbm_simple_h($r['nama_sesi']) ?></span></td>
 <td><span class="kbm-report-jp"><?= (int)$r['jp_mulai'] ?>&ndash;<?= (int)$r['jp_selesai'] ?></span></td>

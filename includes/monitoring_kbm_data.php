@@ -259,7 +259,7 @@ function kbm_open_meetings(PDO $db,?int $class=null): array {
 
 function kbm_day_report(PDO $db, string $date): array {
     kbm_date($date);
-    $saved=kbm_rows($db,'SELECT p.*,p.id pertemuan_id,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,\'$.sumber\')) sumber,JSON_EXTRACT(j.pengajaran_snapshot,\'$.guru_tidak_masuk\') guru_tidak_masuk,l.checkin_at,l.checkout_at,l.checkin_siswa_id,l.checkout_siswa_id,l.ditutup_sistem_pada,
+    $saved=kbm_rows($db,'SELECT p.*,p.id pertemuan_id,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,\'$.sumber\')) sumber,JSON_EXTRACT(j.pengajaran_snapshot,\'$.guru_tidak_masuk\') guru_tidak_masuk,JSON_EXTRACT(j.pengajaran_snapshot,\'$.guru_hanya_tugas\') guru_hanya_tugas,l.checkin_at,l.checkout_at,l.checkin_siswa_id,l.checkout_siswa_id,l.ditutup_sistem_pada,
         c.id koreksi_id,CASE WHEN c.id IS NULL THEN l.checkin_at ELSE c.checkin_baru END checkin_efektif,
         CASE WHEN c.id IS NULL THEN l.checkout_at ELSE c.checkout_baru END checkout_efektif
         FROM kbm_pertemuan p JOIN kbm_jadwal j ON j.id=p.jadwal_id LEFT JOIN kbm_laporan l ON l.pertemuan_id=p.id

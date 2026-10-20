@@ -21,7 +21,7 @@ function kbm_history_matrix(PDO $db,array $input): array {
         $byClass=$placementByClass=[];
         foreach($placements as $p)$placementByClass[$p['kelas_id']]=$p['sesi_kode'];
         foreach($records as $r)if(empty($r['dibatalkan'])&&$r['status_code']!=='dibatalkan')$byClass[$r['kelas_id']][]=$r;
-        $rows=[];$counts=['hadir'=>0,'tidak_masuk'=>0,'belum_tercatat'=>0];
+        $rows=[];$counts=['tugas'=>0,'hadir'=>0,'tidak_masuk'=>0,'belum_tercatat'=>0];
         foreach($classes as $class){
             $all=$byClass[$class['id']]??[];$sessions=$all?array_values(array_unique(array_column($all,'sesi_kode'))):array_filter([$placementByClass[$class['id']]??null]);
             if($session!==''&&!in_array($session,$sessions,true))continue;
@@ -29,7 +29,7 @@ function kbm_history_matrix(PDO $db,array $input): array {
             $cells=array_fill(1,6,null);$name=$class['nama_kelas'];
             foreach($matches as $r){
                 $name=$r['nama_kelas'];$status=kbm_meeting_status($r,$now);
-                $kind=$status['code']==='guru_tidak_masuk'?'tidak_masuk':($r['checkin_efektif']!==null&&$r['checkin_efektif']<=$now?'hadir':'belum_tercatat');
+                $kind=$status['code']==='guru_hanya_tugas'?'tugas':($status['code']==='guru_tidak_masuk'?'tidak_masuk':($r['checkin_efektif']!==null&&$r['checkin_efektif']<=$now?'hadir':'belum_tercatat'));
                 for($jp=(int)$r['jp_mulai'];$jp<=(int)$r['jp_selesai'];$jp++)$cells[$jp]=['kind'=>$kind,'meeting'=>$r,'status'=>$status];
             }
             foreach($cells as $cell)$counts[$cell['kind']??'belum_tercatat']++;

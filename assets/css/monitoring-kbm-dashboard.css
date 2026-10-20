@@ -32,3 +32,5 @@ html:has(.kbm-wall){color-scheme:light}html:has(.kbm-wall) #page-content-wrapper
  .kbm-wall #kbmCards .state-label{grid-area:status;min-height:18px;max-height:24px;margin:0;padding:2px 4px}
 }
 .kbm-date-badge .kbm-clock-divider{width:1px;height:16px;background:#d4deeb;margin:0 10px;flex-shrink:0}.kbm-date-badge .kbm-live-clock{font-variant-numeric:tabular-nums;letter-spacing:.04em;white-space:nowrap;color:#244b7a;font-weight:700}.kbm-date-badge{flex-wrap:wrap;row-gap:4px}@media(max-width:575px){.kbm-date-badge .kbm-clock-divider{margin:0 7px}.kbm-date-badge .kbm-live-clock{font-size:12px}}
+
+.kbm-color-abu{background:#e2e5e9;color:#343b44}.kbm-wall #kbmCards .kbm-color-abu{--card-fill:#dce0e5;--card-edge:#a4acb7;--card-ink:#3d4652;--signal:#3d4652;--signal-bg:#ffffff55;--dot:#737b85}.kbm-wall .summary-tile.border-secondary{--sum:#505963;--sum-bg:#f0f1f3;--sum-icon:#dce0e5;--sum-border:#cbd0d6}

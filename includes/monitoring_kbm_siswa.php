@@ -73,7 +73,7 @@ function kbm_student_record(PDO $db,int $user,string $action,int $id,?int $expec
 }
 
 function kbm_student_post(PDO $db,int $user,array $input): string {
-    if(($input['action']??'')==='guru_tidak_masuk'){
+    if(in_array($input['action']??'', ['guru_tidak_masuk','guru_hanya_tugas'], true)){
         require_once __DIR__.'/monitoring_kbm_pilihan.php';return kbm_pilihan_tidak_masuk($db,$user,$input);
     }
     if(($input['action']??'')==='hapus_pilihan'){

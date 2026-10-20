@@ -25,10 +25,12 @@ function kbm_export_row(array $r,int $number,string $now): array {
     if($status['warning']!=='')$notes[]=$status['warning'];
     $absence=$r['guru_tidak_masuk']??null;if(is_string($absence))$absence=json_decode($absence,true);
     if(is_array($absence))$notes[]='Laporan asli guru tidak masuk oleh '.($absence['nama']??'').' pada '.($absence['pada']??'').' WIB.';
+    $task=$r['guru_hanya_tugas']??null;if(is_string($task))$task=json_decode($task,true);
+    if(is_array($task))$notes[]='Laporan asli guru hanya memberikan tugas oleh '.($task['nama']??'').' pada '.($task['pada']??'').' WIB.';
     if($r['koreksi_id']!==null)$notes[]='Data efektif hasil koreksi admin; nama pelapor adalah pelapor asli, bukan atribusi koreksi.';
     if(!empty($r['dibatalkan']))$notes[]='Dibatalkan oleh pengguna #'.(int)$r['pembatalan_oleh'].' pada '.$r['pembatalan_pada'].' WIB. Alasan: '.$r['pembatalan_alasan'];
     $stamp=static fn(?string $v)=>$v===null?null:str_replace(' ','T',$v);
-    return [$number,$days[(int)$date->format('N')],$r['tanggal'].'T00:00:00',$r['tahun_ajaran'],$r['semester'],$r['nama_sesi'],$r['nama_kelas'],$r['nama_guru'],$r['nama_mapel'],(int)$r['jp_mulai'],(int)$r['jp_selesai'],$stamp($r['rencana_mulai']),$stamp($r['rencana_selesai']),$stamp($in),$stamp($out),$duration,$r['pelapor_masuk'],$r['pelapor_keluar'],$status['label'],implode(' ',$notes),$r['koreksi_id']!==null?'Hasil koreksi admin':($r['checkin_asli']!==null?'Laporan langsung siswa':(!empty($r['guru_tidak_masuk'])?'Laporan guru tidak masuk oleh ketua kelas':'Belum ada laporan siswa')),$r['admin_id']!==null?'Admin #'.(int)$r['admin_id']:null,$stamp($r['koreksi_pada']),$r['alasan_koreksi']];
+    return [$number,$days[(int)$date->format('N')],$r['tanggal'].'T00:00:00',$r['tahun_ajaran'],$r['semester'],$r['nama_sesi'],$r['nama_kelas'],$r['nama_guru'],$r['nama_mapel'],(int)$r['jp_mulai'],(int)$r['jp_selesai'],$stamp($r['rencana_mulai']),$stamp($r['rencana_selesai']),$stamp($in),$stamp($out),$duration,$r['pelapor_masuk'],$r['pelapor_keluar'],$status['label'],implode(' ',$notes),$r['koreksi_id']!==null?'Hasil koreksi admin':($r['checkin_asli']!==null?'Laporan langsung siswa':(!empty($r['guru_hanya_tugas'])?'Laporan guru hanya memberikan tugas oleh ketua kelas':(!empty($r['guru_tidak_masuk'])?'Laporan guru tidak masuk oleh ketua kelas':'Belum ada laporan siswa'))),$r['admin_id']!==null?'Admin #'.(int)$r['admin_id']:null,$stamp($r['koreksi_pada']),$r['alasan_koreksi']];
 }
 
 /** File selesai dibangun sebelum header attachment; buffer aplikasi tidak menampung semua hasil. */
@@ -43,7 +45,7 @@ function kbm_history_export_file(PDO $db,array $input): array {
         $count=(int)kbm_rows($db,kbm_history_sql(kbm_simple_ready($db)).'SELECT COUNT(*) total '.$suffix,$params)[0]['total'];
         if($count===0)throw new KbmExportNotice('Tidak ada hasil sesuai filter untuk diunduh. Ubah filter riwayat lalu coba lagi.');
         if($count>KBM_EXPORT_MAX_ROWS)throw new KbmExportNotice('Hasil melebihi 50.000 pertemuan. Persempit rentang tanggal, sesi, kelas, atau guru; tidak ada data yang dipotong.');
-        $statusNames=[''=>'Semua','guru_tidak_masuk'=>'Guru tidak masuk (laporan ketua kelas)','belum_mulai'=>'Belum waktunya KBM','belum_checkin'=>'Guru belum check-in','checkin'=>'Sudah check-in / belum check-out','selesai'=>'KBM selesai','tanpa_checkin'=>'Tidak tercatat check-in','dikoreksi'=>'Hasil koreksi admin','dibatalkan'=>'Dibatalkan oleh ketua kelas'];
+        $statusNames=[''=>'Semua','guru_hanya_tugas'=>'Guru hanya memberikan tugas','guru_tidak_masuk'=>'Guru tidak masuk (laporan ketua kelas)','belum_mulai'=>'Belum waktunya KBM','belum_checkin'=>'Guru belum check-in','checkin'=>'Sudah check-in / belum check-out','selesai'=>'KBM selesai','tanpa_checkin'=>'Tidak tercatat check-in','dikoreksi'=>'Hasil koreksi admin','dibatalkan'=>'Dibatalkan oleh ketua kelas'];
         $options=['sheet'=>'Riwayat KBM','freeze'=>true,
             'metadata'=>['Rentang: '.$f['tanggal_mulai'].' s.d. '.$f['tanggal_selesai'].' | Sesi: '.($f['sesi']?:'Semua').' | Kelas: '.($f['kelas']!==''?'ID '.$f['kelas']:'Semua').' | Guru: '.($f['guru']!==''?'ID '.$f['guru']:'Semua').' | Status: '.$statusNames[$f['status']],
                 'Jumlah: '.$count.' pertemuan | Seluruh hasil filter, bukan halaman pagination | Dibuat: '.$now.' WIB',

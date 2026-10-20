@@ -69,3 +69,5 @@
  .kbm-student-page .kbm-simple .kbm-table-delete{border-top:1px solid #e6edf5;padding-top:10px}
 }
 @media(max-width:359px){.kbm-student-page .kbm-simple .kbm-student-class .card-body{flex-wrap:wrap!important}.kbm-student-class .btn{width:100%}.kbm-student-page .kbm-simple .card-body{padding:12px!important}}
+
+.kbm-simple .jp-nav .jp-task{background:#737b85;border-color:#737b85;color:#fff;opacity:1}

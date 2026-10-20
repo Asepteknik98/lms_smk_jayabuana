@@ -89,7 +89,7 @@
                 const opened=Array.from(cards.querySelectorAll('details[open][data-meeting-class]'),node=>node.dataset.meetingClass);
                 cards.innerHTML=data.html;
                 for(const id of opened)if(/^\d+$/.test(id)){const details=cards.querySelector('details[data-meeting-class="'+id+'"]');if(details)details.open=true;}
-                for(const color of ['merah','hijau','kuning'])doc.getElementById('kbmCount_'+color).textContent=data.summary[color];
+                for(const color of ['merah','hijau','kuning','abu'])doc.getElementById('kbmCount_'+color).textContent=data.summary[color];
                 doc.getElementById('kbmIncomplete').textContent=data.summary.incomplete+' kelas perlu konfigurasi';
                 doc.getElementById('kbmScope').textContent=data.shown+' dari '+data.total+' kelas · ringkasan sesuai filter';
                 doc.getElementById('kbmUpdated').textContent=data.server_time+' WIB';

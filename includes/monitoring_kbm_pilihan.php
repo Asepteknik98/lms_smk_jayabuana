@@ -9,6 +9,8 @@ function kbm_pilihan_teachers(PDO $db): array {
     return kbm_rows($db,'SELECT g.id,g.nama_lengkap FROM guru g JOIN users u ON u.id=g.user_id WHERE u.role_id=2 AND u.is_active=1 ORDER BY g.nama_lengkap,g.id');
 }
 function kbm_pilihan_tidak_masuk(PDO $db,int $user,array $input): string {
+    $task = ($input['action'] ?? '') === 'guru_hanya_tugas';
+    $reportKey = $task ? 'guru_hanya_tugas' : 'guru_tidak_masuk';
     if(array_diff(array_keys($input),['action','id','guru_id','jp_selesai','csrf_token']))throw new InvalidArgumentException('Data laporan tidak valid.');
     $id=kbm_int($input,'id');$teacher=kbm_int($input,'guru_id');$end=kbm_int($input,'jp_selesai');
     $db->exec('SET TRANSACTION ISOLATION LEVEL READ COMMITTED');$db->beginTransaction();
@@ -22,15 +24,16 @@ function kbm_pilihan_tidak_masuk(PDO $db,int $user,array $input): string {
         $choice=$choices[0]??null;$snap=$choice?json_decode($choice['pengajaran_snapshot'],true):[];
         if(!$choice||($snap['sumber']??'')!=='ketua_kelas'||!empty($snap['dibatalkan'])||($choice['nonaktif_mulai']!==null&&$choice['nonaktif_mulai']<=$today))throw new KbmStudentForbidden('Hanya pilihan guru kelas Anda untuk hari ini yang dapat dilaporkan.');
         if((int)$choice['guru_id']!==$teacher||(int)$choice['jp_selesai']!==$end)throw new InvalidArgumentException('Pilihan guru atau JP berubah. Muat ulang halaman.');
-        if(!empty($snap['guru_tidak_masuk'])){$db->commit();return 'Laporan guru tidak masuk sudah tercatat.';}
+        if(!empty($snap[$reportKey])){$db->commit();return 'Laporan sudah tercatat.';}
+        if(!empty($snap['guru_tidak_masuk']) || !empty($snap['guru_hanya_tugas']))throw new InvalidArgumentException('JP sudah dilaporkan. Batalkan catatan jika keliru.');
         if(kbm_rows($db,'SELECT p.id FROM kbm_pertemuan p WHERE p.jadwal_id=? AND (EXISTS(SELECT 1 FROM kbm_laporan l WHERE l.pertemuan_id=p.id) OR EXISTS(SELECT 1 FROM kbm_koreksi_admin c WHERE c.pertemuan_id=p.id))',[$id]))throw new InvalidArgumentException('Catatan sudah mempunyai check-in atau koreksi. Gunakan pembatalan jika keliru.');
         if(kbm_open_meetings($db,$class))throw new InvalidArgumentException('Check-out catatan aktif terlebih dahulu.');
         $planned=null;foreach(kbm_expected($db,$today) as $r)if((int)$r['jadwal_id']===$id){$planned=$r;break;}
         if(!$planned)throw new InvalidArgumentException('Pilihan JP hari ini tidak tersedia.');
         kbm_store_meeting($db,$user,$planned);
-        $snap['guru_tidak_masuk']=['pada'=>$now,'user_id'=>$user,'siswa_id'=>(int)$assignments[0]['siswa_id'],'nama'=>$assignments[0]['nama_lengkap']];
+        $snap[$reportKey]=['pada'=>$now,'user_id'=>$user,'siswa_id'=>(int)$assignments[0]['siswa_id'],'nama'=>$assignments[0]['nama_lengkap']];
         $db->prepare('UPDATE kbm_jadwal SET pengajaran_snapshot=? WHERE id=?')->execute([json_encode($snap,JSON_THROW_ON_ERROR),$id]);
-        $db->commit();return 'Guru tidak masuk dicatat berdasarkan laporan ketua kelas. Silakan pilih JP berikutnya.';
+        $db->commit();return ($task ? 'Guru hanya memberikan tugas' : 'Guru tidak masuk').' dicatat berdasarkan laporan ketua kelas. Silakan pilih JP berikutnya.';
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
 function kbm_pilihan_hapus(PDO $db,int $user,array $input): string {
@@ -66,6 +69,8 @@ function kbm_pilihan_reset(PDO $db,int $user,array $input): string {
         $today=(string)$db->query('SELECT CURRENT_DATE')->fetchColumn();
         $choices=kbm_rows($db,'SELECT j.*,a.periode_id FROM kbm_jadwal j JOIN kbm_kelas_sesi a ON a.id=j.kelas_sesi_id WHERE j.id=? AND a.kelas_id=? AND j.berlaku_mulai=? AND j.berlaku_sampai=? FOR UPDATE',[$id,$class,$today,$today]);
         if(!$choices||(!kbm_simple_ready($db)&&(int)$choices[0]['periode_id']!==(int)$assignments[0]['periode_id'])||(json_decode($choices[0]['pengajaran_snapshot'],true)['sumber']??'')!=='ketua_kelas')throw new KbmStudentForbidden('Hanya pilihan guru hari ini untuk kelas Anda yang dapat direset.');
+        $snapshot = json_decode($choices[0]['pengajaran_snapshot'], true);
+        if(!empty($snapshot['guru_hanya_tugas']) || !empty($snapshot['guru_tidak_masuk']))throw new InvalidArgumentException('JP sudah dilaporkan. Gunakan pembatalan jika keliru.');
         if(kbm_rows($db,'SELECT p.id FROM kbm_pertemuan p WHERE p.jadwal_id=? AND (EXISTS(SELECT 1 FROM kbm_laporan l WHERE l.pertemuan_id=p.id) OR EXISTS(SELECT 1 FROM kbm_koreksi_admin c WHERE c.pertemuan_id=p.id))',[$id]))throw new InvalidArgumentException('Pilihan sudah mempunyai check-in atau koreksi dan tidak dapat direset. Gunakan check-out atau hubungi admin.');
         if($choices[0]['nonaktif_mulai']!==null&&$choices[0]['nonaktif_mulai']<=$today){$db->commit();return 'Pilihan sudah direset. Silakan pilih JP dan guru kembali.';}
         $db->prepare("UPDATE kbm_jadwal SET nonaktif_mulai=?,tanggal_pilihan=NULL,pengajaran_snapshot=JSON_SET(pengajaran_snapshot,'$.reset_oleh',?,'$.reset_pada',CAST(CURRENT_TIMESTAMP AS CHAR)) WHERE id=?")->execute([$today,$user,$id]);
@@ -106,7 +111,7 @@ function kbm_pilihan_record(PDO $db,int $user,array $input): string {
         $existing=kbm_rows($db,'SELECT * FROM kbm_jadwal WHERE kelas_sesi_id=? AND tanggal_pilihan=? AND jp_mulai=? FOR UPDATE',[$plan['session']['id'],$today,$jp]);
         if($existing){
             $oldSnap=json_decode($existing[0]['pengajaran_snapshot'],true);
-            if(!empty($oldSnap['guru_tidak_masuk'])||kbm_rows($db,'SELECT p.id FROM kbm_pertemuan p LEFT JOIN kbm_laporan l ON l.pertemuan_id=p.id WHERE p.jadwal_id=? AND (l.checkout_at IS NOT NULL OR EXISTS(SELECT 1 FROM kbm_koreksi_admin c WHERE c.pertemuan_id=p.id))',[$existing[0]['id']]))throw new InvalidArgumentException('JP ini sudah selesai dilaporkan dan terkunci. Pilih JP lain atau batalkan catatan jika keliru.');
+            if(!empty($oldSnap['guru_hanya_tugas'])||!empty($oldSnap['guru_tidak_masuk'])||kbm_rows($db,'SELECT p.id FROM kbm_pertemuan p LEFT JOIN kbm_laporan l ON l.pertemuan_id=p.id WHERE p.jadwal_id=? AND (l.checkout_at IS NOT NULL OR EXISTS(SELECT 1 FROM kbm_koreksi_admin c WHERE c.pertemuan_id=p.id))',[$existing[0]['id']]))throw new InvalidArgumentException('JP ini sudah selesai dilaporkan dan terkunci. Pilih JP lain atau batalkan catatan jika keliru.');
             if((int)$existing[0]['guru_id']===$teacher && (int)$existing[0]['jp_selesai']===$end){$db->commit();return 'Pilihan guru sudah tersimpan. Silakan check-in ketika guru masuk.';}
             if(kbm_rows($db,'SELECT id FROM kbm_pertemuan WHERE jadwal_id=?',[$existing[0]['id']]))throw new InvalidArgumentException('JP ini sudah tercatat. Guru tidak dapat diganti; hubungi admin jika ada kekeliruan.');
         }

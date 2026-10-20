@@ -4,12 +4,14 @@ require_once __DIR__.'/monitoring_kbm_admin.php';
 /** Satu definisi status untuk seluruh role. Tidak menyimpan warna ke database. */
 function kbm_status_value(string $code,string $color,string $label,string $warning=''): array {
     return ['code'=>$code,'color'=>$color,'label'=>$label,'warning'=>$warning,
-        'bootstrap'=>['kuning'=>'warning','merah'=>'danger','hijau'=>'success'][$color],
-        'icon'=>['kuning'=>'clock','merah'=>'circle-exclamation','hijau'=>'circle-check'][$color]];
+        'bootstrap'=>['kuning'=>'warning','merah'=>'danger','hijau'=>'success','abu'=>'secondary'][$color],
+        'icon'=>['kuning'=>'clock','merah'=>'circle-exclamation','hijau'=>'circle-check','abu'=>'clipboard-list'][$color]];
 }
 
 function kbm_meeting_status(array $meeting,string $now): array {
     if(!empty($meeting['dibatalkan']))return kbm_status_value('dibatalkan','kuning','Dibatalkan','Catatan asli tetap tersimpan di riwayat.');
+    $task=$meeting['guru_hanya_tugas']??null;if(is_string($task))$task=json_decode($task,true);
+    if(is_array($task)&&empty($meeting['koreksi_id']))return kbm_status_value('guru_hanya_tugas','abu','Guru hanya memberikan tugas','Laporan ketua kelas: '.($task['nama']??'').' ? '.($task['pada']??'').' WIB.');
     $absence=$meeting['guru_tidak_masuk']??null;if(is_string($absence))$absence=json_decode($absence,true);
     if(is_array($absence)&&empty($meeting['koreksi_id']))return kbm_status_value('guru_tidak_masuk','merah','Guru tidak masuk','Laporan ketua kelas: '.($absence['nama']??'').' · '.($absence['pada']??'').' WIB.');
     // array_key_exists penting: NULL pada koreksi berarti pembatalan waktu asli.
@@ -27,6 +29,7 @@ function kbm_meeting_status(array $meeting,string $now): array {
 /** Pendamping SQL untuk filter/pagination; label/warna tetap dari kbm_meeting_status. */
 function kbm_meeting_status_sql(): string {
     return "CASE WHEN r.dibatalkan='1' THEN 'dibatalkan'
+        WHEN r.guru_hanya_tugas IS NOT NULL AND r.guru_hanya_tugas<>'null' AND r.koreksi_id IS NULL THEN 'guru_hanya_tugas'
         WHEN r.guru_tidak_masuk IS NOT NULL AND r.guru_tidak_masuk<>'null' AND r.koreksi_id IS NULL THEN 'guru_tidak_masuk'
         WHEN r.checkout_efektif IS NOT NULL AND r.checkout_efektif<=clock.now_server THEN 'selesai'
         WHEN r.checkin_efektif IS NOT NULL AND r.checkin_efektif<=clock.now_server THEN 'checkin'

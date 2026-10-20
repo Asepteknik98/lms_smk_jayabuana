@@ -43,7 +43,7 @@ test('Timeout aborts a request and expired access stops automatic polling',async
 test('Dashboard DOM keeps cards and server timestamp on connection failure, then updates without reload',async()=>{
  const saved={fetch:global.fetch,document:global.document,window:global.window,location:global.location,history:global.history,FormData:global.FormData};
  function node(){return {textContent:'',value:'',dataset:{},options:[],listeners:{},classList:{add(){},remove(){}},addEventListener(e,fn){this.listeners[e]=fn;},setAttribute(){},replaceChildren(){this.options=[];},appendChild(n){this.options.push(n);},querySelectorAll(){return [];},querySelector(){return null;}};}
- const ids={};for(const id of ['kbmDashboardConfig','kbmFilters','kbmCards','kbmConnection','kbmDate','kbmClass','kbmSession','kbmStatus','kbmIncomplete','kbmScope','kbmUpdated','kbmRefresh','kbmPollingNote','kbmCount_merah','kbmCount_hijau','kbmCount_kuning'])ids[id]=node();
+ const ids={};for(const id of ['kbmDashboardConfig','kbmFilters','kbmCards','kbmConnection','kbmDate','kbmClass','kbmSession','kbmStatus','kbmIncomplete','kbmScope','kbmUpdated','kbmRefresh','kbmPollingNote','kbmCount_merah','kbmCount_hijau','kbmCount_kuning','kbmCount_abu'])ids[id]=node();
  ids.kbmDashboardConfig.textContent=JSON.stringify({endpoint:'monitoring_kbm_data.php',today:'2026-10-16'});ids.kbmDate.value='2026-10-16';
  ids.kbmCards.innerHTML='old cards';ids.kbmUpdated.textContent='old server time';
  const formFields=[ids.kbmDate,ids.kbmSession,ids.kbmClass,ids.kbmStatus];ids.kbmFilters.querySelectorAll=()=>formFields;
@@ -52,11 +52,11 @@ test('Dashboard DOM keeps cards and server timestamp on connection failure, then
  let offline=true,requests=[];
  global.window={addEventListener(){}};global.location={href:'https://example.test/akademik/index.php'};global.history={replaceState(){}};
  global.FormData=class extends Map{constructor(){super([['tanggal',ids.kbmDate.value],['sesi',ids.kbmSession.value],['kelas',ids.kbmClass.value],['status',ids.kbmStatus.value]]);}};
- global.fetch=async(url)=>{requests.push(url);if(offline)throw Error('Network failed');return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({ok:true,html:'new cards',server_time:'2026-10-16 07:10:12',today:'2026-10-16',date:'2026-10-16',summary:{merah:2,hijau:1,kuning:3,incomplete:1},shown:6,total:9,class_options:[{id:1,name:'X A'}]})};};
+ global.fetch=async(url)=>{requests.push(url);if(offline)throw Error('Network failed');return {ok:true,headers:{get:()=> 'application/json'},json:async()=>({ok:true,html:'new cards',server_time:'2026-10-16 07:10:12',today:'2026-10-16',date:'2026-10-16',summary:{merah:2,hijau:1,kuning:3,abu:2,incomplete:1},shown:6,total:9,class_options:[{id:1,name:'X A'}]})};};
  let poller;
  try{
   poller=mount(doc);await poller.refresh();assert.equal(ids.kbmCards.innerHTML,'old cards');assert.equal(ids.kbmUpdated.textContent,'old server time');assert.match(ids.kbmConnection.textContent,/Data belum diperbarui/);
-  offline=false;ids.kbmSession.value='pagi';await poller.refresh();assert.equal(ids.kbmCards.innerHTML,'new cards');assert.equal(ids.kbmUpdated.textContent,'2026-10-16 07:10:12 WIB');assert.equal(ids.kbmCount_merah.textContent,2);assert.match(requests[1],/sesi=pagi/);assert.doesNotMatch(requests[1],/tanggal=/);assert.equal(ids.kbmConnection.textContent,'');
+  offline=false;ids.kbmSession.value='pagi';await poller.refresh();assert.equal(ids.kbmCards.innerHTML,'new cards');assert.equal(ids.kbmUpdated.textContent,'2026-10-16 07:10:12 WIB');assert.equal(ids.kbmCount_merah.textContent,2);assert.equal(ids.kbmCount_abu.textContent,2);assert.match(requests[1],/sesi=pagi/);assert.doesNotMatch(requests[1],/tanggal=/);assert.equal(ids.kbmConnection.textContent,'');
   assert.equal(choices[1].active,true);ids.kbmClass.value='1';ids.kbmStatus.value='merah';
   choices[2].listeners.click({preventDefault(){}});await new Promise(resolve=>setImmediate(resolve));
   assert.equal(ids.kbmClass.value,'');assert.equal(ids.kbmStatus.value,'');assert.match(requests.at(-1),/sesi=siang/);assert.equal(choices[2].active,true);

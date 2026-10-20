@@ -9,14 +9,14 @@ function kbm_matrix_export_file(PDO $db,array $input): array {
     $session=[''=>'Semua Sesi','pagi'=>'Pagi','siang'=>'Siang'][$matrix['session']];
     $rows=(function()use($matrix){foreach($matrix['rows'] as $i=>$class){
         $row=[$i+1,$class['name'],$class['sessions']?implode(' / ',array_map('ucfirst',$class['sessions'])):'Belum diatur'];
-        foreach($class['cells'] as $cell)$row[]=match($cell['kind']??'belum_tercatat'){'hadir'=>'✓','tidak_masuk'=>'⊖',default=>'—'};
+        foreach($class['cells'] as $cell)$row[]=match($cell['kind']??'belum_tercatat'){'tugas'=>'Tugas','hadir'=>'✓','tidak_masuk'=>'⊖',default=>'—'};
         yield $row;
     }})();
     $options=['sheet'=>'Rekap JP','freeze'=>true,'widths'=>[40,155,100,65,65,65,65,65,65],
         'types'=>['Number','String','String','String','String','String','String','String','String'],
-        'status_columns'=>range(3,8),'status_colors'=>['✓'=>'#16874B','⊖'=>'#D62F43','—'=>'#7A8798'],
+        'status_columns'=>range(3,8),'status_colors'=>['✓'=>'#16874B','⊖'=>'#D62F43','—'=>'#7A8798','Tugas'=>'#737B85'],
         'metadata'=>['Tanggal: '.kbm_date($matrix['date'])->format('d/m/Y').' | Sesi: '.$session,
-            'Jumlah: '.count($matrix['rows']).' kelas | Dibuat dari server: '.$matrix['now'].' WIB',
+            'Tugas: Guru hanya memberikan tugas | Jumlah: '.count($matrix['rows']).' kelas | Dibuat dari server: '.$matrix['now'].' WIB',
             '✓ Check-in tercatat | ⊖ Dilaporkan tidak masuk | — Belum ada laporan masuk',
             'Ceklis tidak berarti sudah check-out. Catatan dibatalkan tidak dihitung. Data berasal dari laporan ketua kelas atau koreksi admin.']];
     $file=tmpfile();if($file===false)throw new RuntimeException('File rekap belum dapat disiapkan.');

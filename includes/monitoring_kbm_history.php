@@ -12,7 +12,7 @@ function kbm_history_filters(array $input,string $today): array {
     if($end<$start || $f['tanggal_selesai']>$today || $start->diff($end)->days>365) throw new InvalidArgumentException('Rentang tanggal harus berurutan, maksimal 366 hari, dan tidak melewati hari ini.');
     if(!in_array($f['sesi'],['','pagi','siang'],true)) throw new InvalidArgumentException('Sesi tidak valid.');
     foreach(['kelas','guru'] as $key) if($f[$key]!=='' && !preg_match('/^[1-9][0-9]{0,9}$/D',$f[$key])) throw new InvalidArgumentException('Filter '.$key.' tidak valid.');
-    if(!in_array($f['status'],['','belum_mulai','belum_checkin','checkin','selesai','tanpa_checkin','dikoreksi','dibatalkan','guru_tidak_masuk'],true)) throw new InvalidArgumentException('Status tidak valid.');
+    if(!in_array($f['status'],['','belum_mulai','belum_checkin','checkin','selesai','tanpa_checkin','dikoreksi','dibatalkan','guru_tidak_masuk','guru_hanya_tugas'],true)) throw new InvalidArgumentException('Status tidak valid.');
     if(!preg_match('/^[1-9][0-9]{0,6}$/D',$f['halaman']) || !in_array($f['per_halaman'],['10','25','50'],true)) throw new InvalidArgumentException('Pilihan halaman tidak valid.');
     return $f;
 }
@@ -31,7 +31,7 @@ function kbm_history_sql(bool $simple=false): string {
         CASE WHEN c.id IS NULL THEN l.checkin_at ELSE c.checkin_baru END checkin_efektif,
         CASE WHEN c.id IS NULL THEN l.checkout_at ELSE c.checkout_baru END checkout_efektif,
         c.id koreksi_id,c.alasan alasan_koreksi,c.admin_id,u.username admin_username,c.created_at koreksi_pada,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.sumber')) sumber,
-        JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.dibatalkan')) dibatalkan,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.pembatalan_alasan')) pembatalan_alasan,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.pembatalan_oleh')) pembatalan_oleh,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.pembatalan_pada')) pembatalan_pada,JSON_EXTRACT(j.pengajaran_snapshot,'$.guru_tidak_masuk') guru_tidak_masuk
+        JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.dibatalkan')) dibatalkan,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.pembatalan_alasan')) pembatalan_alasan,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.pembatalan_oleh')) pembatalan_oleh,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.pembatalan_pada')) pembatalan_pada,JSON_EXTRACT(j.pengajaran_snapshot,'$.guru_tidak_masuk') guru_tidak_masuk,JSON_EXTRACT(j.pengajaran_snapshot,'$.guru_hanya_tugas') guru_hanya_tugas
         FROM kbm_dates d JOIN kbm_pertemuan p ON p.tanggal=d.tanggal JOIN kbm_jadwal j ON j.id=p.jadwal_id
         LEFT JOIN kbm_laporan l ON l.pertemuan_id=p.id
         LEFT JOIN kbm_koreksi_admin c ON c.id=(SELECT MAX(x.id) FROM kbm_koreksi_admin x WHERE x.pertemuan_id=p.id)
@@ -42,7 +42,7 @@ function kbm_history_sql(bool $simple=false): string {
         SELECT j.id,d.tanggal,NULL,ks.kelas_id,j.guru_id,j.mapel_id,".$json('tahun_ajaran').",".$json('semester').",
         ".$json('nama_kelas').",".$json('nama_guru').",".$json('nama_mapel').",ks.sesi_kode,ss.nama,j.jp_mulai,j.jp_selesai,
         TIMESTAMP(d.tanggal,s1.mulai),TIMESTAMP(d.tanggal,s2.selesai),
-        NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.sumber')),NULL,NULL,NULL,NULL,JSON_EXTRACT(j.pengajaran_snapshot,'$.guru_tidak_masuk')
+        NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,JSON_UNQUOTE(JSON_EXTRACT(j.pengajaran_snapshot,'$.sumber')),NULL,NULL,NULL,NULL,JSON_EXTRACT(j.pengajaran_snapshot,'$.guru_tidak_masuk'),JSON_EXTRACT(j.pengajaran_snapshot,'$.guru_hanya_tugas')
         FROM kbm_dates d JOIN kbm_jadwal j ON d.tanggal BETWEEN j.berlaku_mulai AND j.berlaku_sampai
         JOIN kbm_kelas_sesi ks ON ks.id=j.kelas_sesi_id AND (d.tanggal BETWEEN ks.berlaku_mulai AND ks.berlaku_sampai OR j.pola_id IS NULL)
         LEFT JOIN kbm_periode r ON r.id=ks.periode_id AND d.tanggal BETWEEN r.mulai AND r.selesai
@@ -93,7 +93,7 @@ function kbm_history_row(PDO $db,int $schedule,string $date): ?array {
 }
 
 function kbm_history_revision(array $r): string {
-    return hash('sha256',json_encode([$r['pertemuan_id'],$r['checkin_asli'],$r['checkout_asli'],$r['koreksi_id'],$r['checkin_efektif'],$r['checkout_efektif'],$r['guru_tidak_masuk']??null],JSON_THROW_ON_ERROR));
+    return hash('sha256',json_encode([$r['pertemuan_id'],$r['checkin_asli'],$r['checkout_asli'],$r['koreksi_id'],$r['checkin_efektif'],$r['checkout_efektif'],$r['guru_tidak_masuk']??null,$r['guru_hanya_tugas']??null],JSON_THROW_ON_ERROR));
 }
 
 function kbm_history_correct(PDO $db,int $admin,array $input): int {

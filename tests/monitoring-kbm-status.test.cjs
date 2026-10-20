@@ -48,3 +48,21 @@ echo json_encode($result);`;
  assert.equal(s.gap.primary.label,'Belum waktunya KBM');assert.equal(s.cancelled.color,'merah');assert.equal(s.afternoon.primary.color,'merah');
  assert.equal(s.next_day_before.primary.color,'kuning');
 });
+
+
+test('Task-only status stays grey, while cancellation and corrections take precedence',()=>{
+ const code=String.raw`<?php
+ require 'includes/monitoring_kbm_status.php';
+ $now='2030-07-01 08:00:00';
+ $m=['tanggal'=>'2030-07-01','sumber'=>'ketua_kelas','checkin_efektif'=>null,'checkout_efektif'=>null,'guru_hanya_tugas'=>json_encode(['nama'=>'Ketua','pada'=>$now])];
+ echo json_encode([
+ 'task'=>kbm_meeting_status($m,$now),
+ 'cancelled'=>kbm_meeting_status(array_merge($m,['dibatalkan'=>1]),$now),
+ 'corrected'=>kbm_meeting_status(array_merge($m,['koreksi_id'=>1,'checkin_efektif'=>$now]),$now),
+ 'empty'=>kbm_meeting_status(array_merge($m,['guru_hanya_tugas'=>'null']),$now)
+ ]);`;
+ const r=spawnSync(process.env.PHP_BINARY||'C:/xampp/php/php.exe',[],{cwd:path.join(__dirname,'..'),input:code,encoding:'utf8'});
+ assert.equal(r.status,0,r.stderr+r.stdout);assert.equal(r.stderr,'');const s=JSON.parse(r.stdout);
+ assert.equal(s.task.code,'guru_hanya_tugas');assert.equal(s.task.color,'abu');assert.equal(s.task.bootstrap,'secondary');
+ assert.match(s.task.warning,/Ketua/);assert.equal(s.cancelled.code,'dibatalkan');assert.equal(s.corrected.code,'checkin');assert.equal(s.empty.code,'belum_checkin');
+});
