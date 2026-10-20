@@ -1,0 +1,103 @@
+/* Monitoring JP admin: satu aksen untuk tindakan utama, warna status seperlunya. */
+.rm-admin-page{color:#25313e;background:#f7f8fa!important}
+.rm-admin-page>.top-navbar{background:#fff;box-shadow:none;border-bottom:1px solid #e5e7eb}
+.rm-admin-page>.top-navbar h5{font-size:1.15rem;line-height:1.5;color:#1d2937;letter-spacing:-.015em}
+.rm-admin-page>.top-navbar h5>i{color:#526477!important;background:none;padding:0}
+.rm-admin-page>.top-navbar small{font-size:.8rem;color:#697586!important;line-height:1.7}
+.rm-admin-page .card{border:1px solid #e1e5eb!important;border-radius:8px;box-shadow:none!important;background:#fff}
+.rm-admin-page .card-body{padding:20px 22px}
+.rm-admin-page .mb-4{margin-bottom:18px!important}
+.rm-admin-page h6{font-size:.9rem;font-weight:600!important;color:#263442;line-height:1.5}
+.rm-admin-page small.text-muted,.rm-admin-page .card-body>p.small{font-size:.75rem!important;color:#697586!important;line-height:1.7}
+.rm-admin-page main>p.small{font-size:.76rem;color:#697586!important;margin-bottom:12px!important}
+.rm-admin-page .form-label{font-size:.77rem;font-weight:500;color:#495769;margin-bottom:7px}
+.rm-admin-page .form-control,.rm-admin-page .form-select{min-height:40px;font-size:.85rem;color:#253442;border:1px solid #cfd6df;border-radius:5px;background-color:#fff;box-shadow:none}
+.rm-admin-page .form-control:focus,.rm-admin-page .form-select:focus{border-color:#527ca8;box-shadow:0 0 0 2px #355f8c12}
+.rm-admin-page .form-control[readonly]{background:#f5f6f8;color:#475569}
+.rm-admin-page .btn{min-height:38px;font-size:.8rem;font-weight:500;border-radius:5px;padding:8px 13px;box-shadow:none;white-space:nowrap}
+.rm-admin-page .btn-sm{min-height:32px;padding:5px 10px;font-size:.75rem}
+.rm-admin-page .btn-primary{background:#2b5e95;border-color:#2b5e95;color:#fff}
+.rm-admin-page .btn-primary:hover{background:#214d7c;border-color:#214d7c}
+.rm-admin-page .btn-success{background:#fff;border-color:#bed4c8;color:#28674c}
+.rm-admin-page .btn-success:hover{background:#f2f7f4;border-color:#7cae92}
+.rm-admin-page .btn-outline-primary,.rm-admin-page .btn-outline-secondary{background:#fff;border-color:#cfd7e1;color:#3c5878}
+.rm-admin-page .btn-outline-primary:hover,.rm-admin-page .btn-outline-secondary:hover{background:#f3f5f8;border-color:#9aafc7}
+.rm-admin-page .btn-danger{background:#b34848;border-color:#b34848}
+.rm-admin-page .btn-outline-danger{background:#fff;border-color:#e1c4c4;color:#a24444}
+.rm-admin-page .btn-outline-danger:hover{background:#fbf4f4;border-color:#c58c8c}
+.rm-admin-page .btn-outline-warning{background:#fff;border-color:#dbcaa8;color:#8a682e}
+.rm-admin-page .rm-entry-panel>details>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;min-height:55px;cursor:pointer;list-style:none;border-radius:8px;background:#fff;color:#34485e;font-size:.86rem}
+.rm-admin-page .rm-entry-panel>details>summary::-webkit-details-marker{display:none}
+.rm-admin-page .rm-entry-panel>details>summary::after{content:'+';font-size:1.1rem;color:#718096;font-weight:400}
+.rm-admin-page .rm-entry-panel>details[open]>summary::after{content:'?'}
+.rm-admin-page .rm-entry-panel>details[open]>summary{border-bottom:1px solid #e9edf2}
+.rm-admin-page .rm-entry-panel summary strong{font-weight:600}
+.rm-admin-page .rm-entry-panel summary i{background:none;padding:0;color:#66788d}
+.rm-admin-page .rm-entry-hint{font-size:.74rem;font-weight:400;color:#7a8796;margin-left:auto}
+.rm-admin-page .rm-target-section>.rm-target-shell>summary{padding:15px 20px;border-radius:8px;min-height:55px;background:#fff;border-left:0;color:#34485e;font-size:.86rem;font-weight:600}
+.rm-admin-page .rm-target-section>.rm-target-shell>summary i{background:none;border-radius:0;color:#66788d;width:auto;height:auto;display:inline}
+.rm-admin-page .rm-target-shell-hint{font-size:.74rem;color:#7a8796;font-weight:400}
+.rm-admin-page .rm-filter-panel .card-body{padding:17px 20px}
+/* Ringkasan satu bidang dengan pemisah, tanpa kartu dekoratif. */
+.rm-admin-page .rm-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));margin-left:0!important;margin-right:0!important;background:#fff;border:1px solid #e1e5eb;border-radius:8px;padding:17px 0;--bs-gutter-y:0;--bs-gutter-x:0}
+.rm-admin-page .rm-summary>div{width:auto;padding:0 22px;margin:0;border-left:1px solid #e7ebf0}
+.rm-admin-page .rm-summary>div:first-child{border-left:0}
+.rm-admin-page .rm-summary .card{border:0!important;border-radius:0;background:none;box-shadow:none!important}
+.rm-admin-page .rm-summary .card-body{padding:0;display:flex;flex-direction:column;align-items:flex-start;gap:5px}
+.rm-admin-page .rm-summary small{font-size:.74rem;color:#697586!important;line-height:1.6}
+.rm-admin-page .rm-summary h4{margin:0;color:#25313e!important;font-size:1.35rem;line-height:1.35;font-weight:600!important;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.rm-admin-page .rm-summary .text-warning,.rm-admin-page .rm-summary .text-success{font-size:.92rem;letter-spacing:0;padding-top:5px}
+.rm-admin-page .rm-stat-icon,.rm-admin-page .rm-panel-icon,.rm-admin-page .rm-teacher-avatar{display:none!important}
+.rm-admin-page .rm-monthly h6{margin-bottom:5px!important}
+.rm-admin-page .rm-monthly h6+.text-muted{display:block;max-width:850px}
+.rm-admin-page .rm-export{display:flex;gap:7px;flex-shrink:0}
+.rm-admin-page .rm-export .btn{background:#fff;border-color:#d5dce5;color:#435163}
+.rm-admin-page .rm-export .btn:hover{background:#f5f7fa}
+.rm-admin-page .rm-export .fa-file-excel{color:#2e7652}.rm-admin-page .rm-export .fa-file-pdf{color:#a54b4b}
+/* Kolom tabel terpisah agar nama, status, dan aksi terbaca jelas. */
+.rm-admin-page .rm-monthly-scroll{max-height:470px;border:1px solid #e1e5eb;border-radius:5px;scrollbar-gutter:stable}
+.rm-admin-page .table-responsive table{font-size:.82rem;min-width:760px;margin-bottom:0}
+.rm-admin-page .table-responsive th{position:sticky;top:0;z-index:1;padding:11px 14px;background:#f4f6f8;border-bottom:1px solid #dde3eb;color:#566274;font-size:.75rem;font-weight:500;white-space:nowrap}
+.rm-admin-page .table-responsive td{padding:13px 14px;border-color:#e9edf2;background:#fff;color:#37475a;line-height:1.65;vertical-align:middle;font-variant-numeric:tabular-nums}
+.rm-admin-page .table-responsive tbody tr:hover td{background:#f8fafc}
+.rm-admin-page .table-responsive tbody tr:last-child td{border-bottom:0}
+.rm-admin-page .table-responsive td small{font-size:.73rem;color:#758194}
+.rm-admin-page .table-responsive strong{font-size:.82rem;font-weight:500;color:#2e3c4e}
+.rm-admin-page .table-responsive .text-end.fw-bold{font-weight:600!important;color:#293849}
+.rm-admin-page .rm-monthly th:first-child{width:45%}.rm-admin-page .rm-monthly th:nth-child(2){width:24%}.rm-admin-page .rm-monthly th:nth-child(3){width:16%}
+.rm-admin-page .rm-monthly tbody td:first-child{display:table-cell}
+.rm-admin-page .rm-monthly td>div.mt-1,.rm-admin-page .rm-monthly td>div.mt-2{margin-top:0!important}
+.rm-admin-page .rm-monthly form{margin:0}.rm-admin-page .rm-monthly td:last-child{white-space:nowrap}
+.rm-admin-page .rm-status,.rm-admin-page .table-responsive .badge{font-size:.69rem;font-weight:500;padding:4px 7px;border-radius:4px;line-height:1.5;white-space:normal}
+.rm-admin-page .rm-status.bg-warning{background:#f8f2e7!important;color:#91692b!important}
+.rm-admin-page .rm-status.bg-success{background:#edf5ef!important;color:#397454!important}
+.rm-admin-page .table-responsive .badge.bg-info{background:#eef3f5!important;color:#526b77!important}
+.rm-admin-page .table-responsive .badge.bg-primary{background:#edf1f7!important;color:#526b8d!important}
+.rm-admin-page .rm-monthly-scroll:focus-visible,.rm-admin-page summary:focus-visible{outline:2px solid #7194bc;outline-offset:3px}
+/* Input di kiri, acuan target di kanan. */
+.rm-admin-page .rm-entry-form{display:grid;grid-template-columns:minmax(0,1fr) 290px;grid-template-areas:'fields target' 'session target' 'save save';gap:22px 28px;align-items:start}
+.rm-entry-fields{grid-area:fields;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px 18px;min-width:0}
+.rm-entry-session{grid-area:session;display:grid;grid-template-columns:1.3fr 1fr 1fr 1fr;gap:12px;min-width:0;padding-top:18px;border-top:1px solid #e9edf2}
+.rm-admin-page .rm-entry-group-title{grid-column:1/-1;font-size:.8rem;font-weight:600;margin:0 0 2px;color:#46586d}
+.rm-entry-group-title>i{font-size:.8rem;color:#7b8999;margin-right:8px;background:none}
+.rm-admin-page .rm-entry-form .form-label{display:flex;align-items:center;gap:6px;font-size:.76rem}
+.rm-entry-form .form-label>i{font-size:.68rem;width:13px;color:#8a98a9;text-align:center}
+.rm-entry-fields>div,.rm-entry-session>div{min-width:0}
+.rm-admin-page .rm-entry-intro{margin-bottom:22px!important}
+.rm-entry-submit{grid-area:save;display:flex;align-items:center;justify-content:space-between;gap:15px;border-top:1px solid #e5eaf0;padding-top:18px}
+.rm-entry-submit p{margin:0;color:#758194;font-size:.73rem;line-height:1.7}
+.rm-entry-submit p>i{color:#8796a9;margin-right:6px}.rm-entry-submit .btn{min-width:155px;flex-shrink:0}
+.rm-entry-form .rm-input-target{grid-area:target;background:#f7f8fa;border:0;border-left:1px solid #e2e7ed;border-radius:0;margin:0;padding:17px;min-width:0}
+.rm-input-target-heading{display:flex;align-items:center;justify-content:space-between;gap:9px;margin-bottom:17px;color:#4a5d73;font-size:.76rem}
+.rm-input-target-heading strong{font-weight:600}.rm-input-target-heading strong>i{display:none}
+.rm-entry-form .rm-input-target-heading .btn{padding:4px 7px;font-size:.67rem;min-height:30px;background:transparent;border-color:#d9e0e8}
+.rm-input-target-metrics{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:17px 13px;margin-bottom:17px}
+.rm-input-target-metrics>div{min-width:0;background:none;border:0;padding:0}
+.rm-input-target-metrics span{display:block;font-size:.68rem;color:#748093;margin-bottom:5px}
+.rm-input-target-metrics span>i{display:none}.rm-input-target-metrics strong{display:block;color:#344558;font-size:.95rem;font-weight:600;font-variant-numeric:tabular-nums}
+.rm-entry-form #rmInputTargetMessage{border-top:1px solid #e0e6ed;padding-top:13px;font-size:.69rem!important;color:#718095!important;line-height:1.8}
+@media(max-width:991px){.rm-admin-page .rm-entry-form{grid-template-columns:minmax(0,1fr);grid-template-areas:'fields' 'target' 'session' 'save';gap:18px}.rm-entry-form .rm-input-target{border-left:0;border-top:1px solid #e2e7ed}.rm-input-target-metrics{grid-template-columns:repeat(4,minmax(0,1fr))}}
+@media(max-width:767px){.rm-admin-page .card-body{padding:16px}.rm-admin-page .form-control,.rm-admin-page .form-select{font-size:16px;min-height:44px}.rm-admin-page .btn{min-height:44px}.rm-admin-page .rm-entry-hint,.rm-admin-page .rm-target-shell-hint{display:none}.rm-admin-page .rm-summary{grid-template-columns:repeat(2,minmax(0,1fr));padding:0}.rm-admin-page .rm-summary>div{padding:14px 16px;border-left:0}.rm-admin-page .rm-summary>div:nth-child(even){border-left:1px solid #e7ebf0}.rm-admin-page .rm-summary>div:nth-child(n+3){border-top:1px solid #e7ebf0}.rm-admin-page .rm-summary h4{font-size:1.2rem}.rm-admin-page .rm-summary .text-warning{font-size:.85rem}.rm-admin-page .rm-export{width:auto}.rm-admin-page .rm-monthly table,.rm-admin-page .rm-monthly tbody{display:block;min-width:0!important;width:100%}.rm-admin-page .rm-monthly thead{display:none}.rm-admin-page .rm-monthly tbody tr{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px 14px;padding:13px 12px;border-bottom:1px solid #e5eaf0}.rm-admin-page .rm-monthly tbody td{display:block;padding:0;border:0;min-width:0;background:none!important}.rm-admin-page .rm-monthly tbody td:first-child{grid-column:1;grid-row:1;display:block}.rm-admin-page .rm-monthly tbody td:nth-child(2){grid-column:1;grid-row:2}.rm-admin-page .rm-monthly tbody td:nth-child(3){grid-column:2;grid-row:2}.rm-admin-page .rm-monthly tbody td:nth-child(4){grid-column:2;grid-row:1}.rm-admin-page .rm-monthly tbody td[colspan]{grid-column:1/-1}.rm-admin-page .rm-monthly tbody tr:last-child{border-bottom:0}.rm-admin-page .rm-monthly .btn-sm{min-height:44px}.rm-admin-page .rm-monthly-scroll{max-height:480px}.rm-admin-page .rm-entry-panel>details>summary,.rm-admin-page .rm-target-section>.rm-target-shell>summary{padding:13px 15px}}
+@media(max-width:575px){.rm-entry-fields{grid-template-columns:minmax(0,1fr);gap:14px}.rm-entry-session{grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.rm-input-target-metrics{grid-template-columns:repeat(2,minmax(0,1fr))}.rm-entry-submit{flex-direction:column;align-items:stretch;gap:12px}.rm-entry-submit .btn{width:100%}.rm-entry-form .rm-input-target-heading .btn{min-height:40px}.rm-admin-page .rm-entry-form .form-control,.rm-admin-page .rm-entry-form .form-select{font-size:16px;min-height:46px}}
+
+.rm-admin-page .rm-target-settings{background:#f7f8fa;border-color:#e1e6ed}.rm-admin-page .rm-target-section .table th{background:#f4f6f8;color:#566274}

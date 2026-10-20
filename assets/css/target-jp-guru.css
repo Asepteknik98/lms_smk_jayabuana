@@ -1,0 +1,20 @@
+.rm-target-section .rm-target-shell>summary{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:16px 18px;cursor:pointer;font-size:.85rem;font-weight:600;color:#365d8d}
+.rm-target-shell-hint{font-weight:400;font-size:.7rem;color:#8393a6}
+.rm-target-shell[open]>summary{border-bottom:1px solid #e6edf5}
+.rm-target-week-form{display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+.rm-target-week-form>div{min-width:190px}.rm-target-week-form .small{font-size:.72rem;margin-bottom:8px}
+.rm-target-settings{padding:12px 14px;background:#f7faff;border:1px solid #e1e9f5;border-radius:9px;margin-top:14px}
+.rm-target-settings>summary{cursor:pointer;color:#466c9c;font-size:.8rem}
+.rm-target-section .small,.rm-target-section small{font-size:.7rem;line-height:1.7}
+.rm-target-table-wrap{max-height:420px;border:1px solid #e1e8f1;border-radius:9px;scrollbar-gutter:stable}
+.rm-target-section .table{min-width:950px!important;font-size:.75rem;margin:0}
+.rm-target-section .table th{position:sticky;top:0;z-index:1;background:#edf3fb;color:#627a97;white-space:nowrap;font-size:.7rem;padding:10px}
+.rm-target-section .table td{padding:12px 10px;vertical-align:middle;white-space:nowrap;border-color:#edf2f7}
+.rm-target-section .table td:first-child{white-space:normal;min-width:190px}
+.rm-target-section .table tbody tr:nth-child(even){background:#fbfcff}
+.rm-target-daily{font-variant-numeric:tabular-nums;color:#687e98}
+.rm-target-daily.rm-target-met{color:#287953;font-weight:600}
+.rm-target-edit{display:inline-block;font-size:.68rem;margin-top:5px;color:#3c6ca5}
+.rm-target-table-wrap:focus-visible{outline:3px solid #91b9ed;outline-offset:2px}
+.rm-target-settings .col-sm{min-width:75px}
+@media(max-width:767px){.rm-target-shell-hint{display:none}.rm-target-section .rm-target-shell>summary{font-size:.8rem;min-height:48px;padding:14px}.rm-target-section .form-control,.rm-target-section .form-select{font-size:16px;min-height:44px}.rm-target-section .btn{min-height:44px}.rm-target-week-form>div{flex:1}.rm-target-settings .rm-target-day-input{min-width:0}.rm-target-table-wrap{max-height:400px}.rm-target-section .rm-target-edit{min-height:36px;padding:7px 0}}
