@@ -26,7 +26,8 @@ pkl_card_ok($incomplete['context']['sessions']===[]&&$incomplete['context']['inc
 pkl_card_ok($incomplete['context']['issues']===['Kelas 2: Sesi belum diatur'],'Issue identifies source class');
 pkl_card_ok(kbm_pkl_dashboard_cards($cards,[])===$cards,'No groups preserves existing display');
 $groups=['siang'=>[$result[0]],'pagi'=>[],'belum_diatur'=>[]];$shown=1;
-ob_start();require __DIR__.'/../includes/monitoring_kbm_cards.php';$html=ob_get_clean();
+require_once __DIR__.'/../includes/monitoring_kbm_cards.php';
+ob_start();kbm_dashboard_render_cards($groups,$shown);$html=ob_get_clean();
 pkl_card_ok(substr_count($html,'<article ')===1,'Only one rendered group card');
 pkl_card_ok(str_contains($html,'data-kbm-open="pkl:'.$id.'"'),'Group dialog uses stable key');
 pkl_card_ok(str_contains($html,'PKL &lt;Gabungan&gt;')&&str_contains($html,'Kelas 1')&&str_contains($html,'Kelas 2'),'Group and member names rendered safely');

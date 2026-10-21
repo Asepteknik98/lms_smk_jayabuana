@@ -1,6 +1,7 @@
 <?php
 require_once __DIR__.'/monitoring_kbm_status.php';
 require_once __DIR__.'/monitoring_kbm_pkl_cards.php';
+require_once __DIR__.'/monitoring_kbm_cards.php';
 
 function kbm_dashboard_filters(array $query): array {
     $result=[];
@@ -40,7 +41,7 @@ function kbm_dashboard_payload(PDO $db,array $query,bool $groupPkl=false): array
         if($incomplete) $summary['incomplete']++;
     }
     ob_start();
-    try {require __DIR__.'/monitoring_kbm_cards.php';$html=ob_get_clean();}
+    try {kbm_dashboard_render_cards($groups,$shown);$html=ob_get_clean();}
     catch(Throwable $e) {ob_end_clean();throw $e;}
     return ['ok'=>true,'html'=>$html,'summary'=>$summary,'shown'=>$shown,'total'=>count($snapshot['classes']),
         'server_time'=>$snapshot['now'],'date'=>$snapshot['date'],'today'=>substr($snapshot['now'],0,10),

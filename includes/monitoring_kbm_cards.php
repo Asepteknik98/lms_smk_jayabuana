@@ -1,4 +1,7 @@
-<?php // Internal render: variabel berasal dari kbm_dashboard_payload, bukan input HTML siswa. ?>
+<?php
+// Data kartu dikirim secara eksplisit oleh dashboard.
+function kbm_dashboard_render_cards(array $groups,int $shown): void {
+?>
 <?php if(!$shown): ?><div class="alert alert-info mb-0">Tidak ada kelas yang sesuai filter. Ubah filter untuk menampilkan kelas lainnya.</div><?php endif ?>
 <?php foreach($groups as $key=>$cards): if(!$cards)continue; ?>
 <section class="kbm-session mb-4" data-session="<?= kbm_board_h($key) ?>"><div class="d-flex gap-2 align-items-center mb-3"><h2 class="h5 fw-bold mb-0"><i class="fa-solid fa-<?= $key==='pagi'?'sun':($key==='siang'?'cloud-sun':'sliders') ?> me-2 text-primary" aria-hidden="true"></i><?= ['pagi'=>'Sesi Pagi','siang'=>'Sesi Siang','belum_diatur'=>'Sesi belum diatur / perlu diperiksa'][$key] ?></h2><span class="badge bg-light text-dark border"><?= count($cards) ?> kelas</span></div><div class="kbm-grid">
@@ -14,3 +17,5 @@
 <?php endforeach ?>
 </div></section>
 <?php endforeach ?>
+<?php
+}
