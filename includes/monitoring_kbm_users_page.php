@@ -1,5 +1,16 @@
 <?php
 if(!isset($_SESSION['user_id'])||(int)($_SESSION['role_id']??0)!==1){http_response_code(403);exit;}
+function kbm_simple_render_users(
+    array $classes,
+    array $pklGroups,
+    string $pklId,
+    ?array $selectedPkl,
+    int $classId,
+    array $selectedUsers,
+    bool $slotsFull,
+    array $students,
+    array $availableStudents
+): void {
 $userClassNames=[];foreach($classes as $c)$userClassNames[(int)$c['id']]=$c['nama_kelas'];
 ?>
 <form method="get" class="row g-3 mb-4"><input type="hidden" name="tab" value="ketua">
@@ -36,3 +47,5 @@ $userClassNames=[];foreach($classes as $c)$userClassNames[(int)$c['id']]=$c['nam
 <form method="post" data-confirm="Cabut izin pengguna ini? Riwayat laporan tetap tersimpan."><?php kbm_simple_token() ?><input type="hidden" name="action" value="cabut_ketua"><input type="hidden" name="id" value="<?= (int)$chair['id'] ?>"><button class="btn btn-outline-danger btn-sm">Cabut Penugasan</button></form></div>
 <?php endforeach ?></div>
 <?php endif ?>
+<?php
+}

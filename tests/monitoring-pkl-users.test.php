@@ -48,7 +48,8 @@ try{
     $_SESSION=['user_id'=>1,'role_id'=>1];$pklGroups=[$group];$pklId=$group['id'];$selectedPkl=$group;$classId=1;
     $classes=[['id'=>1,'nama_kelas'=>'XI A'],['id'=>2,'nama_kelas'=>'XI B']];
     $selectedUsers=[];$slotsFull=false;$students=$availableStudents=[['id'=>11,'nama_lengkap'=>'Siswa <A>','nama_kelas'=>'XI A','nis'=>'11'],['id'=>12,'nama_lengkap'=>'Siswa B','nama_kelas'=>'XI B','nis'=>'12']];
-    ob_start();require __DIR__.'/../includes/monitoring_kbm_users_page.php';$html=ob_get_clean();
+    require_once __DIR__.'/../includes/monitoring_kbm_users_page.php';
+    ob_start();kbm_simple_render_users($classes,$pklGroups,$pklId,$selectedPkl,$classId,$selectedUsers,$slotsFull,$students,$availableStudents);$html=ob_get_clean();
     pkl_users_ok(str_contains($html,'PKL &lt;Gabungan&gt;'),'Escaped group option');
     pkl_users_ok(str_contains($html,'Siswa &lt;A&gt; · XI A')&&str_contains($html,'Siswa B · XI B'),'Names and source classes displayed');
     pkl_users_ok(substr_count($html,'name="siswa_ids[]"')===2,'Batch selection checkboxes');
