@@ -64,7 +64,7 @@
             target.replaceChildren(copy);
         }
         if(dialog){
-            cards.addEventListener('click',event=>{const trigger=event.target.closest('[data-kbm-open]');if(!trigger||!cards.contains(trigger))return;dialogClass=trigger.dataset.kbmOpen;if(!/^\d+$/.test(dialogClass))return;dialogTrigger=trigger;dialog.showModal();updateDialog();});
+            cards.addEventListener('click',event=>{const trigger=event.target.closest('[data-kbm-open]');if(!trigger||!cards.contains(trigger))return;dialogClass=trigger.dataset.kbmOpen;if(!/^(?:\d+|pkl:[a-f0-9]{24})$/.test(dialogClass))return;dialogTrigger=trigger;dialog.showModal();updateDialog();});
             doc.getElementById('kbmDialogClose').addEventListener('click',()=>dialog.close());
             dialog.addEventListener('close',()=>{const current=cards.querySelector('[data-kbm-open="'+dialogClass+'"]');(current||dialogTrigger)?.focus();dialogClass=null;});
         }
@@ -88,7 +88,7 @@
             apply(data){
                 const opened=Array.from(cards.querySelectorAll('details[open][data-meeting-class]'),node=>node.dataset.meetingClass);
                 cards.innerHTML=data.html;
-                for(const id of opened)if(/^\d+$/.test(id)){const details=cards.querySelector('details[data-meeting-class="'+id+'"]');if(details)details.open=true;}
+                for(const id of opened)if(/^(?:\d+|pkl:[a-f0-9]{24})$/.test(id)){const details=cards.querySelector('details[data-meeting-class="'+id+'"]');if(details)details.open=true;}
                 for(const color of ['merah','hijau','kuning','abu'])doc.getElementById('kbmCount_'+color).textContent=data.summary[color];
                 doc.getElementById('kbmIncomplete').textContent=data.summary.incomplete+' kelas perlu konfigurasi';
                 doc.getElementById('kbmScope').textContent=data.shown+' dari '+data.total+' kelas · ringkasan sesuai filter';
@@ -96,7 +96,7 @@
                 liveClock?.sync(data.server_time);
                 const selected=classSelect.value;classSelect.replaceChildren();
                 for(const option of [{id:'',name:'Semua kelas'},...data.class_options]){const node=doc.createElement('option');node.value=String(option.id);node.textContent=option.name;classSelect.appendChild(node);}
-                classSelect.value=selected;today=data.today;date.value=data.date;date.max=data.today;
+                classSelect.value=data.filters?.kelas??selected;today=data.today;date.value=data.date;date.max=data.today;
                 const displayDate=doc.getElementById('kbmDisplayDate');if(displayDate){const parts=data.date.split('-');const months=['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];displayDate.textContent=Number(parts[2])+' '+months[Number(parts[1])-1]+' '+parts[0];}
                 updateSessionMenu();
                 updateDialog();

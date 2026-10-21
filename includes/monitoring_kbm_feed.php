@@ -17,6 +17,6 @@ try {
     session_write_close(); // Polling tidak menahan kunci session ketika tab lain dipakai.
     $db=Database::getInstance();
     if(!kbm_admin_ready($db)) kbm_feed_error(503,'Monitoring KBM belum dikonfigurasi. Lengkapi migrasi dan pengaturan sekolah.');
-    echo json_encode(kbm_dashboard_payload($db,$_GET),JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
+    echo json_encode(kbm_dashboard_payload($db,$_GET,$kbmFeedArea==='akademik'),JSON_UNESCAPED_UNICODE|JSON_THROW_ON_ERROR);
 } catch(InvalidArgumentException $e) {kbm_feed_error(400,$e->getMessage());}
 catch(Throwable $e) {error_log('Feed monitoring KBM: '.$e->getMessage());kbm_feed_error(503,'Data monitoring belum dapat diperbarui. Silakan coba lagi.');}

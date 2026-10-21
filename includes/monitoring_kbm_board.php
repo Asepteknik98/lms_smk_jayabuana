@@ -3,7 +3,7 @@
 require_once __DIR__.'/monitoring_kbm_dashboard.php';
 $db=Database::getInstance();$ready=kbm_admin_ready($db);$payload=null;$boardError='';
 if($ready) {
-    try {$payload=kbm_dashboard_payload($db,$_GET);}
+    try {$payload=kbm_dashboard_payload($db,$_GET,!empty($kbmAcademicBoard));}
     catch(InvalidArgumentException $e) {http_response_code(400);$boardError=$e->getMessage();}
     catch(Throwable $e) {error_log('Dashboard KBM: '.$e->getMessage());http_response_code(503);$boardError='Data monitoring belum dapat dimuat. Silakan coba lagi.';}
 }
@@ -49,6 +49,6 @@ require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 <p class="small text-muted mt-4">Warna menunjukkan status laporan ketua kelas, bukan deteksi keberadaan fisik guru. Peringatan belum check-out sebelumnya tidak menggantikan status jadwal berjalan.</p>
 <noscript><style>.kbm-admin-monitor #kbmCards .kbm-class-card{height:auto;min-height:140px}.kbm-admin-monitor #kbmCards .kbm-class-card>div,.kbm-admin-monitor #kbmCards .kbm-class-card>details{display:block!important}.kbm-admin-monitor #kbmCards .kbm-card-open{display:none}</style><div class="alert alert-info">JavaScript tidak aktif. Gunakan Terapkan Filter atau muat ulang halaman untuk memperbarui data.</div></noscript>
 <script id="kbmDashboardConfig" type="application/json"><?= json_encode(['endpoint'=>'monitoring_kbm_data.php','today'=>$payload['today'],'interval_ms'=>12000,'server_time'=>$payload['server_time']],JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_THROW_ON_ERROR) ?></script>
-<script src="../assets/js/monitoring-kbm-dashboard.js?v=19" defer></script>
+<script src="../assets/js/monitoring-kbm-dashboard.js?v=20" defer></script>
 <?php endif ?>
 </main></div><?php require_once __DIR__.'/footer.php'; ?>

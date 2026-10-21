@@ -27,3 +27,12 @@ Mengubah anggota atau menghapus kelompok tidak mengubah sesi yang
 sudah disimpan. Admin dapat mengatur ulang sesi melalui Sesi Kelas.
 
 Uji penyimpanan tanpa database: `C:/xampp/php/php.exe tests/monitoring-pkl.test.php`.
+
+Pada papan monitoring Waka/Akademik, satu kelompok PKL ditampilkan sebagai satu
+kartu. Kelas anggota tidak ditampilkan terpisah. Detail kartu tetap memuat status
+dan catatan kelas asal. Ringkasan dan filter dihitung setelah penggabungan; papan
+admin tetap memakai kartu kelas asal. Pembaruan otomatis menggunakan pengelompokan
+yang sama. Status berbeda ditandai "Status beragam", dengan prioritas warna merah,
+kuning, hijau, lalu abu-abu. Sesi yang belum seragam masuk kategori sesi belum
+diatur. Pengelompokan ini hanya tampilan berdasarkan konfigurasi kelompok saat ini,
+termasuk ketika tanggal lampau dipilih; riwayat laporan tidak diubah.
