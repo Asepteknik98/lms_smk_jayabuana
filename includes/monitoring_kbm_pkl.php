@@ -3,6 +3,37 @@
 function kbm_pkl_path(): string {
     return __DIR__.'/../storage/monitoring-pkl/groups.php';
 }
+function kbm_pkl_group(string $id): array {
+    foreach(kbm_pkl_read() as $group)if($group['id']===$id)return $group;
+    throw new InvalidArgumentException('Kelompok PKL tidak ditemukan. Pilih ulang kelas.');
+}
+function kbm_pkl_slots(array $slots,array $members): array {
+    return array_values(array_filter($slots,fn($slot)=>in_array((int)$slot['kelas_id'],$members,true)));
+}
+function kbm_pkl_add_users(PDO $db,int $admin,array $input): string {
+    $id=kbm_input($input,'pkl_id');
+    $students=$input['siswa_ids']??null;
+    if(!is_array($students)||!$students||count($students)>4)throw new InvalidArgumentException('Pilih 1 sampai 4 siswa.');
+    $ids=[];foreach($students as $student){
+        if(!is_string($student)||!ctype_digit($student)||(int)$student<1)throw new InvalidArgumentException('Pilihan siswa tidak valid.');
+        $ids[]=(int)$student;
+    }
+    $ids=array_values(array_unique($ids));
+    return kbm_admin_write($db,$admin,function()use($db,$admin,$id,$ids){
+        $group=kbm_pkl_group($id);$members=$group['kelas_ids'];sort($members,SORT_NUMERIC);
+        foreach($members as $class)if(!kbm_rows($db,'SELECT id FROM kelas WHERE id=? FOR UPDATE',[$class]))throw new InvalidArgumentException('Kelas asal sudah dihapus. Perbarui kelompok PKL.');
+        $slots=kbm_pkl_slots(kbm_simple_chair_slots($db),$members);
+        $assigned=array_map('intval',array_column($slots,'siswa_id'));
+        $new=array_values(array_diff($ids,$assigned));
+        if(count($slots)+count($new)>4)throw new InvalidArgumentException('Maksimal 4 pengguna untuk seluruh kelompok PKL. Cabut pengguna sebelum menambah pengganti.');
+        foreach($new as $student){
+            $rows=kbm_rows($db,'SELECT s.kelas_id FROM siswa s JOIN users u ON u.id=s.user_id WHERE s.id=? AND u.role_id=3 AND u.is_active=1',[$student]);
+            if(!$rows||!in_array((int)$rows[0]['kelas_id'],$members,true))throw new InvalidArgumentException('Pilih siswa aktif dari kelas anggota kelompok PKL.');
+            $db->prepare("INSERT INTO kbm_ketua_kelas(periode_id,kelas_id,siswa_id,berlaku_mulai,berlaku_sampai,ditunjuk_oleh) VALUES(NULL,?,?,CURRENT_DATE,'9999-12-31',?)")->execute([(int)$rows[0]['kelas_id'],$student,$admin]);
+        }
+        return $new?'Pengguna kelompok PKL berhasil ditambahkan.':'Siswa yang dipilih sudah ditunjuk sebagai pengguna.';
+    });
+}
 function kbm_pkl_read(): array {
     $path=kbm_pkl_path();
     if(!is_file($path))return [];

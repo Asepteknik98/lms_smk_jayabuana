@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/monitoring_kbm_pkl.php';
 // Helper internal; dimuat oleh monitoring_kbm_data.php.
 
 function kbm_simple_ready(PDO $db): bool {
@@ -44,6 +45,9 @@ function kbm_simple_submit(PDO $db,int $admin,array $input): string {
         $current=kbm_simple_chair_slots($db,$class);
         foreach($current as $chair)if((int)$chair['siswa_id']===$student)return 'Siswa ini sudah ditunjuk sebagai pengguna.';
         if(count($current)>=4)throw new InvalidArgumentException('Maksimal 4 pengguna per kelas. Cabut salah satu penugasan sebelum menambahkan pengguna baru.');
+        foreach(kbm_pkl_read() as $group){
+            if(in_array($class,$group['kelas_ids'],true)&&count(kbm_pkl_slots(kbm_simple_chair_slots($db),$group['kelas_ids']))>=4)throw new InvalidArgumentException('Maksimal 4 pengguna untuk seluruh kelompok PKL. Cabut salah satu pengguna terlebih dahulu.');
+        }
         $db->prepare("INSERT INTO kbm_ketua_kelas(periode_id,kelas_id,siswa_id,berlaku_mulai,berlaku_sampai,ditunjuk_oleh) VALUES(NULL,?,?,CURRENT_DATE,'9999-12-31',?)")->execute([$class,$student,$admin]);
         return 'Pengguna ditambahkan. Pengguna sebelumnya tetap memiliki izin; berlaku sampai dicabut.';
     });

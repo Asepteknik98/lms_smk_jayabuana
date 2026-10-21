@@ -17,8 +17,13 @@ anggota. Jadi fitur ini bukan sepenuhnya bebas database: kelompoknya berbasis
 file, tetapi sesi dan pelaporan memakai penyimpanan KBM yang sudah ada.
 
 Kelompok tidak membuat identitas kelas baru dalam LMS, tidak memindahkan siswa,
-dan tidak menggabungkan izin pelapor atau laporan. Pengguna tetap ditunjuk per
-kelas asal. Mengubah anggota atau menghapus kelompok tidak mengubah sesi yang
+dan tidak menggabungkan laporan. Di tab Pengguna, nama kelompok PKL tersedia
+dalam pilihan kelas. Admin dapat mencentang beberapa siswa aktif dari seluruh
+kelas anggota sekaligus, maksimal empat pengguna total untuk kelompok tersebut.
+Nama siswa disertai kelas asal. Penugasan yang sudah ada di kelas asal ikut
+dihitung; izin pelaporan setiap siswa tetap berlaku untuk kelas asalnya.
+Admin dapat mencabut penugasan langsung dari tampilan kelompok.
+Mengubah anggota atau menghapus kelompok tidak mengubah sesi yang
 sudah disimpan. Admin dapat mengatur ulang sesi melalui Sesi Kelas.
 
 Uji penyimpanan tanpa database: `C:/xampp/php/php.exe tests/monitoring-pkl.test.php`.
