@@ -5,6 +5,7 @@ require_once __DIR__ . '/../config/database.php';
 require_once __DIR__ . '/../config/helper.php';
 
 check_access([3]);
+require_once __DIR__.'/../includes/ujian_harian.php';
 $db = Database::getInstance();
 
 $ujian_id = intval($_GET['id'] ?? 0);
@@ -14,8 +15,9 @@ $stmt_s->execute([$_SESSION['user_id']]);
 $siswa = $stmt_s->fetch();
 $siswa_id = $siswa['id'] ?? 0;
 
+$eligible=uh_ready($db)?uh_eligible_sql('u.id',(string)(int)$siswa_id):'1=1';
 // Ulangan Harian hanya dapat dibuka oleh siswa pada kelas yang benar.
-$stmt_u = $db->prepare("SELECT u.* FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id WHERE u.id=? AND p.kelas_id=?");
+$stmt_u = $db->prepare("SELECT u.* FROM ujian u JOIN pengajaran p ON p.id=u.pengajaran_id WHERE u.id=? AND p.kelas_id=? AND $eligible");
 $stmt_u->execute([$ujian_id,$siswa['kelas_id']??0]);
 $ujian = $stmt_u->fetch();
 
@@ -25,6 +27,8 @@ if (!$ujian) {
 $sekarang=time();$jadwal_mulai=strtotime($ujian['waktu_mulai']);$jadwal_selesai=strtotime($ujian['waktu_selesai']);
 if($sekarang<$jadwal_mulai){exit("Ulangan Harian belum dimulai.");}
 if($sekarang>$jadwal_selesai){exit("Jadwal ulangan harian telah berakhir.");}
+$uhSettings=uh_settings($db,(int)$ujian_id,(int)$ujian['pengajaran_id']);
+if($uhSettings['metode']==='berkas'){require __DIR__.'/../includes/ujian_berkas_page.php';exit;}
 $stmt_count=$db->prepare('SELECT COUNT(*) FROM soal_ujian WHERE ujian_id=?');$stmt_count->execute([$ujian_id]);
 if(!(int)$stmt_count->fetchColumn()){exit('Ulangan Harian belum memiliki soal.');}
 

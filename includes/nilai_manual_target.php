@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__.'/ujian_harian.php';
 require_once __DIR__.'/rekap_tugas_module.php';
 require_once __DIR__.'/nilai_excel_reader.php';
 require_once __DIR__.'/nilai_manual_komponen.php';
@@ -30,7 +31,8 @@ function nm_context(PDO $db,int $guru,int $pid,string $kind): array {
     if(!in_array($kind,['tugas','ujian'],true))throw new RuntimeException('Jenis penilaian tidak valid.');
     $q=$db->prepare('SELECT p.*,m.nama_mapel,k.nama_kelas FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id WHERE p.id=? AND p.guru_id=?');$q->execute([$pid,$guru]);$info=$q->fetch();
     if(!$info)throw new RuntimeException('Pengajaran bukan milik Anda.');
-    $q=$db->prepare($kind==='tugas'?'SELECT id,judul,pertemuan_ke,deadline,(deadline<=NOW()) selesai FROM tugas WHERE pengajaran_id=? ORDER BY id':"SELECT id,nama_ujian judul,NULL pertemuan_ke,waktu_selesai deadline,(waktu_selesai<=NOW()) selesai FROM ujian WHERE pengajaran_id=? AND jenis_ujian='Kuis' ORDER BY id");$q->execute([$pid]);$targets=$q->fetchAll();
+    $regular=uh_regular_sql($db);
+    $q=$db->prepare($kind==='tugas'?'SELECT id,judul,pertemuan_ke,deadline,(deadline<=NOW()) selesai FROM tugas WHERE pengajaran_id=? ORDER BY id':"SELECT id,nama_ujian judul,NULL pertemuan_ke,waktu_selesai deadline,(waktu_selesai<=NOW()) selesai FROM ujian u WHERE pengajaran_id=? AND jenis_ujian='Kuis' AND $regular ORDER BY id");$q->execute([$pid]);$targets=$q->fetchAll();
     foreach($targets as $i=>&$target){$target['nomor']=$i+1;$target['label']=($kind==='tugas'?'Tugas ':'Ujian Harian ').($i+1).' — '.$target['judul'];}unset($target);
     $q=$db->prepare('SELECT id,nis,nisn,nama_lengkap FROM siswa WHERE kelas_id=? ORDER BY nama_lengkap,id');$q->execute([$info['kelas_id']]);$students=$q->fetchAll();
     $q=$db->prepare($kind==='tugas'?'SELECT pt.siswa_id,pt.tugas_id target_id,pt.nilai,pt.catatan_guru catatan FROM pengumpulan_tugas pt JOIN tugas t ON t.id=pt.tugas_id WHERE t.pengajaran_id=?':"SELECT n.siswa_id,n.ujian_id target_id,n.nilai_total nilai,'' catatan FROM nilai_ujian n JOIN ujian u ON u.id=n.ujian_id WHERE u.pengajaran_id=? AND u.jenis_ujian='Kuis'");$q->execute([$pid]);$scores=[];foreach($q->fetchAll() as $row)$scores[(int)$row['siswa_id']][(int)$row['target_id']]=$row;

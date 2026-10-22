@@ -12,6 +12,13 @@ try{
 catch(Throwable $e){error_log('Target JP: '.$e->getMessage());$targetError='Target JP belum dapat dimuat. Rekap JP yang sudah ada tetap tersedia.';}
 $targetReady=$targetReady??false;$targetWeek=rm_target_week($targetToday);
 $targetGuru=$isAdmin&&is_string($_GET['target_guru']??null)&&ctype_digit($_GET['target_guru'])?(int)$_GET['target_guru']:0;
+$targetSubjects=[];
+foreach(isset($teachings)&&is_array($teachings)?$teachings:[] as $targetTeaching){
+    $targetTeacherId=(int)$targetTeaching['guru_id'];
+    $targetSubjects[$targetTeacherId][(int)$targetTeaching['mapel_id']]=(string)$targetTeaching['nama_mapel'];
+}
+foreach($targetSubjects as &$targetSubjectNames){natcasesort($targetSubjectNames);$targetSubjectNames=array_values($targetSubjectNames);}unset($targetSubjectNames);
+$targetSubjectText=implode(', ',$targetSubjects[$targetGuru]??[]);
 $targetSelected=null;foreach($targetReport['rows']??[] as $targetRow)if($targetRow['guru_id']===$targetGuru)$targetSelected=$targetRow['versi'];
 $targetNext=(new DateTimeImmutable($targetWeek['mulai']))->modify('+7 days')->format('Y-m-d');
 $targetDefaultStart=$targetWeek['mulai'];
@@ -31,9 +38,11 @@ if($isAdmin&&$targetGuru&&$targetReady&&!$targetError){$targetCurrent=rm_target_
 <p class="small text-muted mt-3">Setiap sel harian: <strong>tercatat / target</strong>. Target mingguan adalah jumlah target Senin–Jumat. JP tercatat berasal dari rekap mengajar seluruh kelas dan mapel; filter kelas/mapel tidak mengurangi perbandingan ini. Tidak dihitung dari lama check-in.</p>
 <?php if($isAdmin): ?><details class="rm-target-settings" <?= $targetGuru?'open':'' ?>><summary><i class="fa-solid fa-sliders me-2" aria-hidden="true"></i>Atur target guru</summary><form method="post" class="row g-2 align-items-end mt-1">
 <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="target_save">
-<div class="col-md-6"><label for="rmTargetGuru" class="form-label small"><i class="fa-solid fa-user-tie me-1" aria-hidden="true"></i>Guru</label><select id="rmTargetGuru" name="target_guru_id" class="form-select" required><option value="">Pilih guru</option><?php foreach($teachers as $g): ?><option value="<?= (int)$g['id'] ?>" <?= $targetGuru===(int)$g['id']?'selected':'' ?>><?= sanitize($g['nama_lengkap']) ?></option><?php endforeach ?></select></div>
-<div class="col-md-6"><label for="rmTargetStart" class="form-label small"><i class="fa-regular fa-calendar me-1" aria-hidden="true"></i>Berlaku mulai Senin</label><input type="date" id="rmTargetStart" class="form-control" name="berlaku_mulai" min="<?= sanitize($targetWeek['mulai']) ?>" value="<?= sanitize($targetDefaultStart) ?>" step="7" required></div>
-<div class="col-12"><p class="small text-muted mb-2">Isi target sesi Pagi dan Siang (0?6 JP per sesi). Yang disimpan adalah total harian. Saat dibuka kembali, total dibagi ke Pagi terlebih dahulu (maksimal 6 JP), lalu sisanya ke Siang.</p></div>
+<div class="col-md-4"><label for="rmTargetGuru" class="form-label small"><i class="fa-solid fa-user-tie me-1" aria-hidden="true"></i>Guru</label><select id="rmTargetGuru" name="target_guru_id" class="form-select" required><option value="">Pilih guru</option><?php foreach($teachers as $g): ?><option value="<?= (int)$g['id'] ?>" <?= $targetGuru===(int)$g['id']?'selected':'' ?>><?= sanitize($g['nama_lengkap']) ?></option><?php endforeach ?></select></div>
+<div class="col-md-4"><label for="rmTargetMapel" class="form-label small"><i class="fa-solid fa-book-open me-1" aria-hidden="true"></i>Mata Pelajaran</label><input type="text" id="rmTargetMapel" class="form-control" value="<?= sanitize($targetSubjectText) ?>" title="<?= sanitize($targetSubjectText) ?>" placeholder="<?= $targetGuru?'Belum ada mata pelajaran':'Pilih guru terlebih dahulu' ?>" readonly aria-describedby="rmTargetMapelHint"></div>
+<div class="col-md-4"><label for="rmTargetStart" class="form-label small"><i class="fa-regular fa-calendar me-1" aria-hidden="true"></i>Berlaku mulai Senin</label><input type="date" id="rmTargetStart" class="form-control" name="berlaku_mulai" min="<?= sanitize($targetWeek['mulai']) ?>" value="<?= sanitize($targetDefaultStart) ?>" step="7" required></div>
+<div class="col-12"><small id="rmTargetMapelHint" class="text-muted">Mata pelajaran mengikuti pengajaran guru. Target JP tetap merupakan total seluruh mata pelajaran guru.</small></div>
+<div class="col-12"><p class="small text-muted mb-2">Isi target sesi Pagi dan Siang (0-6 JP per sesi). Yang disimpan adalah total harian. Saat dibuka kembali, total dibagi ke Pagi terlebih dahulu (maksimal 6 JP), lalu sisanya ke Siang.</p></div>
 <?php foreach(RM_TARGET_DAYS as $key=>$label): $dayTotal=(int)($targetSelected[$key]??0); ?><fieldset class="col-12 col-sm rm-target-day-input"><legend class="form-label small"><?= $label ?></legend>
 <?php foreach(['pagi'=>'Pagi','siang'=>'Siang'] as $session=>$sessionLabel): ?><label for="rmTarget_<?= $key ?>_<?= $session ?>" class="form-label small"><?= $sessionLabel ?></label><input type="number" id="rmTarget_<?= $key ?>_<?= $session ?>" name="<?= $key ?>_<?= $session ?>" min="0" max="6" step="1" value="<?= $session==='pagi'?min(6,$dayTotal):max(0,$dayTotal-6) ?>" class="form-control mb-2" required inputmode="numeric"><?php endforeach ?>
 <small class="d-block">Total: <output class="rm-target-day-total"><?= $dayTotal ?></output> JP</small></fieldset><?php endforeach ?>
@@ -47,6 +56,10 @@ if($isAdmin&&$targetGuru&&$targetReady&&!$targetError){$targetCurrent=rm_target_
 <?php if(!$targetReport['rows']): ?><tr><td colspan="9" class="text-center text-muted">Belum ada guru yang sesuai pilihan.</td></tr><?php endif ?></tbody></table></div>
 <small class="d-block text-muted mt-2">Target adalah rencana beban mengajar, bukan bukti kehadiran. Kekurangan minggu berjalan belum merupakan hasil akhir. Koreksi dan validasi realisasi tetap mengikuti aturan yang sudah ada.</small>
 <?php endif ?></div></details></section>
-<?php if($isAdmin&&$targetReady&&!$targetError): ?><script>
+<?php if($isAdmin&&$targetReady&&!$targetError): ?>
+<script>
+(()=>{const teacher=document.getElementById('rmTargetGuru'),subject=document.getElementById('rmTargetMapel');if(!teacher||!subject)return;const subjects=<?= json_encode($targetSubjects,JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT|JSON_INVALID_UTF8_SUBSTITUTE) ?>;const update=()=>{const names=subjects[teacher.value]||[];subject.value=names.join(', ');subject.title=subject.value;subject.placeholder=teacher.value?'Belum ada mata pelajaran':'Pilih guru terlebih dahulu';};teacher.addEventListener('change',update);update();})();
+</script>
+<script>
 (()=>{const output=document.getElementById('rmTargetWeeklyTotal');if(!output)return;const days=Array.from(document.querySelectorAll('.rm-target-day-input'));const update=()=>{let weekly=0;days.forEach(day=>{const total=Array.from(day.querySelectorAll('input')).reduce((sum,input)=>sum+(Number.isFinite(input.valueAsNumber)?input.valueAsNumber:0),0);day.querySelector('.rm-target-day-total').textContent=total;weekly+=total;});output.textContent=weekly+' JP / minggu';};days.forEach(day=>day.querySelectorAll('input').forEach(input=>input.addEventListener('input',update)));update();})();
 </script><?php endif ?>

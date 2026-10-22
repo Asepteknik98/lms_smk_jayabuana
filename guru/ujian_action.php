@@ -7,6 +7,9 @@ require_once __DIR__ . '/../config/helper.php';
 header('Content-Type: application/json; charset=UTF-8');
 check_access([2]);
 
+require_once __DIR__.'/../includes/ujian_harian.php';
+require_once __DIR__.'/../includes/ujian_nilai_tools.php';
+require_once __DIR__.'/../includes/ujian_excel.php';
 $db = Database::getInstance();
 $action = $_GET['action'] ?? '';
 
@@ -49,6 +52,7 @@ try {
     if (in_array($action, ['create_ujian', 'update_ujian'], true)) {
         $ujian_id = (int)($_POST['ujian_id'] ?? 0);
         $pengajaran_id = (int)($_POST['pengajaran_id'] ?? 0);
+        if($pengajaran_id<1)throw new RuntimeException('Pilih satu kelas dan mata pelajaran tujuan ulangan.');
         $nama_ujian = trim($_POST['nama_ujian'] ?? '');
         $jenis_ujian = $_POST['jenis_ujian'] ?? '';
         $durasi_menit = (int)($_POST['durasi_menit'] ?? 0);
@@ -68,9 +72,13 @@ try {
             throw new RuntimeException('Durasi harus 1–600 menit dan waktu selesai harus setelah waktu mulai.');
         }
         if ($action === 'create_ujian') {
+            $db->beginTransaction();
+            $db->prepare('SELECT id FROM pengajaran WHERE id=? FOR UPDATE')->execute([$pengajaran_id]);
             $stmt = $db->prepare('INSERT INTO ujian (pengajaran_id,nama_ujian,jenis_ujian,durasi_menit,waktu_mulai,waktu_selesai,acak_soal) VALUES (?,?,?,?,?,?,?)');
             $stmt->execute([$pengajaran_id, $nama_ujian, $jenis_ujian, $durasi_menit, $waktu_mulai->format('Y-m-d H:i:s'), $waktu_selesai->format('Y-m-d H:i:s'), $acak_soal]);
             $ujian_baru_id = (int)$db->lastInsertId();
+            uh_save_settings($db,$ujian_baru_id,$pengajaran_id,$_POST);
+            $db->commit();
             catat_log($_SESSION['user_id'], "Membuat ujian baru: $nama_ujian");
             respons_ujian('success', 'Ulangan Harian berhasil dibuat.', ['ujian_id' => $ujian_baru_id, 'nama_ujian' => $nama_ujian]);
         }
@@ -81,10 +89,41 @@ try {
         if (ujian_sudah_dikerjakan($db, $ujian_id) && (int)$ujian_lama['pengajaran_id'] !== $pengajaran_id) {
             throw new RuntimeException('Kelas ulangan harian tidak dapat dipindahkan karena sudah memiliki peserta.');
         }
+        if($jenis_ujian!==$ujian_lama['jenis_ujian']&&uh_remedial_ready($db)){$q=$db->prepare('SELECT (EXISTS(SELECT 1 FROM ujian_harian_remedial WHERE ujian_id=? OR ujian_asal_id=?) OR EXISTS(SELECT 1 FROM remedial_ujian WHERE ujian_id=?))');$q->execute([$ujian_id,$ujian_id,$ujian_id]);if($q->fetchColumn())throw new RuntimeException('Jenis UH yang memiliki remedial tidak dapat diubah.');}
+        $db->beginTransaction();
+        $db->prepare('SELECT id FROM ujian WHERE id=? FOR UPDATE')->execute([$ujian_id]);
+        if((int)$ujian_lama['pengajaran_id']!==$pengajaran_id)throw new RuntimeException('Gunakan Salin ke kelas untuk membagikan ke kelas lain.');
+        uh_save_settings($db,$ujian_id,$pengajaran_id,$_POST);
         $stmt = $db->prepare('UPDATE ujian SET pengajaran_id=?,nama_ujian=?,jenis_ujian=?,durasi_menit=?,waktu_mulai=?,waktu_selesai=?,acak_soal=? WHERE id=?');
         $stmt->execute([$pengajaran_id, $nama_ujian, $jenis_ujian, $durasi_menit, $waktu_mulai->format('Y-m-d H:i:s'), $waktu_selesai->format('Y-m-d H:i:s'), $acak_soal, $ujian_id]);
+        $db->commit();
         catat_log($_SESSION['user_id'], "Mengubah ujian: $nama_ujian");
         respons_ujian('success', 'Ulangan Harian berhasil diperbarui.');
+    }
+
+    if ($action === 'salin_ujian') {
+        $source=ujian_milik_guru($db,(int)($_POST['ujian_id']??0),(int)$_SESSION['user_id']);
+        $targets=$_POST['pengajaran_ids']??[];
+        if($source&&uh_remedial_ready($db)){$q=$db->prepare('SELECT ujian_id FROM ujian_harian_remedial WHERE ujian_id=?');$q->execute([$source['id']]);if($q->fetchColumn())throw new RuntimeException('Remedial dibuat per UH asal. Gunakan menu Remedial pada kelas tujuan.');}
+        if(!$source||!is_array($targets)||!$targets||count($targets)>50)throw new RuntimeException('Pilih ulangan dan kelas tujuan.');
+        $db->beginTransaction();$db->prepare('SELECT id FROM ujian WHERE id=? FOR UPDATE')->execute([$source['id']]);
+        $settings=uh_settings($db,(int)$source['id'],(int)$source['pengajaran_id']);
+        foreach(array_unique(array_map('intval',$targets)) as $pid){
+            $q=$db->prepare('SELECT p.id FROM pengajaran p JOIN guru g ON g.id=p.guru_id JOIN pengajaran asal ON asal.id=? WHERE p.id=? AND g.user_id=? AND p.mapel_id=asal.mapel_id AND p.semester=asal.semester AND p.tahun_ajaran=asal.tahun_ajaran AND p.id<>asal.id FOR UPDATE');$q->execute([$source['pengajaran_id'],$pid,$_SESSION['user_id']]);
+            if(!$q->fetchColumn())throw new RuntimeException('Tujuan harus pengajaran Anda dengan mapel, semester dan tahun ajaran yang sama.');
+            $db->prepare('INSERT INTO ujian(pengajaran_id,nama_ujian,jenis_ujian,durasi_menit,waktu_mulai,waktu_selesai,acak_soal) VALUES(?,?,?,?,?,?,?)')->execute([$pid,$source['nama_ujian'],$source['jenis_ujian'],$source['durasi_menit'],$source['waktu_mulai'],$source['waktu_selesai'],$source['acak_soal']]);$new=(int)$db->lastInsertId();
+            uh_save_settings($db,$new,$pid,['metode'=>$settings['metode'],'penerima'=>'kelas','instruksi'=>$settings['instruksi']]);
+            $db->prepare('INSERT INTO soal_ujian(ujian_id,tipe_soal,pertanyaan,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,kunci_jawaban,bobot) SELECT ?,tipe_soal,pertanyaan,opsi_a,opsi_b,opsi_c,opsi_d,opsi_e,kunci_jawaban,bobot FROM soal_ujian WHERE ujian_id=?')->execute([$new,$source['id']]);
+        }
+        $db->commit();catat_log($_SESSION['user_id'],'Membagikan salinan ulangan #'.$source['id']);respons_ujian('success','Ulangan beserta soal dibagikan ke kelas tujuan. Setiap kelas memiliki rekap sendiri.');
+    }
+    if ($action === 'nilai_berkas') {
+        $exam=(int)($_POST['ujian_id']??0);$sid=(int)($_POST['siswa_id']??0);$score=filter_var($_POST['nilai']??null,FILTER_VALIDATE_FLOAT);$note=$_POST['catatan']??'';
+        if(!ujian_milik_guru($db,$exam,(int)$_SESSION['user_id'])||$score===false||!is_finite($score)||$score<0||$score>100||!is_string($note)||mb_strlen($note)>2000)throw new RuntimeException('Nilai atau catatan tidak valid.');
+        $db->beginTransaction();$q=$db->prepare('SELECT nama_file FROM ujian_harian_berkas WHERE ujian_id=? AND siswa_id=? FOR UPDATE');$q->execute([$exam,$sid]);if(!$q->fetchColumn())throw new RuntimeException('Berkas jawaban tidak ditemukan.');
+        $db->prepare('UPDATE ujian_harian_berkas SET catatan_guru=? WHERE ujian_id=? AND siswa_id=?')->execute([trim($note),$exam,$sid]);
+        $db->prepare('INSERT INTO nilai_ujian(ujian_id,siswa_id,nilai_total,selesai_pada) VALUES(?,?,?,NOW()) ON DUPLICATE KEY UPDATE nilai_total=VALUES(nilai_total),selesai_pada=NOW()')->execute([$exam,$sid,$score]);if(uh_remedial_ready($db))uhn_sync($db,$exam,$sid,(float)$score);$db->commit();
+        catat_log($_SESSION['user_id'],'Menilai berkas ulangan #'.$exam.' siswa #'.$sid);respons_ujian('success','Nilai berkas tersimpan dan masuk Rekap Nilai.');
     }
 
     if (in_array($action, ['add_soal', 'update_soal'], true)) {
@@ -92,7 +131,7 @@ try {
         $ujian_id = (int)($_POST['ujian_id'] ?? 0);
         $tipe_soal = $_POST['tipe_soal'] ?? '';
         $pertanyaan = trim($_POST['pertanyaan'] ?? '');
-        $bobot = filter_var($_POST['bobot'] ?? null, FILTER_VALIDATE_INT);
+        $bobot = ue_weight($_POST['bobot'] ?? '');
         if (!ujian_milik_guru($db, $ujian_id, (int)$_SESSION['user_id'])) {
             throw new RuntimeException('Ulangan Harian tidak ditemukan atau bukan milik Anda.');
         }
@@ -156,6 +195,7 @@ try {
         $ujian_id = (int)($_POST['ujian_id'] ?? 0);
         $ujian = ujian_milik_guru($db, $ujian_id, (int)$_SESSION['user_id']);
         if (!$ujian) throw new RuntimeException('Ulangan Harian tidak ditemukan atau bukan milik Anda.');
+        if(uh_remedial_ready($db)){$q=$db->prepare('SELECT (EXISTS(SELECT 1 FROM ujian_harian_remedial WHERE ujian_id=? OR ujian_asal_id=?) OR EXISTS(SELECT 1 FROM remedial_ujian WHERE ujian_id=? OR sumber_ujian_id=?))');$q->execute([$ujian_id,$ujian_id,$ujian_id,$ujian_id]);if($q->fetchColumn())throw new RuntimeException('Ulangan memiliki penugasan atau riwayat remedial dan tidak dapat dihapus agar riwayat nilai tetap utuh.');}
         $db->prepare('DELETE FROM ujian WHERE id=?')->execute([$ujian_id]);
         catat_log($_SESSION['user_id'], 'Menghapus ujian: ' . $ujian['nama_ujian']);
         respons_ujian('success', 'Ulangan Harian beserta soal dan hasilnya berhasil dihapus.');
@@ -170,7 +210,7 @@ try {
              JOIN soal_ujian so ON so.id=js.soal_id AND so.tipe_soal='ESAI'
              JOIN sesi_ujian su ON su.id=js.sesi_ujian_id
              JOIN ujian u ON u.id=su.ujian_id JOIN pengajaran p ON p.id=u.pengajaran_id
-             JOIN guru g ON g.id=p.guru_id WHERE js.id=? AND g.user_id=?"
+             JOIN guru g ON g.id=p.guru_id WHERE js.id=? AND g.user_id=? AND su.status='Selesai'"
         );
         $stmt->execute([$jawaban_id, $_SESSION['user_id']]);
         $jawaban = $stmt->fetch();
@@ -179,33 +219,13 @@ try {
         }
 
         $db->beginTransaction();
+        $db->prepare('SELECT id FROM sesi_ujian WHERE id=? FOR UPDATE')->execute([$jawaban['sesi_ujian_id']]);
         $db->prepare('UPDATE jawaban_siswa SET nilai_esai=? WHERE id=?')->execute([$nilai_esai, $jawaban_id]);
-        $stmt = $db->prepare(
-            "SELECT
-                COALESCE(SUM(CASE WHEN so.tipe_soal='PG' THEN so.bobot ELSE 0 END),0) bobot_pg,
-                COALESCE(SUM(CASE WHEN so.tipe_soal='PG' AND js.is_benar=1 THEN so.bobot ELSE 0 END),0) dapat_pg,
-                COALESCE(SUM(CASE WHEN so.tipe_soal='ESAI' THEN so.bobot ELSE 0 END),0) bobot_esai,
-                COALESCE(SUM(CASE WHEN so.tipe_soal='ESAI' THEN COALESCE(js.nilai_esai,0)*so.bobot/100 ELSE 0 END),0) dapat_esai
-             FROM soal_ujian so
-             LEFT JOIN jawaban_siswa js ON js.soal_id=so.id AND js.sesi_ujian_id=?
-             WHERE so.ujian_id=?"
-        );
-        $stmt->execute([$jawaban['sesi_ujian_id'], $jawaban['ujian_id']]);
-        $hasil = $stmt->fetch();
-        $nilai_pg = $hasil['bobot_pg'] > 0 ? $hasil['dapat_pg'] / $hasil['bobot_pg'] * 100 : 0;
-        $nilai_esai_total = $hasil['bobot_esai'] > 0 ? $hasil['dapat_esai'] / $hasil['bobot_esai'] * 100 : 0;
-        $semua_bobot = (float)$hasil['bobot_pg'] + (float)$hasil['bobot_esai'];
-        $nilai_total = $semua_bobot > 0 ? ((float)$hasil['dapat_pg'] + (float)$hasil['dapat_esai']) / $semua_bobot * 100 : 0;
-        $stmt = $db->prepare(
-            'INSERT INTO nilai_ujian (ujian_id,siswa_id,nilai_pg,nilai_esai,nilai_total,selesai_pada)
-             VALUES (?,?,?,?,?,NOW())
-             ON DUPLICATE KEY UPDATE nilai_pg=VALUES(nilai_pg),nilai_esai=VALUES(nilai_esai),
-                 nilai_total=VALUES(nilai_total),selesai_pada=NOW()'
-        );
-        $stmt->execute([$jawaban['ujian_id'], $jawaban['siswa_id'], $nilai_pg, $nilai_esai_total, $nilai_total]);
+        uh_calculate($db,(int)$jawaban['ujian_id'],(int)$jawaban['siswa_id'],(int)$jawaban['sesi_ujian_id']);
+        $q=$db->prepare('SELECT nilai_total FROM nilai_ujian WHERE ujian_id=? AND siswa_id=?');$q->execute([$jawaban['ujian_id'],$jawaban['siswa_id']]);$nilai_total=$q->fetchColumn();
         $db->commit();
         catat_log($_SESSION['user_id'], "Menilai jawaban esai ID: $jawaban_id");
-        respons_ujian('success', 'Nilai esai dan nilai total berhasil diperbarui.', ['nilai_total' => round($nilai_total, 2)]);
+        respons_ujian('success', 'Nilai esai dan nilai total berhasil diperbarui.', ['nilai_total' => $nilai_total===null?null:round((float)$nilai_total, 2)]);
     }
 
     http_response_code(400);

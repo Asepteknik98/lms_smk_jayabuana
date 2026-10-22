@@ -7,6 +7,7 @@ require_once __DIR__ . '/../config/helper.php';
 header('Content-Type: application/json');
 check_access([3]);
 
+require_once __DIR__.'/../includes/ujian_harian.php';
 $db = Database::getInstance();
 
 $stmt_s = $db->prepare("SELECT id FROM siswa WHERE user_id = ?");
@@ -17,6 +18,7 @@ $siswa_id = $siswa['id'] ?? 0;
 $action = $_GET['action'] ?? '';
 if($_SERVER['REQUEST_METHOD']!=='POST'||!verify_csrf($_POST['csrf_token']??'')){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Permintaan tidak sah. Muat ulang halaman ulangan harian.']);exit;}
 
+try {
 // ------------------- SIMPAN JAWABAN REAL-TIME / AUTO-SAVE -------------------
 if ($action === 'save_jawaban') {
     $sesi_id  = intval($_POST['sesi_id'] ?? 0);
@@ -31,7 +33,9 @@ if ($action === 'save_jawaban') {
 
     if(!in_array($tipe,['PG','ESAI'],true)||($tipe==='PG'&&!in_array(strtoupper($jawaban),['A','B','C','D','E'],true))){echo json_encode(['status'=>'error','message'=>'Jawaban tidak valid.']);exit;}
     if($tipe==='ESAI'&&mb_strlen($jawaban)>20000){echo json_encode(['status'=>'error','message'=>'Jawaban esai terlalu panjang.']);exit;}
-    $stmt_akses=$db->prepare("SELECT su.id,su.ujian_id FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id JOIN soal_ujian so ON so.ujian_id=u.id AND so.id=? JOIN pengajaran p ON p.id=u.pengajaran_id JOIN siswa s ON s.id=su.siswa_id AND s.kelas_id=p.kelas_id WHERE su.id=? AND su.siswa_id=? AND su.status='Berlangsung' AND NOW() BETWEEN u.waktu_mulai AND u.waktu_selesai AND so.tipe_soal=?");
+    $eligibility=uh_ready($db)?uh_eligible_sql('u.id','su.siswa_id'):'1=1';
+    $db->beginTransaction();
+    $stmt_akses=$db->prepare("SELECT su.id,su.ujian_id FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id JOIN soal_ujian so ON so.ujian_id=u.id AND so.id=? JOIN pengajaran p ON p.id=u.pengajaran_id JOIN siswa s ON s.id=su.siswa_id AND s.kelas_id=p.kelas_id WHERE su.id=? AND su.siswa_id=? AND su.status='Berlangsung' AND NOW() BETWEEN u.waktu_mulai AND u.waktu_selesai AND so.tipe_soal=? AND $eligibility AND NOW()<DATE_ADD(su.waktu_mulai,INTERVAL u.durasi_menit MINUTE) FOR UPDATE");
     $stmt_akses->execute([$soal_id,$sesi_id,$siswa_id,$tipe]);if(!$stmt_akses->fetch()){http_response_code(403);echo json_encode(['status'=>'error','message'=>'Sesi, soal, atau waktu ulangan harian tidak valid.']);exit;}
 
     // Cek Kunci Jawaban jika PG
@@ -68,6 +72,7 @@ if ($action === 'save_jawaban') {
         }
     }
 
+    $db->commit();
     echo json_encode(['status' => 'success']);
     exit();
 }
@@ -76,7 +81,9 @@ if ($action === 'save_jawaban') {
 if ($action === 'finish_ujian') {
     $sesi_id = intval($_POST['sesi_id'] ?? 0);
 
-    $stmt_sesi = $db->prepare("SELECT su.*,u.waktu_mulai jadwal_mulai,u.waktu_selesai jadwal_selesai FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id WHERE su.id=? AND su.siswa_id=?");
+    $db->beginTransaction();
+    $eligible=uh_ready($db)?uh_eligible_sql('u.id','su.siswa_id'):'1=1';
+    $stmt_sesi = $db->prepare("SELECT su.*,u.waktu_mulai jadwal_mulai,u.waktu_selesai jadwal_selesai FROM sesi_ujian su JOIN ujian u ON u.id=su.ujian_id JOIN pengajaran p ON p.id=u.pengajaran_id JOIN siswa s ON s.id=su.siswa_id AND s.kelas_id=p.kelas_id WHERE su.id=? AND su.siswa_id=? AND $eligible FOR UPDATE");
     $stmt_sesi->execute([$sesi_id, $siswa_id]);
     $sesi = $stmt_sesi->fetch();
 
@@ -121,34 +128,16 @@ if ($action === 'finish_ujian') {
     if(time()<strtotime($sesi['jadwal_mulai'])){echo json_encode(['status'=>'error','message'=>'Ulangan Harian belum dimulai.']);exit;}
 
     // Update status sesi menjadi Selesai
-    $db->beginTransaction();
     $stmt_fin = $db->prepare("UPDATE sesi_ujian SET status='Selesai',waktu_selesai=NOW() WHERE id=? AND siswa_id=? AND status='Berlangsung'");
     $stmt_fin->execute([$sesi_id,$siswa_id]);
 
-    // Kalkulasi Otomatis Nilai Pilihan Ganda (PG)
-    $stmt_calc = $db->prepare("
-        SELECT 
-            SUM(su.bobot) as total_bobot,
-            SUM(CASE WHEN js.is_benar = 1 THEN su.bobot ELSE 0 END) as bobot_dapat
-        FROM soal_ujian su
-        LEFT JOIN jawaban_siswa js ON (js.soal_id = su.id AND js.sesi_ujian_id = ?)
-        WHERE su.ujian_id = ? AND su.tipe_soal = 'PG'
-    ");
-    $stmt_calc->execute([$sesi_id, $ujian_id]);
-    $res = $stmt_calc->fetch();
-
-    $nilai_pg = 0;
-    if ($res && $res['total_bobot'] > 0) {
-        $nilai_pg = ($res['bobot_dapat'] / $res['total_bobot']) * 100;
-    }
-
-    // Insert / Update Nilai
-    $stmt_n = $db->prepare("INSERT INTO nilai_ujian (ujian_id, siswa_id, nilai_pg, nilai_total) VALUES (?, ?, ?, ?) ON DUPLICATE KEY UPDATE nilai_pg = ?, nilai_total = ?");
-    $stmt_n->execute([$ujian_id, $siswa_id, $nilai_pg, $nilai_pg, $nilai_pg, $nilai_pg]);
+    uh_calculate($db,(int)$ujian_id,(int)$siswa_id,(int)$sesi_id);
     $db->commit();
 
-    catat_log($_SESSION['user_id'], "Menyelesaikan Ulangan Harian ID: $ujian_id dengan Nilai PG: $nilai_pg");
+    catat_log($_SESSION['user_id'], "Menyelesaikan Ulangan Harian ID: $ujian_id ");
     echo json_encode(['status' => 'success', 'message' => 'Ulangan Harian telah selesai dikerjakan!']);
     exit();
 }
 http_response_code(400);echo json_encode(['status'=>'error','message'=>'Aksi tidak dikenali.']);
+
+} catch(Throwable $e) { if($db->inTransaction())$db->rollBack();http_response_code($e instanceof RuntimeException?422:500);error_log('Jawaban UH: '.$e->getMessage());echo json_encode(['status'=>'error','message'=>$e instanceof RuntimeException?$e->getMessage():'Jawaban belum berhasil diproses. Coba kembali.']); }
