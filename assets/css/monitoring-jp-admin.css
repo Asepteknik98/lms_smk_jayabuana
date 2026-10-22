@@ -26,14 +26,14 @@
 .rm-admin-page .btn-outline-danger{background:#fff;border-color:#e1c4c4;color:#a24444}
 .rm-admin-page .btn-outline-danger:hover{background:#fbf4f4;border-color:#c58c8c}
 .rm-admin-page .btn-outline-warning{background:#fff;border-color:#dbcaa8;color:#8a682e}
-.rm-admin-page .rm-entry-panel>details>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;min-height:55px;cursor:pointer;list-style:none;border-radius:8px;background:#fff;color:#34485e;font-size:.86rem}
+.rm-admin-page .rm-entry-panel>details>summary{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:15px 20px;min-height:55px;cursor:pointer;list-style:none;border-radius:8px;background:#fce7f3;color:#9d174d;font-size:.86rem}
 .rm-admin-page .rm-entry-panel>details>summary::-webkit-details-marker{display:none}
-.rm-admin-page .rm-entry-panel>details>summary::after{content:'+';font-size:1.1rem;color:#718096;font-weight:400}
+.rm-admin-page .rm-entry-panel>details>summary::after{content:'+';font-size:1.1rem;color:#be185d;font-weight:400}
 .rm-admin-page .rm-entry-panel>details[open]>summary::after{content:'?'}
-.rm-admin-page .rm-entry-panel>details[open]>summary{border-bottom:1px solid #e9edf2}
+.rm-admin-page .rm-entry-panel>details[open]>summary{border-bottom:1px solid #f9a8d4}
 .rm-admin-page .rm-entry-panel summary strong{font-weight:600}
-.rm-admin-page .rm-entry-panel summary i{background:none;padding:0;color:#66788d}
-.rm-admin-page .rm-entry-hint{font-size:.74rem;font-weight:400;color:#7a8796;margin-left:auto}
+.rm-admin-page .rm-entry-panel summary i{background:none;padding:0;color:#be185d}
+.rm-admin-page .rm-entry-hint{font-size:.74rem;font-weight:400;color:#9d174d;margin-left:auto}
 .rm-admin-page .rm-target-section>.rm-target-shell>summary{padding:15px 20px;border-radius:8px;min-height:55px;background:#fff;border-left:0;color:#34485e;font-size:.86rem;font-weight:600}
 .rm-admin-page .rm-target-section>.rm-target-shell>summary i{background:none;border-radius:0;color:#66788d;width:auto;height:auto;display:inline}
 .rm-admin-page .rm-target-shell-hint{font-size:.74rem;color:#7a8796;font-weight:400}

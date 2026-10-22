@@ -1,5 +1,8 @@
 <?php
 if(!isset($db,$isAdmin,$ownGuruId,$state)){http_response_code(404);exit;}
+// Data disediakan oleh rekap_mengajar_module.php saat view ini dimuat.
+$teacherFilter = isset($teacherFilter) ? (int)$teacherFilter : 0;
+$teachers = isset($teachers) && is_array($teachers) ? $teachers : [];
 $targetToday=(string)$db->query('SELECT CURRENT_DATE')->fetchColumn();$targetDate=$targetToday;$targetError='';$targetReport=null;
 try{
     if(isset($_GET['tanggal_target'])){if(!is_string($_GET['tanggal_target']))throw new InvalidArgumentException('Tanggal target tidak valid.');rm_target_week($_GET['tanggal_target']);$targetDate=$_GET['tanggal_target'];}
@@ -14,7 +17,7 @@ $targetNext=(new DateTimeImmutable($targetWeek['mulai']))->modify('+7 days')->fo
 $targetDefaultStart=$targetWeek['mulai'];
 if($isAdmin&&$targetGuru&&$targetReady&&!$targetError){$targetCurrent=rm_target_latest($db,$targetGuru,$targetWeek['mulai']);if($targetCurrent)$targetDefaultStart=$targetNext;}
 ?>
-<link rel="stylesheet" href="../assets/css/target-jp-guru.css?v=2">
+<link rel="stylesheet" href="../assets/css/target-jp-guru.css?v=3">
 <section class="card border-0 shadow-sm mb-4 rm-target-section"><details class="rm-target-shell" <?= !$isAdmin||isset($_GET['tanggal_target'])||$targetGuru?'open':'' ?>>
 <summary><span><i class="fa-solid fa-bullseye me-2" aria-hidden="true"></i>Target JP harian &amp; mingguan</span><span class="rm-target-shell-hint">Lihat target dan JP tercatat</span></summary>
 <div class="card-body">
@@ -30,7 +33,10 @@ if($isAdmin&&$targetGuru&&$targetReady&&!$targetError){$targetCurrent=rm_target_
 <input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="action" value="target_save">
 <div class="col-md-6"><label for="rmTargetGuru" class="form-label small"><i class="fa-solid fa-user-tie me-1" aria-hidden="true"></i>Guru</label><select id="rmTargetGuru" name="target_guru_id" class="form-select" required><option value="">Pilih guru</option><?php foreach($teachers as $g): ?><option value="<?= (int)$g['id'] ?>" <?= $targetGuru===(int)$g['id']?'selected':'' ?>><?= sanitize($g['nama_lengkap']) ?></option><?php endforeach ?></select></div>
 <div class="col-md-6"><label for="rmTargetStart" class="form-label small"><i class="fa-regular fa-calendar me-1" aria-hidden="true"></i>Berlaku mulai Senin</label><input type="date" id="rmTargetStart" class="form-control" name="berlaku_mulai" min="<?= sanitize($targetWeek['mulai']) ?>" value="<?= sanitize($targetDefaultStart) ?>" step="7" required></div>
-<?php foreach(RM_TARGET_DAYS as $key=>$label): ?><div class="col-4 col-sm rm-target-day-input"><label for="rmTarget_<?= $key ?>" class="form-label small"><?= $label ?></label><input type="number" id="rmTarget_<?= $key ?>" name="<?= $key ?>" min="0" max="12" step="1" value="<?= (int)($targetSelected[$key]??0) ?>" class="form-control" required inputmode="numeric"></div><?php endforeach ?>
+<div class="col-12"><p class="small text-muted mb-2">Isi target sesi Pagi dan Siang (0?6 JP per sesi). Yang disimpan adalah total harian. Saat dibuka kembali, total dibagi ke Pagi terlebih dahulu (maksimal 6 JP), lalu sisanya ke Siang.</p></div>
+<?php foreach(RM_TARGET_DAYS as $key=>$label): $dayTotal=(int)($targetSelected[$key]??0); ?><fieldset class="col-12 col-sm rm-target-day-input"><legend class="form-label small"><?= $label ?></legend>
+<?php foreach(['pagi'=>'Pagi','siang'=>'Siang'] as $session=>$sessionLabel): ?><label for="rmTarget_<?= $key ?>_<?= $session ?>" class="form-label small"><?= $sessionLabel ?></label><input type="number" id="rmTarget_<?= $key ?>_<?= $session ?>" name="<?= $key ?>_<?= $session ?>" min="0" max="6" step="1" value="<?= $session==='pagi'?min(6,$dayTotal):max(0,$dayTotal-6) ?>" class="form-control mb-2" required inputmode="numeric"><?php endforeach ?>
+<small class="d-block">Total: <output class="rm-target-day-total"><?= $dayTotal ?></output> JP</small></fieldset><?php endforeach ?>
 <div class="col-12 mt-3"><strong class="small">Total otomatis: <output id="rmTargetWeeklyTotal" aria-live="polite"><?= array_sum(array_map(static fn($key)=>(int)($targetSelected[$key]??0),array_keys(RM_TARGET_DAYS))) ?> JP / minggu</output></strong></div>
 <div class="col-12 d-flex gap-2 flex-wrap align-items-center mt-3"><button class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-2" aria-hidden="true"></i>Simpan Target JP</button><span class="small text-muted">0 berarti tanpa target; maksimal 12 JP per hari. Target minggu berjalan yang sudah ditetapkan tidak diubah; gunakan Senin berikutnya. Pola berlaku berulang sampai ada target baru.</span></div>
 </form></details><?php endif ?>
@@ -42,5 +48,5 @@ if($isAdmin&&$targetGuru&&$targetReady&&!$targetError){$targetCurrent=rm_target_
 <small class="d-block text-muted mt-2">Target adalah rencana beban mengajar, bukan bukti kehadiran. Kekurangan minggu berjalan belum merupakan hasil akhir. Koreksi dan validasi realisasi tetap mengikuti aturan yang sudah ada.</small>
 <?php endif ?></div></details></section>
 <?php if($isAdmin&&$targetReady&&!$targetError): ?><script>
-(()=>{const output=document.getElementById('rmTargetWeeklyTotal');if(!output)return;const fields=Array.from(document.querySelectorAll('.rm-target-day-input input'));const update=()=>{output.textContent=fields.reduce((sum,input)=>sum+(Number.isFinite(input.valueAsNumber)?input.valueAsNumber:0),0)+' JP / minggu';};fields.forEach(input=>input.addEventListener('input',update));update();})();
+(()=>{const output=document.getElementById('rmTargetWeeklyTotal');if(!output)return;const days=Array.from(document.querySelectorAll('.rm-target-day-input'));const update=()=>{let weekly=0;days.forEach(day=>{const total=Array.from(day.querySelectorAll('input')).reduce((sum,input)=>sum+(Number.isFinite(input.valueAsNumber)?input.valueAsNumber:0),0);day.querySelector('.rm-target-day-total').textContent=total;weekly+=total;});output.textContent=weekly+' JP / minggu';};days.forEach(day=>day.querySelectorAll('input').forEach(input=>input.addEventListener('input',update)));update();})();
 </script><?php endif ?>

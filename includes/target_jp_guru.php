@@ -28,7 +28,12 @@ function rm_target_save(PDO $db,int $actor,array $input): string {
         $today=(string)$db->query('SELECT CURRENT_DATE')->fetchColumn();$current=rm_target_week($today);
         if($date<$current['mulai'])throw new InvalidArgumentException('Target tidak boleh diberlakukan pada minggu yang sudah berlalu.');
         $q=$db->prepare('SELECT id FROM guru WHERE id=? FOR UPDATE');$q->execute([$guru]);if(!$q->fetchColumn())throw new InvalidArgumentException('Guru tidak ditemukan.');
-        $values=[];foreach(RM_TARGET_DAYS as $key=>$label){$v=$input[$key]??null;if(!is_string($v)||!preg_match('/^(?:[0-9]|1[0-2])$/D',$v))throw new InvalidArgumentException('Target '.$label.' harus bilangan bulat 0–12 JP.');$values[$key]=(int)$v;}
+        $values=[];foreach(RM_TARGET_DAYS as $key=>$label){
+            if(array_key_exists($key.'_pagi',$input)||array_key_exists($key.'_siang',$input)){
+                $total=0;foreach(['pagi','siang'] as $session){$part=$input[$key.'_'.$session]??null;if(!is_string($part)||!preg_match('/^[0-6]$/D',$part))throw new InvalidArgumentException('Target '.$label.' sesi '.$session.' harus bilangan bulat 0?6 JP.');$total+=(int)$part;}
+                $input[$key]=(string)$total;
+            }
+            $v=$input[$key]??null;if(!is_string($v)||!preg_match('/^(?:[0-9]|1[0-2])$/D',$v))throw new InvalidArgumentException('Target '.$label.' harus bilangan bulat 0–12 JP.');$values[$key]=(int)$v;}
         foreach(['sabtu','minggu'] as $key){if(isset($input[$key])&&$input[$key]!=='0')throw new InvalidArgumentException('Target JP hanya berlaku Senin sampai Jumat.');$values[$key]=0;}
         $existing=rm_target_latest($db,(int)$guru,$date,true);
         if($existing&&array_map('intval',array_intersect_key($existing,$values))===$values){$db->commit();return 'Target sama dengan pengaturan yang sudah berlaku; tidak dibuat catatan ganda.';}
