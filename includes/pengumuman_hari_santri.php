@@ -1,12 +1,12 @@
 <?php
 // Sama seperti pengumuman awal: sekali per sesi login untuk guru/siswa.
 if(empty($_SESSION['user_id'])||!in_array((int)($_SESSION['role_id']??0),[2,3],true))return;
-$schoolNoticeFile=__DIR__.'/../assets/pengumuman/hari_santri.jpeg';
+$schoolNoticeFile=__DIR__.'/../assets/pengumuman/TKA.jpeg';
 if(!is_file($schoolNoticeFile))return;
 $schoolNoticeVersion=(int)filemtime($schoolNoticeFile);
 if(($_SESSION['hari-santri_announcement_version']??null)===$schoolNoticeVersion)return;
 $_SESSION['hari-santri_announcement_version']=$schoolNoticeVersion;
-$schoolNoticeImage='../assets/pengumuman/hari_santri.jpeg?v='.$schoolNoticeVersion;
+$schoolNoticeImage='../assets/pengumuman/TKA.jpeg?v='.$schoolNoticeVersion;
 ?>
 <!-- CSS popup disertakan langsung agar ukuran tidak bergantung pada cache/unggahan CSS terpisah. -->
 <style>
@@ -29,8 +29,8 @@ $schoolNoticeImage='../assets/pengumuman/hari_santri.jpeg?v='.$schoolNoticeVersi
 </style>
 <dialog id="hari-santri-announcement" aria-labelledby="hari-santri-title" aria-describedby="hari-santri-description">
 <div class="hari-santri-layout">
-<div class="hari-santri-poster"><a href="<?= $schoolNoticeImage ?>" target="_blank" rel="noopener" aria-label="Buka poster Hari Santri ukuran penuh pada tab baru"><img src="<?= $schoolNoticeImage ?>" alt="Poster Hari Santri Nasional 2026 SMK Jaya Buana." width="1280" height="1600" decoding="async"></a></div>
-<div class="hari-santri-content"><span class="hari-santri-eyebrow">PENGUMUMAN SEKOLAH</span><h2 id="hari-santri-title">Selamat Hari Santri Nasional 2026</h2><p id="hari-santri-description">Santri Menguatkan Negeri Menuju Indonesia Emas.</p><a class="hari-santri-full" href="<?= $schoolNoticeImage ?>" target="_blank" rel="noopener">Buka poster ukuran penuh <span aria-hidden="true">&nearr;</span></a><form method="dialog"><button type="submit" autofocus>Saya Mengerti</button></form></div>
+<div class="hari-santri-poster"><a href="<?= $schoolNoticeImage ?>" target="_blank" rel="noopener" aria-label="Buka poster Tes Kemampuan Akademik ukuran penuh pada tab baru"><img src="<?= $schoolNoticeImage ?>" alt="Poster Tes Kemampuan Akademik SMK JAYA BUANA Tahun 2026." width="1280" height="1600" decoding="async"></a></div>
+<div class="hari-santri-content"><span class="hari-santri-eyebrow">PENGUMUMAN SEKOLAH</span><h2 id="hari-santri-title">Tes Kemampuan Akademik</h2><p id="hari-santri-description">SMK JAYA BUANA Tahun 2026.</p><a class="hari-santri-full" href="<?= $schoolNoticeImage ?>" target="_blank" rel="noopener">Buka poster ukuran penuh <span aria-hidden="true">&nearr;</span></a><form method="dialog"><button type="submit" autofocus>Saya Mengerti</button></form></div>
 </div></dialog>
 <script>
 (()=>{
