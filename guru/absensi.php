@@ -39,7 +39,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $waktu_tutup = DateTime::createFromFormat('Y-m-d\TH:i', $waktu_tutup_input);
         $tanggal_valid = DateTime::createFromFormat('Y-m-d', $tanggal);
 
-        if (!$pengajaran_ids || $pertemuan_ke < 1 || $pertemuan_ke > 20 || !$tanggal_valid || !$waktu_buka || !$waktu_tutup) {
+        if (!$pengajaran_ids || $pertemuan_ke < 1 || $pertemuan_ke > 30 || !$tanggal_valid || !$waktu_buka || !$waktu_tutup) {
             $_SESSION['flash_error'] = 'Data sesi absensi belum lengkap atau tidak valid.';
             redirect('absensi.php');
         }
@@ -266,7 +266,7 @@ $akhir = (clone $awal)->modify('+30 minutes');
                             <label class="form-label fw-semibold">Pertemuan</label>
                             <select name="pertemuan_ke" id="pertemuanAbsensi" class="form-select" required disabled>
                                 <option value="">-- Pilih Pertemuan --</option>
-                                <?php for ($i = 1; $i <= 20; $i++): ?><option value="<?= $i ?>" data-label="Pertemuan <?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?>
+                                <?php for ($i = 1; $i <= 30; $i++): ?><option value="<?= $i ?>" data-label="Pertemuan <?= $i ?>">Pertemuan <?= $i ?></option><?php endfor; ?>
                             </select>
                         </div>
                         <div class="col-5 col-md-6"><label class="form-label fw-semibold">Tanggal</label><input type="date" name="tanggal" value="<?= $awal->format('Y-m-d') ?>" class="form-control" required></div>
