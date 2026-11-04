@@ -111,3 +111,21 @@ if (dateDialog) {
     dateDialog.addEventListener('close', () => opener?.focus());
     form.addEventListener('submit', () => { form.querySelector('[type="submit"]').disabled = true; });
 }
+
+const eventDeleteDialog = document.querySelector('#kakDeleteDialog');
+if (eventDeleteDialog) {
+    document.body.append(eventDeleteDialog);
+    const form = eventDeleteDialog.querySelector('form');
+    let opener;
+    document.querySelectorAll('[data-delete-event]').forEach(button => button.addEventListener('click', () => {
+        opener = button;
+        form.elements.acara_id.value = button.dataset.id;
+        form.querySelector('[type="submit"]').disabled = false;
+        eventDeleteDialog.querySelector('[data-delete-event-name]').textContent = button.dataset.name;
+        eventDeleteDialog.showModal();
+        eventDeleteDialog.querySelector('[data-close-delete]').focus();
+    }));
+    eventDeleteDialog.querySelectorAll('[data-close-delete]').forEach(button => button.addEventListener('click', () => eventDeleteDialog.close()));
+    eventDeleteDialog.addEventListener('close', () => opener?.focus());
+    form.addEventListener('submit', () => { form.querySelector('[type="submit"]').disabled = true; });
+}

@@ -1,3 +1,8 @@
+<?php
+$klaim_success = $klaim_success ?? '';
+$klaim_error = $klaim_error ?? '';
+$acara_klaim = $acara_klaim ?? [];
+?>
 <section class="card kak-card mb-3 kak-claims" id="klaimAktivitas" aria-labelledby="klaimHeading">
 <div class="card-body p-3 p-md-4">
     <div class="claim-section-heading"><div><span class="claim-eyebrow">KEGIATAN SEKOLAH</span><h2 class="h6 fw-bold mb-1" id="klaimHeading">Klaim Aktivitas Siswa</h2><p class="small text-muted mb-0">Kirim bukti keikutsertaan dan pantau persetujuan kegiatanmu.</p></div><span class="claim-section-icon" aria-hidden="true"><i class="fa-solid fa-camera"></i></span></div>
@@ -11,7 +16,7 @@
     <div class="claim-event-list" tabindex="0" role="region" aria-label="Daftar kegiatan siswa">
     <?php foreach ($acara_klaim as $acara): $event_id=(int)$acara['id']; $status=$acara['status_klaim']; $can_claim=(!$acara['klaim_id'] || $status==='Ditolak') && $acara['status']==='Terbit'; ?>
         <article class="claim-event event-<?=$status==='Disetujui'?'approved':($status==='Menunggu'?'pending':'incomplete')?>">
-            <div class="claim-event-heading"><div class="claim-event-title"><span class="claim-required">Acara wajib</span><h3><?= sanitize($acara['nama']) ?></h3></div></div>
+            <div class="claim-event-heading"><div class="claim-event-title"><span class="claim-required">Acara wajib</span><h3><?= sanitize($acara['nama']) ?></h3><?php if($acara['status']!=='Terbit'): ?><small class="text-muted">Acara diarsipkan</small><?php endif ?></div></div>
             <?php if ($acara['deskripsi']): ?><p class="claim-description"><?= nl2br(sanitize($acara['deskripsi'])) ?></p><?php endif ?>
             <div class="claim-event-meta"><span><i class="fa-regular fa-calendar me-1" aria-hidden="true"></i><?= date('d/m/Y',strtotime($acara['tanggal_acara'])) ?></span><span><i class="fa-solid fa-infinity me-1" aria-hidden="true"></i>Tanpa batas waktu klaim</span></div>
             <?php if ($status): ?>

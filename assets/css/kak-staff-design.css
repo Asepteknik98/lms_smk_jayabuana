@@ -71,3 +71,5 @@
 .kak-date-dialog input{min-height:44px;font-size:16px}
 .kak-date-dialog-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:20px}.kak-date-dialog-actions .btn{min-height:44px;font-size:.78rem}
 @media(max-width:575.98px){.kak-edit-date-button{width:44px;height:44px;flex-basis:44px}}
+
+.kak-events-table th:nth-child(6){width:120px}.kak-events-table th:nth-child(7){width:120px}.kak-event-delete{min-height:40px;white-space:nowrap;font-size:.7rem}

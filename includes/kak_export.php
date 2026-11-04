@@ -15,7 +15,7 @@ function kak_export_sheets(PDO $db,int $user_id,string $kind,array $input): arra
             $rows[]=[$i+1,$r['created_at'],$r['nama'],$r['nama_lengkap'],$r['nama_kelas']??'Tanpa kelas',$r['status']==='Ditolak'?'Perlu perbaikan':$r['status'],$r['catatan']??'',$r['catatan_verifikasi']??'',$r['diverifikasi_pada']??''];
         }else{
             $target=$r['target_tingkat']?'Semua kelas '.(['X'=>'10','XI'=>'11','XII'=>'12'][$r['target_tingkat']]).' ('.$r['target_tingkat'].')':($r['nama_lengkap']??$r['nama_kelas']??'Semua siswa');
-            $rows[]=[$i+1,$r['tanggal_acara'],$r['nama'],$target,$r['tingkat_aktivitas']??'',$r['status'],$r['deskripsi']??'','Tanpa batas waktu'];
+            $rows[]=[$i+1,$r['tanggal_acara'],$r['nama'],$target,$r['tingkat_aktivitas']??'',$r['status']==='Terbit'?'Terbit':'Diarsipkan',$r['deskripsi']??'','Tanpa batas waktu'];
         }
     }
     $summary=[['REKAP KREDIT AKTIVITAS SISWA','Keterangan'],['Jenis Rekap',$claims?'Klaim Siswa':'Acara Diterbitkan'],['Waktu Ekspor (WIB)',date('Y-m-d H:i:s')],['Pencarian',$data['search']?:'Semua'],['Filter Status',$claims?($data['status']?:'Semua status'):'Semua status'],['Jumlah Data',$data['total']]];

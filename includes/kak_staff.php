@@ -121,3 +121,19 @@ function kak_staff_update_date(PDO $db,int $user_id,array $input): void {
         $db->commit();
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
+
+// Status Draft menghentikan klaim baru; klaim yang ada tetap menjadi riwayat.
+function kak_staff_delete_event(PDO $db,int $user_id,int $id): string {
+    $actor=kak_staff_actor($db,$user_id);
+    if($id<1)throw new InvalidArgumentException('Acara tidak valid.');
+    $db->beginTransaction();
+    try{
+        $q=$db->prepare('SELECT id,dibuat_oleh FROM kak_acara WHERE id=? FOR UPDATE');$q->execute([$id]);$event=$q->fetch();
+        if(!$event||((int)$actor['role_id']!==1&&(int)$event['dibuat_oleh']!==$user_id))throw new DomainException('Acara tidak ditemukan atau bukan acara yang Anda buat.');
+        $q=$db->prepare('SELECT id FROM kak_klaim WHERE acara_id=? LIMIT 1 FOR UPDATE');$q->execute([$id]);$used=(bool)$q->fetchColumn();
+        $q=$db->prepare($used?"UPDATE kak_acara SET status='Draft' WHERE id=?":'DELETE FROM kak_acara WHERE id=?');$q->execute([$id]);
+        $q=$db->prepare('INSERT INTO log_aktivitas(user_id,aktivitas,ip_address,user_agent) VALUES(?,?,?,?)');
+        $q->execute([$user_id,($used?'Mengarsipkan':'Menghapus').' acara aktivitas #'.$id,$_SERVER['REMOTE_ADDR']??'UNKNOWN',$_SERVER['HTTP_USER_AGENT']??'UNKNOWN']);
+        $db->commit();return $used?'archived':'deleted';
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}
