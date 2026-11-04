@@ -562,7 +562,7 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
     </nav>
 
     <main class="student-main p-3 p-md-4">
-        <?php require __DIR__.'/../includes/student_attendance_warning_view.php'; ?>
+        <?php $attendance_warning_compact=true; require __DIR__.'/../includes/student_attendance_warning_view.php'; unset($attendance_warning_compact); ?>
         <?php if($absensi_menunggu): ?><a href="absensi.php" class="attendance-alert alert alert-warning border-warning d-flex align-items-center gap-3 text-decoration-none text-dark shadow-sm"><span class="quick-icon bg-warning text-dark flex-shrink-0"><i class="fa-solid fa-bell"></i></span><span class="flex-grow-1"><strong class="d-block">Absensi sedang dibuka!</strong><small>Anda memiliki <?= $absensi_menunggu ?> sesi yang belum di-check-in. Ketuk di sini sebelum waktunya berakhir.</small></span><i class="fa-solid fa-chevron-right"></i></a><?php endif; ?>
         <section class="welcome-card welcome-reference p-4 mb-4">
             <div class="welcome-layout">

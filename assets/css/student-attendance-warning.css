@@ -1,3 +1,34 @@
 .student-alpa-warning{border:1px solid #dc2626;border-left:5px solid #dc2626;border-radius:12px;background:#fff1f2;color:#881337;padding:16px 18px;margin-bottom:16px;min-width:0}
 .alpa-warning-heading{display:flex;gap:10px;align-items:flex-start}.alpa-warning-heading>i{font-size:1.15rem;color:#dc2626;margin-top:2px}.alpa-warning-heading h2{font-size:.95rem;font-weight:750;margin:0 0 4px;color:#b91c1c}.alpa-warning-heading p,.alpa-warning-action{font-size:.76rem;line-height:1.6;margin:0}.alpa-warning-period{font-size:.67rem;color:#9f1239;margin:8px 0}.student-alpa-warning ul{padding:0;margin:0 0 10px;list-style:none;display:grid;gap:6px}.student-alpa-warning li{display:flex;justify-content:space-between;align-items:center;gap:10px;background:#fff;padding:8px 10px;border:1px solid #fecdd3;border-radius:7px;font-size:.75rem}.student-alpa-warning li strong{min-width:0;overflow-wrap:anywhere}.student-alpa-warning li span{background:#dc2626;color:#fff;padding:4px 7px;border-radius:5px;white-space:nowrap;font-weight:700;font-size:.68rem}.alpa-warning-link{display:inline-flex;align-items:center;gap:8px;min-height:44px;color:#b91c1c;font-size:.75rem;font-weight:700;margin-top:4px}.alpa-warning-link:focus-visible{outline:2px solid #b91c1c;outline-offset:3px}
 @media(max-width:575.98px){.student-alpa-warning{padding:12px;margin-bottom:12px}.alpa-warning-heading h2{font-size:.84rem}.alpa-warning-heading p,.alpa-warning-action{font-size:.69rem}.student-alpa-warning li{font-size:.7rem;padding:7px}.student-alpa-warning li span{font-size:.62rem}}
+
+.student-alpa-warning.alpa-warning-compact{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 16px}
+.alpa-warning-compact .alpa-warning-heading{align-items:center}
+.alpa-details-button{display:inline-flex;align-items:center;justify-content:center;gap:8px;flex-shrink:0;min-height:44px;padding:8px 12px;border:1px solid #dc2626;border-radius:8px;background:#dc2626;color:#fff;font-size:.74rem;font-weight:650;cursor:pointer}
+.alpa-details-button:hover{background:#b91c1c}
+.alpa-warning-dialog{width:min(540px,calc(100% - 28px));max-height:calc(100dvh - 40px);padding:0;border:1px solid #fecdd3;border-radius:15px;background:#fff;color:#334155;box-shadow:0 24px 80px #0f172a40;overflow:hidden}
+.alpa-warning-dialog[open]{display:flex;flex-direction:column}
+.alpa-warning-dialog::backdrop{background:rgba(15,23,42,.55)}
+.alpa-dialog-heading{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:16px 18px;border-bottom:1px solid #fecdd3;background:#fff1f2;flex-shrink:0}
+.alpa-dialog-heading h2{font-size:.95rem;font-weight:700;color:#b91c1c;margin:0;line-height:1.5}
+.alpa-dialog-heading p{font-size:.69rem;color:#9f1239;margin:4px 0 0}
+.alpa-dialog-heading button{width:44px;height:44px;flex:0 0 44px;border:1px solid #fecdd3;background:#fff;border-radius:8px;color:#991b1b;cursor:pointer}
+.alpa-dialog-body{overflow-y:auto;min-height:0;padding:16px 18px;overscroll-behavior:contain;scrollbar-width:thin}
+.alpa-dialog-body>p:first-child{font-size:.73rem;line-height:1.6;margin:0 0 12px;color:#64748b}
+.alpa-dialog-list{list-style:none;margin:0 0 14px;padding:0;display:grid;gap:7px}
+.alpa-dialog-list li{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px;border:1px solid #fecdd3;border-radius:8px;background:#fff7f8;font-size:.76rem}
+.alpa-dialog-list strong{min-width:0;overflow-wrap:anywhere}
+.alpa-dialog-list span{flex-shrink:0;white-space:nowrap;background:#dc2626;color:#fff;font-weight:700;font-size:.68rem;padding:4px 7px;border-radius:5px}
+.alpa-dialog-footer{display:flex;align-items:center;justify-content:flex-end;gap:10px;padding:12px 18px;border-top:1px solid #e2e8f0;flex-shrink:0}
+.alpa-dialog-footer button,.alpa-dialog-footer a{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:8px 11px;border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#475569;font-size:.72rem;text-decoration:none;cursor:pointer}
+.alpa-dialog-footer a{background:#b91c1c;border-color:#b91c1c;color:#fff}
+.alpa-details-button:focus-visible,.alpa-warning-dialog button:focus-visible,.alpa-warning-dialog a:focus-visible,.alpa-dialog-body:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+@media(max-width:575.98px){
+ .student-alpa-warning.alpa-warning-compact{padding:12px;flex-wrap:wrap;gap:9px}
+ .alpa-warning-compact .alpa-details-button{margin-left:auto;font-size:.68rem}
+ .alpa-dialog-heading,.alpa-dialog-body{padding:12px}
+ .alpa-dialog-heading h2{font-size:.83rem}
+ .alpa-dialog-list li{font-size:.7rem;padding:8px}
+ .alpa-dialog-list span{font-size:.62rem}
+ .alpa-dialog-footer{padding:10px 12px;gap:7px}
+}
