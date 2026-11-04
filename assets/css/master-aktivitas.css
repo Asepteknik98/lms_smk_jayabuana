@@ -1,0 +1,7 @@
+.kak-master-page .kps-master-list .kps-master-table{min-width:760px}
+.kak-master-page .kps-master-table th:nth-child(1){width:12%}
+.kak-master-page .kps-master-table th:nth-child(2){width:14%}
+.kak-master-page .kps-master-table th:nth-child(3){width:43%}
+.kak-master-page .kps-master-table th:nth-child(4){width:13%}
+.kak-master-page .kps-master-table th:nth-child(5){width:18%}
+#activityDeleteDescription{font-size:.77rem;line-height:1.8;color:#71829c}

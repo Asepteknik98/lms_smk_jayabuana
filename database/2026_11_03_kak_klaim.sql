@@ -1,0 +1,40 @@
+-- Acara ditentukan sekolah; siswa mengunggah bukti tanpa kode acara.
+CREATE TABLE IF NOT EXISTS kak_acara (
+ id bigint unsigned NOT NULL AUTO_INCREMENT,
+ nama varchar(150) NOT NULL,
+ deskripsi varchar(1000) DEFAULT NULL,
+ tanggal_acara date NOT NULL,
+ klaim_mulai datetime DEFAULT NULL,
+ klaim_sampai datetime DEFAULT NULL,
+ poin int unsigned NOT NULL,
+ kelas_id int unsigned DEFAULT NULL,
+ status enum('Draft','Terbit') NOT NULL DEFAULT 'Draft',
+ dibuat_oleh int unsigned NOT NULL,
+ created_at timestamp NOT NULL DEFAULT current_timestamp(),
+ PRIMARY KEY(id), KEY idx_kak_acara_jadwal(status,klaim_mulai,klaim_sampai),
+ CONSTRAINT fk_kak_acara_kelas FOREIGN KEY(kelas_id) REFERENCES kelas(id) ON DELETE RESTRICT,
+ CONSTRAINT fk_kak_acara_pembuat FOREIGN KEY(dibuat_oleh) REFERENCES users(id) ON DELETE RESTRICT,
+ CONSTRAINT chk_kak_acara_poin CHECK(poin BETWEEN 1 AND 100000),
+ CONSTRAINT chk_kak_acara_jadwal CHECK(klaim_sampai >= klaim_mulai)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+CREATE TABLE IF NOT EXISTS kak_klaim (
+ id bigint unsigned NOT NULL AUTO_INCREMENT,
+ acara_id bigint unsigned NOT NULL,
+ siswa_id int unsigned NOT NULL,
+ bukti_file varchar(80) NOT NULL,
+ bukti_mime varchar(40) NOT NULL,
+ catatan varchar(500) DEFAULT NULL,
+ status enum('Menunggu','Disetujui','Ditolak') NOT NULL DEFAULT 'Menunggu',
+ catatan_verifikasi varchar(500) DEFAULT NULL,
+ diverifikasi_oleh int unsigned DEFAULT NULL,
+ diverifikasi_pada datetime DEFAULT NULL,
+ aktivitas_id bigint unsigned DEFAULT NULL,
+ created_at timestamp NOT NULL DEFAULT current_timestamp(),
+ PRIMARY KEY(id), UNIQUE KEY uq_kak_klaim_siswa(acara_id,siswa_id),
+ UNIQUE KEY uq_kak_klaim_aktivitas(aktivitas_id),
+ KEY idx_kak_klaim_siswa(siswa_id,created_at),
+ CONSTRAINT fk_kak_klaim_acara FOREIGN KEY(acara_id) REFERENCES kak_acara(id) ON DELETE RESTRICT,
+ CONSTRAINT fk_kak_klaim_siswa FOREIGN KEY(siswa_id) REFERENCES siswa(id) ON DELETE CASCADE,
+ CONSTRAINT fk_kak_klaim_verifikator FOREIGN KEY(diverifikasi_oleh) REFERENCES users(id) ON DELETE RESTRICT,
+ CONSTRAINT fk_kak_klaim_aktivitas FOREIGN KEY(aktivitas_id) REFERENCES kak_aktivitas_siswa(id) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

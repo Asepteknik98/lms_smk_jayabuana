@@ -1,0 +1,213 @@
+.kak-page .kak-main{width:100%;max-width:1180px;margin:0 auto;padding-bottom:36px!important}
+.kak-page{background:#f5f7fc}.kak-page .top-navbar{gap:12px}.kak-page .top-navbar h5{font-size:1.05rem;line-height:1.5}
+.kak-page .kak-card{border:1px solid #e9edf5;box-shadow:0 6px 24px rgba(30,58,110,.045);border-radius:20px}
+.kak-page .kak-summary{border:0;background:radial-gradient(ellipse at top right,rgba(147,197,253,.2),transparent 60%),linear-gradient(120deg,#172554,#1d4ed8 65%,#3478ed)}
+.kak-page .kak-summary .card-body{padding:28px!important}.kak-page .kak-number{font-size:clamp(2rem,5vw,2.7rem);letter-spacing:-.04em;line-height:1.15}.kak-page .kak-summary .badge{font-weight:600;padding:8px 11px;white-space:normal;text-align:left;line-height:1.5}.kak-page .kak-progress{height:8px;border-radius:20px}.kak-page .activity-points{white-space:nowrap;align-self:flex-start}
+.kak-claims{scroll-margin-top:20px}.claim-section-heading{display:flex;justify-content:space-between;gap:16px;align-items:center}
+.claim-section-heading>div{min-width:0}.claim-eyebrow{display:block;color:#6481b4;font-size:.62rem;font-weight:700;letter-spacing:.12em;margin-bottom:7px}.claim-section-icon{display:grid;place-items:center;flex:0 0 44px;height:44px;border-radius:14px;background:#eff6ff;color:#2563eb}.claim-section-heading h2{font-size:1rem}.claim-section-heading p{line-height:1.65}
+.claim-empty{display:flex;align-items:center;flex-direction:column;text-align:center;padding:34px 12px 22px;gap:10px}.claim-empty>span{display:grid;place-items:center;width:48px;height:48px;background:#f1f5f9;color:#64748b;border-radius:50%;font-size:1.2rem}.claim-empty strong{font-size:.9rem}.claim-empty p{color:#64748b;font-size:.82rem;margin:0;max-width:320px}
+.claim-verification-note{display:flex;align-items:baseline;gap:8px;font-size:.75rem;line-height:1.65;color:#526784;margin:18px 0 20px;padding:10px 12px;background:#f4f7fc;border-radius:10px}
+.claim-event-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;align-items:start}
+.claim-event{min-width:0;border:1px solid #e3eaf6;background:linear-gradient(150deg,#f9fbff,#fff 50%);border-radius:16px;padding:20px;overflow-wrap:anywhere}.claim-event-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:14px}.claim-event-title{min-width:0}.claim-event h3{font-size:1rem;font-weight:700;line-height:1.5;margin:10px 0 0;color:#1e293b}.claim-required{display:inline-flex;align-items:center;gap:5px;padding:4px 8px;background:#eaf1ff;border-radius:6px;font-size:.63rem;font-weight:600;color:#2563eb;letter-spacing:.02em}
+.claim-points{flex:0 0 auto;white-space:nowrap;color:#1d4ed8;background:#eff6ff;padding:8px 12px;border-radius:10px;font-weight:750;font-size:1.1rem;text-align:center;line-height:1.2}.claim-points small{display:block;font-size:.65rem;font-weight:500;margin-top:3px}
+.claim-description{font-size:.82rem;color:#475569;line-height:1.65;margin:12px 0}.claim-event-meta{display:flex;flex-wrap:wrap;gap:6px 14px;font-size:.72rem;color:#64748b;margin:12px 0 16px}
+.claim-upload summary{min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:10px;font-size:.8rem;font-weight:600;padding:10px 12px;list-style:none;cursor:pointer;color:#1d4ed8;background:#eff6ff;border-radius:9px}.claim-upload summary::-webkit-details-marker{display:none}.claim-upload summary>i{font-size:.65rem}.claim-upload[open] summary>i{transform:rotate(180deg)}.claim-upload summary:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
+.claim-form{margin-top:16px}.claim-form .form-control,.claim-form .btn{min-height:44px;border-radius:9px;font-size:.82rem}.claim-file-help{font-size:.72rem;line-height:1.6;color:#64748b;margin:7px 0 14px}.claim-preview{width:100%;max-height:200px;object-fit:contain;border-radius:10px;background:#f8fafc;margin-bottom:14px}.claim-preview[hidden]{display:none}
+.claim-status-row{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px}.claim-status{padding:7px 10px;border-radius:8px;font-size:.72rem;font-weight:600}.status-menunggu{background:#fffbeb;color:#92400e}.status-disetujui{background:#dcfce7;color:#166534}.status-ditolak{background:#fee2e2;color:#991b1b}.claim-proof-link{font-size:.75rem;min-height:36px;display:inline-flex;align-items:center;text-decoration:none}.claim-review-note{font-size:.78rem;color:#475569;margin:12px 0 0}.claim-closed{font-size:.75rem;color:#64748b;background:#f8fafc;padding:10px 12px;border-radius:9px}
+.claim-photo-sources{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.claim-photo-source{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;min-height:76px;border:1px solid #dfe7f3;border-radius:12px;padding:12px 8px;background:#fff;color:#475569;cursor:pointer;transition:background .15s,border-color .15s}
+.claim-photo-source>input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}.claim-photo-source>i{font-size:1.2rem;flex-shrink:0}.claim-photo-source>span{font-size:.8rem;font-weight:650;line-height:1.5}.claim-photo-source small{display:block;font-size:.65rem;color:#64748b;font-weight:400}.claim-photo-source.claim-camera{color:#1d4ed8;background:#eff5ff;border-color:#cddffd}.claim-photo-source:hover{border-color:#8daff0;background:#f4f8ff}.claim-photo-source:focus-within{outline:2px solid #2563eb;outline-offset:3px}
+.claim-photo-result{margin:0 0 16px;border:1px solid #e3eaf6;border-radius:12px;overflow:hidden;background:#f8fafc}.claim-photo-result[hidden]{display:none}.claim-photo-result .claim-preview{display:block;max-height:260px;aspect-ratio:4/3;margin:0;border-radius:0;object-fit:contain}.claim-photo-caption{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:4px 10px;background:#fff}.claim-photo-caption>span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.72rem;color:#64748b}.claim-photo-caption>button{border:0;background:transparent;flex-shrink:0;min-height:44px;padding:6px 4px;color:#b91c1c;font-size:.72rem}
+.claim-form .claim-submit{width:100%;min-height:46px;font-weight:600;background:#2563eb;border-color:#2563eb}.claim-submit-note{font-size:.67rem;text-align:center;line-height:1.5;color:#64748b;margin:10px 0 0}.claim-upload summary{min-height:46px}.claim-proof-link{min-height:44px}.claim-form textarea{resize:vertical}
+@media(max-width:767.98px){.claim-event-list{grid-template-columns:minmax(0,1fr)}.kak-page .kak-summary .card-body{padding:24px!important}}
+@media(max-width:575.98px){.kak-page .kak-main{padding:14px 12px 28px!important}.kak-page .kak-card{border-radius:17px}.kak-page .kak-summary .card-body{padding:22px!important}.claim-event{padding:16px}.claim-form .form-control{font-size:16px}.claim-form .btn{width:100%}.claim-section-icon{display:none}.claim-photo-source{gap:8px;min-height:80px}.claim-photo-source>span{font-size:.76rem}.claim-photo-source small{font-size:.62rem}.claim-description{font-size:.83rem}.claim-event-meta{display:grid;gap:6px}.claim-photo-source>i{font-size:1.05rem}}
+@media(prefers-reduced-motion:reduce){.claim-photo-source{transition:none}}
+.kak-summary-action{display:flex;align-items:center;flex-wrap:wrap;gap:12px 18px;padding-top:18px;margin-top:20px;border-top:1px solid rgba(255,255,255,.17)}
+.kak-open-claims{display:inline-flex;align-items:center;justify-content:center;gap:12px;min-height:46px;border:1px solid rgba(255,255,255,.7);border-radius:11px;background:#fff;color:#1d4ed8;padding:11px 16px;font-size:.82rem;font-weight:650;cursor:pointer;box-shadow:0 3px 12px rgba(15,23,42,.08)}.kak-open-claims:hover{background:#eff6ff}.kak-open-claims>i:last-child{font-size:.7rem;margin-left:5px}.kak-open-claims:focus-visible{outline:2px solid #fbbf24;outline-offset:4px}.kak-summary-action>small{font-size:.73rem;color:#dce8ff}
+.kak-claim-dialog{width:min(860px,calc(100% - 40px));max-width:none;max-height:calc(100dvh - 56px);padding:0;border:0;border-radius:20px;background:#fff;color:#25334b;box-shadow:0 24px 90px rgba(15,23,42,.25);overflow-y:auto;overscroll-behavior:contain;scrollbar-width:thin;margin:auto}.kak-claim-dialog:not([open]){display:none}.kak-claim-dialog::backdrop{background:rgba(15,23,42,.55);backdrop-filter:blur(4px)}
+.claim-dialog-topbar{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 22px;background:#fff;border-bottom:1px solid #edf1f7}.claim-dialog-topbar>span{font-size:.75rem;font-weight:600;color:#7187a8}.claim-dialog-topbar>span>i{color:#2563eb}.claim-dialog-topbar>button{display:grid;place-items:center;width:44px;height:44px;flex:0 0 44px;border:1px solid #e5ecf7;border-radius:11px;background:#f8faff;color:#607491;cursor:pointer}.claim-dialog-topbar>button:hover{background:#eff5ff;color:#2563eb}.claim-dialog-topbar>button:focus-visible{outline:2px solid #2563eb;outline-offset:2px}
+.kak-claim-dialog .kak-claims{margin:0!important;border:0;border-radius:0;box-shadow:none;background:#fff}.kak-claim-dialog .claim-event-list{grid-template-columns:repeat(2,minmax(0,1fr))}.kak-claim-dialog .claim-event{padding:16px}.claim-dialog-open #page-content-wrapper{overflow:hidden!important}
+@media(max-width:767.98px){.kak-claim-dialog .claim-event-list{grid-template-columns:minmax(0,1fr)}}
+@media(max-width:575.98px){.kak-claim-dialog{width:100%;height:100dvh;max-height:100dvh;margin:0;border-radius:0}.claim-dialog-topbar{padding:10px 16px}.kak-claim-dialog .kak-claims>.card-body{padding:20px 16px max(24px,env(safe-area-inset-bottom))!important}.kak-summary-action{gap:10px;margin-top:18px;padding-top:16px}.kak-open-claims{width:100%}.kak-summary-action>small{width:100%;text-align:center;font-size:.68rem}}
+
+.claim-event.event-approved{border:2px solid #16a34a;background:#f0fdf4}.claim-event.event-pending{border:2px solid #ca8a04;background:#fefce8}.claim-event.event-incomplete{border:2px solid #dc2626;background:#fff5f5}.kak-review-content input[type=checkbox]{width:1.25rem;height:1.25rem;flex-shrink:0}
+
+/* Ringkasan dan kartu kegiatan siswa yang ringkas. */
+.kak-page .kak-summary>.card-body{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 20px!important}
+.kak-page .kak-summary-copy>small{font-size:.75rem}
+.kak-page .kak-summary-count{display:flex;align-items:baseline;flex-wrap:wrap;gap:5px 10px;margin-top:3px}
+.kak-page .kak-summary-count strong{font-size:1.5rem;line-height:1.25;letter-spacing:-.03em}
+.kak-page .kak-summary-count span{font-size:.78rem;color:#dce8ff}
+.kak-page .kak-summary-action{margin:0;padding:0;border:0;flex-shrink:0}
+.kak-page .kak-summary-action>small{display:none}
+.kak-page .kak-open-claims{min-height:40px;padding:8px 12px;gap:8px;border-radius:9px;text-decoration:none;font-size:.76rem}
+.kak-page .kak-claims>.card-body{padding:16px!important}
+.kak-page .claim-eyebrow{font-size:.58rem;margin-bottom:3px}
+.kak-page .claim-section-heading{gap:10px}
+.kak-page .claim-section-heading h2{font-size:.9rem}
+.kak-page .claim-section-heading p{font-size:.76rem;line-height:1.5}
+.kak-page .claim-section-icon{flex-basis:34px;height:34px;border-radius:10px;font-size:.85rem}
+.kak-page .claim-verification-note{margin:10px 0 12px;padding:7px 9px;font-size:.68rem;line-height:1.5}
+.kak-page .claim-event-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.kak-page .claim-event{padding:12px;border-width:1px;border-radius:12px}
+.kak-page .claim-required{padding:2px 6px;font-size:.58rem}
+.kak-page .claim-event h3{font-size:.87rem;line-height:1.4;margin:6px 0 0}
+.kak-page .claim-description{font-size:.75rem;line-height:1.5;margin:7px 0}
+.kak-page .claim-event-meta{display:flex;flex-wrap:wrap;gap:4px 9px;font-size:.65rem;margin:8px 0}
+.kak-page .claim-status{display:inline-flex;padding:4px 7px;font-size:.65rem;line-height:1.4;border-radius:6px}
+.kak-page .claim-status-row{gap:6px}
+.kak-page .claim-proof-link{font-size:.68rem;min-height:36px}
+.kak-page .claim-upload{margin-top:8px}
+.kak-page .claim-upload summary{min-height:38px;padding:7px 9px;font-size:.73rem;border-radius:7px}
+.kak-page .claim-review-note{margin-top:8px;font-size:.72rem}
+@media(max-width:991.98px){.kak-page .claim-event-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:575.98px){
+ .kak-page .kak-summary>.card-body{padding:13px 14px!important;gap:10px;flex-wrap:wrap}
+ .kak-page .kak-summary-count strong{font-size:1.25rem}
+ .kak-page .kak-summary-count{gap:3px 7px}
+ .kak-page .kak-summary-count span{font-size:.7rem}
+ .kak-page .kak-summary-action{margin:0;padding:0}
+ .kak-page .kak-open-claims{width:auto;min-height:40px;padding:7px 10px;font-size:.7rem}
+ .kak-page .kak-claims>.card-body{padding:12px!important}
+ .kak-page .claim-event-list{grid-template-columns:minmax(0,1fr);gap:9px}
+ .kak-page .claim-event{padding:11px}
+ .kak-page .claim-upload summary{min-height:44px}
+}
+
+/* HP: dua kolom kartu dengan posisi status dan aksi yang konsisten. */
+@media(max-width:575.98px){
+ .kak-page .claim-event-list{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;align-items:stretch}
+ .kak-page .claim-event{display:flex;flex-direction:column;min-width:0;padding:10px;border-radius:10px}
+ .kak-page .claim-required{display:none}
+ .kak-page .claim-event-heading{min-height:2.8em}
+ .kak-page .claim-event h3{margin:0;font-size:.76rem;line-height:1.4}
+ .kak-page .claim-event-meta{margin:5px 0 7px;font-size:.61rem;gap:3px}
+ .kak-page .claim-event-meta>span:nth-child(2){display:none}
+ .kak-page .claim-event>.claim-status{align-self:flex-start;margin-top:auto;font-size:.59rem;padding:3px 5px}
+ .kak-page .claim-upload{margin-top:8px}
+ .kak-page .claim-upload>summary{min-height:40px;padding:6px;gap:4px;justify-content:center;font-size:.66rem;text-align:center}
+ .kak-page .claim-upload>summary>i,.kak-page .claim-upload>summary span>i{display:none}
+ .kak-page .claim-description{font-size:.68rem;line-height:1.45;margin:4px 0;max-height:4.35em;overflow:auto}
+ .kak-page .claim-event:has(.claim-upload[open]){grid-column:1 / -1}
+ .kak-page .claim-event:has(.claim-upload[open]) .claim-event-heading{min-height:0}
+ .kak-page .claim-event:has(.claim-upload[open]) .claim-description{max-height:none}
+ .kak-page .claim-upload[open]{padding-top:8px;border-top:1px solid #dbe3ef}
+ .kak-page .claim-form{margin-top:12px}
+ .kak-page .claim-section-heading p,.kak-page .claim-eyebrow{display:none}
+ .kak-page .claim-section-heading h2{margin-bottom:0!important;font-size:.84rem}
+ .kak-page .claim-verification-note{margin:8px 0;padding:5px 7px;font-size:.62rem}
+ .kak-page .claim-status-row{margin-top:auto;gap:4px;align-items:flex-start;flex-direction:column}
+ .kak-page .claim-status-row .claim-status{font-size:.59rem;padding:3px 5px}
+ .kak-page .claim-proof-link{min-height:40px;font-size:.65rem}
+ .kak-page .claim-review-note{font-size:.67rem;margin:5px 0}
+}
+
+.claim-slider-controls{display:none}
+@media(max-width:575.98px){
+ .kak-page .claim-slider-controls:not([hidden]){display:flex;align-items:center;justify-content:space-between;gap:8px;margin:8px 0;color:#64748b;font-size:.63rem}
+ .claim-slider-controls>div{display:flex;gap:5px}
+ .claim-slider-controls button{display:grid;place-items:center;width:36px;height:36px;border:1px solid #dbe4f2;border-radius:8px;background:#f8faff;color:#2563eb}
+ .claim-slider-controls button:disabled{opacity:.35}
+ .kak-page .claim-event-list{display:flex;gap:8px;overflow-x:auto;scroll-snap-type:x mandatory;scroll-padding-inline:1px;padding:2px 1px 9px;align-items:stretch;scrollbar-width:thin;scrollbar-color:#b9cbed #f1f5f9}
+ .kak-page .claim-event-list:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
+ .kak-page .claim-event{flex:0 0 calc((100% - 8px)/2);scroll-snap-align:start}
+ .kak-page .claim-event:has(.claim-upload[open]){flex-basis:100%}
+}
+
+/* Laptop: kartu padat dengan tinggi dan letak aksi yang konsisten. */
+@media(min-width:576px){
+ .kak-page .claim-event-list{grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+ .kak-page .claim-event{display:flex;flex-direction:column;padding:11px;border-radius:10px}
+ .kak-page .claim-required{display:none}
+ .kak-page .claim-event-heading{min-height:2.8em}
+ .kak-page .claim-event h3{margin:0;font-size:.8rem;line-height:1.4}
+ .kak-page .claim-description{font-size:.71rem;line-height:1.45;margin:5px 0;max-height:4.35em;overflow:auto}
+ .kak-page .claim-event-meta{font-size:.64rem;margin:5px 0 8px;gap:4px 8px}
+ .kak-page .claim-event-meta>span:nth-child(2){display:none}
+ .kak-page .claim-event>.claim-status{margin-top:auto;align-self:flex-start;font-size:.62rem;padding:4px 6px}
+ .kak-page .claim-upload{margin-top:8px;align-self:flex-start;max-width:100%}
+ .kak-page .claim-upload>summary{min-height:34px;padding:6px 10px;font-size:.7rem;gap:12px}
+ .kak-page .claim-status-row{margin-top:auto;gap:6px}
+ .kak-page .claim-status-row .claim-status{font-size:.62rem;padding:4px 6px}
+ .kak-page .claim-proof-link{font-size:.67rem;min-height:34px}
+ .kak-page .claim-review-note{font-size:.7rem;margin-top:6px}
+ .kak-page .claim-event:has(.claim-upload[open]){grid-column:span 2}
+ .kak-page .claim-upload[open]{align-self:stretch}
+ .kak-page .claim-event:has(.claim-upload[open]) .claim-description{max-height:none}
+ .kak-page .claim-event:has(.claim-upload[open]) .claim-event-heading{min-height:0}
+}
+@media(min-width:1200px){
+ .kak-page .claim-event-list{grid-template-columns:repeat(4,minmax(0,1fr))}
+}
+@media(min-width:576px) and (max-width:767.98px){
+ .kak-page .claim-event-list{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+
+/* Identitas batik JB; lapisan warna mempertahankan keterbacaan status. */
+.kak-page .kak-summary{
+ background-color:#17366d;
+ background-image:linear-gradient(110deg,rgba(15,32,66,.94),rgba(24,59,118,.84) 58%,rgba(29,78,160,.72)),url('../img/batikjb.webp');
+ background-position:center;background-size:cover;
+ border:1px solid rgba(255,255,255,.15);
+}
+.kak-page .claim-event{
+ background-position:center;background-size:cover;
+}
+.kak-page .claim-event.event-incomplete{
+ background-color:#fff5f5;
+ background-image:linear-gradient(115deg,rgba(255,245,245,.98),rgba(255,245,245,.91)),url('../img/batikjb.webp');
+}
+.kak-page .claim-event.event-pending{
+ background-color:#fefce8;
+ background-image:linear-gradient(115deg,rgba(254,252,232,.98),rgba(254,252,232,.91)),url('../img/batikjb.webp');
+}
+.kak-page .claim-event.event-approved{
+ background-color:#f0fdf4;
+ background-image:linear-gradient(115deg,rgba(240,253,244,.98),rgba(240,253,244,.91)),url('../img/batikjb.webp');
+}
+
+/* Ikon bukti tetap terlihat di seluruh ukuran layar. */
+.kak-page .claim-upload>summary span{display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.kak-page .claim-upload>summary span>i{display:inline-block;font-size:.9rem}
+.kak-page .claim-proof-link{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:6px 9px;border:1px solid #c9dbf7;border-radius:7px;background:#eff6ff;color:#1d4ed8;font-weight:600;text-decoration:none}
+.kak-page .claim-proof-link>i{font-size:.9rem}
+.kak-page .claim-proof-link:hover,.kak-page .claim-upload>summary:hover{background:#dbeafe}
+.kak-page .claim-proof-link:focus-visible{outline:2px solid #2563eb;outline-offset:3px}
+@media(max-width:575.98px){
+ .kak-page .claim-proof-link{min-height:40px}
+ .kak-page .claim-upload>summary span{gap:5px}
+ .kak-page .claim-upload>summary span>i{display:inline-block;font-size:.85rem}
+}
+
+/* Warna status konsisten pada kartu, badge, dan aksi bukti. */
+.kak-page .claim-event.event-approved{border-color:#15803d;background-color:#dcfce7;background-image:linear-gradient(115deg,rgba(220,252,231,.97),rgba(220,252,231,.91)),url('../img/batikjb.webp')}
+.kak-page .claim-event.event-pending{border-color:#ca8a04;background-color:#fef3c7;background-image:linear-gradient(115deg,rgba(254,243,199,.97),rgba(254,243,199,.91)),url('../img/batikjb.webp')}
+.kak-page .claim-event.event-incomplete{border-color:#dc2626;background-color:#fee2e2;background-image:linear-gradient(115deg,rgba(254,226,226,.97),rgba(254,226,226,.91)),url('../img/batikjb.webp')}
+.kak-page .claim-status.status-disetujui{background:#15803d;color:#fff;font-weight:700}
+.kak-page .claim-status.status-menunggu{background:#facc15;color:#713f12;font-weight:700}
+.kak-page .claim-status.status-ditolak{background:#dc2626;color:#fff;font-weight:700}
+.kak-page .event-approved .claim-proof-link{background:#15803d;border-color:#15803d;color:#fff}
+.kak-page .event-approved .claim-proof-link:hover{background:#166534;border-color:#166534}
+.kak-page .event-pending .claim-proof-link{background:#facc15;border-color:#ca8a04;color:#713f12}
+.kak-page .event-pending .claim-proof-link:hover{background:#eab308}
+.kak-page .event-incomplete .claim-proof-link{background:#fff1f2;border-color:#fca5a5;color:#991b1b}
+.kak-page .event-incomplete .claim-upload>summary{background:#dc2626;color:#fff}
+.kak-page .event-incomplete .claim-upload>summary:hover{background:#b91c1c}
+.kak-page .claim-event .claim-proof-link:focus-visible,.kak-page .claim-event .claim-upload>summary:focus-visible{outline:2px solid #334155;outline-offset:3px}
+
+/* Form desktop tidak meregangkan kartu di sebelahnya. */
+@media(min-width:576px){
+ .kak-page .claim-event-list{align-items:start}
+ .kak-page .claim-event{height:auto;min-height:165px;background-size:auto,340px auto;background-repeat:no-repeat,repeat}
+ .kak-page .claim-event:has(.claim-upload[open]){align-self:start}
+ .kak-page .claim-upload[open] .claim-form{padding:14px;background:rgba(255,255,255,.96);border:1px solid #e2e8f0;border-radius:9px;margin-top:10px}
+ .kak-page .claim-upload[open] .claim-file-help,.kak-page .claim-upload[open] .claim-submit-note{color:#52647c}
+}
+
+/* HP: tinggi kartu mandiri, termasuk saat form lain sedang terbuka. */
+@media(max-width:575.98px){
+ .kak-page .claim-event-list{align-items:flex-start}
+ .kak-page .claim-event{height:auto;min-height:158px;background-size:auto,230px auto;background-repeat:no-repeat,repeat}
+ .kak-page .claim-upload[open] .claim-form{padding:10px;background:rgba(255,255,255,.96);border:1px solid #e2e8f0;border-radius:8px}
+ .kak-page .claim-upload[open] .claim-file-help,.kak-page .claim-upload[open] .claim-submit-note{color:#52647c}
+}

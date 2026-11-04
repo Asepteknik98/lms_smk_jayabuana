@@ -54,7 +54,8 @@ require_once __DIR__ . '/../includes/sidebar.php';
 @keyframes meetingIn{from{opacity:0;transform:translateY(5px)}to{opacity:1;transform:none}}
 @media(max-width:575.98px){.student-access-shell{padding:12px!important}.subject-access-card{border-radius:15px}.meeting-status-card{padding:13px}.meeting-actions{display:grid!important;grid-template-columns:1fr}.meeting-actions .btn{width:100%}}
 </style>
-<div id="page-content-wrapper">
+<link rel="stylesheet" href="../assets/css/student-meeting-status.css?v=<?=filemtime(__DIR__.'/../assets/css/student-meeting-status.css')?>">
+<div id="page-content-wrapper" class="student-meeting-page">
 <nav class="navbar navbar-light top-navbar px-3 px-md-4 py-3"><div><h5 class="mb-0 fw-bold"><i class="fa-solid fa-door-open text-primary me-2"></i>Status Pertemuan</h5><small class="text-muted">Lihat pertemuan yang telah dibuka oleh guru</small></div></nav>
 <main class="container-fluid student-access-shell p-3 p-md-4">
 <?php if (!$mapel): ?>

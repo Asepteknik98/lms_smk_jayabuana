@@ -1,0 +1,21 @@
+.rapor-ranking-actions{display:flex;gap:10px;flex-wrap:wrap}
+.rapor-ranking-table td:first-child{width:100px;text-align:center}.rapor-ranking-table th:first-child{text-align:center}
+.rapor-ranking-number{display:inline-grid;place-items:center;min-width:38px;height:38px;border-radius:7px;background:#edf1f4;color:#2d4f70;font-weight:700;font-size:1.05rem}
+.rapor-ranking-excluded>summary{gap:12px}.rapor-ranking-excluded .rapor-chevron{margin-left:auto}
+.rapor-ranking-page .table-responsive{max-height:540px;overflow:auto}.rapor-ranking-page thead th{position:sticky;top:0;z-index:2}
+@media(max-width:767px){.rapor-ranking-page .rapor-intro{flex-direction:column}.rapor-ranking-actions{width:100%}.rapor-ranking-actions .btn{flex:1}}
+@media print{
+ @page{size:A4 portrait;margin:12mm}
+ body,#wrapper{display:block!important;height:auto!important;overflow:visible!important;background:#fff!important}
+ #sidebar-wrapper,.rapor-ranking-page .top-navbar,.rapor-ranking-actions,.rapor-ranking-filters,.rapor-ranking-page .rapor-filter-toolbar,.rapor-ranking-link{display:none!important}
+ #page-content-wrapper.rapor-ranking-page{margin:0!important;width:100%!important;height:auto!important;overflow:visible!important;background:#fff!important}
+ .rapor-ranking-page main{padding:0!important;max-width:none}
+ .rapor-ranking-page .card{border:0;box-shadow:none;overflow:visible!important;margin-bottom:6mm!important}
+ .rapor-ranking-page .card-body{padding:0!important}.rapor-ranking-page .table-responsive{max-height:none;overflow:visible;border:0;margin:3mm 0}
+ .rapor-ranking-page .table{width:100%;border-collapse:collapse;font-size:10pt}.rapor-ranking-page .table td,.rapor-ranking-page .table th{border:1px solid #777;padding:2mm!important;color:#111}
+ .rapor-ranking-page thead{display:table-header-group}.rapor-ranking-page thead th{position:static}.rapor-ranking-page tr{break-inside:avoid}
+ .rapor-ranking-page [data-filter-row][hidden]{display:table-row!important}.rapor-ranking-page .rapor-ranking-number{background:none;height:auto;min-width:0;color:#111}
+ .rapor-ranking-page .rapor-note,.rapor-ranking-page .alert{font-size:9pt;background:#fff;border:1px solid #aaa;color:#111;padding:2mm}
+ .rapor-ranking-page .rapor-stats{gap:3mm;margin:3mm 0}.rapor-ranking-page .rapor-stats>div{padding:2mm;background:#fff}.rapor-ranking-page .rapor-stats strong{font-size:14pt}
+ .rapor-ranking-page .rapor-intro h1{font-size:16pt}.rapor-ranking-page .rapor-intro p{font-size:10pt}.rapor-ranking-page details>summary{padding:2mm 0!important;font-size:11pt}
+}

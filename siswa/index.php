@@ -88,18 +88,30 @@ if (($_GET['dashboard_notifications'] ?? '') === '1') {
     exit;
 }
 
-// Kredit Aktivitas Siswa dihitung terhadap target akhir tiga tahun (X+XI+XII).
-$stmt_kredit = $db->prepare('SELECT COALESCE(SUM(poin),0) FROM kak_aktivitas_siswa WHERE siswa_id=?');
-$stmt_kredit->execute([$siswa_id]);
-$total_poin_kredit = (int)$stmt_kredit->fetchColumn();
-$target_kredit_per_tingkat = ['X'=>0,'XI'=>0,'XII'=>0];
-foreach ($db->query('SELECT tingkat,target_poin FROM kak_target_tingkat')->fetchAll() as $target_kredit) {
-    $target_kredit_per_tingkat[$target_kredit['tingkat']] = (int)$target_kredit['target_poin'];
-}
-$target_kredit_kumulatif = array_sum($target_kredit_per_tingkat);
-$persentase_kredit = $target_kredit_kumulatif > 0
-    ? min(100, (int)round($total_poin_kredit / $target_kredit_kumulatif * 100))
-    : 0;
+require_once __DIR__.'/../includes/student_attendance_warning.php';
+$attendance_warnings=student_attendance_warnings($db,(int)$siswa_id);
+// Kredit aktivitas dan target hanya untuk tingkat kelas saat ini.
+require_once __DIR__.'/../includes/kak_klaim.php';
+$tingkat_kredit=$siswa['tingkat']??'';
+$tingkat_kredit_label=['X'=>'10 (X)','XI'=>'11 (XI)','XII'=>'12 (XII)'][$tingkat_kredit]??'belum ditentukan';
+$aktivitas_ringkasan=kak_status_summary($db,(int)$_SESSION['user_id']);
+$total_poin_kredit=$aktivitas_ringkasan['approved'];
+$target_kredit_kumulatif=$aktivitas_ringkasan['total'];
+$persentase_kredit=$target_kredit_kumulatif>0?(int)round($total_poin_kredit/$target_kredit_kumulatif*100):0;
+
+require_once __DIR__.'/../includes/kredit_poin.php';
+$kps_aktif = kps_ready($db);
+$saldo_kredit_poin = $kps_aktif ? kps_summary($db, (int)$siswa_id)['saldo'] : null;
+$credit_palette=static function(?int $percent):array{
+    if($percent===null)return ['#e2e8f0','#f1f5f9','#475569'];
+    if($percent>=100)return ['#6ee7b7','#d1fae5','#065f46'];
+    if($percent>=75)return ['#bef264','#ecfccb','#365314'];
+    if($percent>=50)return ['#fde047','#fef9c3','#713f12'];
+    if($percent>=25)return ['#fdba74','#ffedd5','#9a3412'];
+    return ['#fda4af','#ffe4e6','#9f1239'];
+};
+$activity_palette=$credit_palette($persentase_kredit);
+$discipline_palette=$credit_palette($kps_aktif?(int)round($saldo_kredit_poin/max(1,KPS_SALDO_AWAL)*100):null);
 
 // Materi yang belum pernah dibuka siswa.
 $stmt_materi_baru=$db->prepare("SELECT COUNT(*) AS total, COUNT(md.materi_id) AS selesai FROM materi mat JOIN pengajaran p ON p.id=mat.pengajaran_id JOIN akses_pertemuan ap ON ap.pengajaran_id=mat.pengajaran_id AND ap.pertemuan_ke=mat.pertemuan_ke AND ap.status='Dibuka' LEFT JOIN materi_siswa_dibaca md ON md.materi_id=mat.id AND md.siswa_id=? WHERE p.kelas_id=?");
@@ -464,7 +476,72 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
     .student-dashboard .notification-entry strong { display:block; font-size:.82rem; }
     .student-dashboard .notification-entry small { display:block; font-size:.73rem; color:#66758d; margin-top:3px; overflow-wrap:anywhere; }
     @media(max-width:575.98px) { .student-dashboard .notification-panel { position:fixed; top:78px; right:16px; left:16px; width:auto; max-width:none; } }
+    .student-dashboard .welcome-card { min-height:0; padding:24px!important; border-radius:20px; }
+    .student-dashboard .welcome-layout { display:grid; grid-template-columns:minmax(0,1fr) minmax(280px,360px); align-items:center; gap:24px; }
+    .student-dashboard .welcome-profile { min-width:0; }
+    .student-dashboard .welcome-card h1 { font-size:1.5rem; margin-top:6px; }
+    .student-dashboard .student-credit-stack { min-width:0; width:100%; display:grid; gap:8px; }
+    .student-dashboard .student-credit-stack .student-credit-link { display:grid; grid-template-columns:minmax(48px,max-content) minmax(0,1fr) 12px; align-items:center; gap:12px; width:100%; max-width:none; min-height:68px; padding:11px 12px; border-radius:12px; border-color:rgba(255,255,255,.18); background:rgba(255,255,255,.08); }
+    .student-dashboard .student-credit-stack .student-credit-link:hover { background:rgba(255,255,255,.14); }
+    .student-dashboard .student-credit-stack .student-credit-score { display:flex; align-items:center; justify-content:center; width:auto; min-width:48px; height:44px; padding:0 6px; border-radius:9px; font-size:1.25rem; line-height:1; letter-spacing:-.025em; white-space:nowrap; overflow-wrap:normal; word-break:normal; }
+    .student-dashboard .student-credit-stack .student-credit-score.is-long { font-size:.85rem; }
+    .student-dashboard .student-credit-copy strong { font-size:.85rem; font-weight:600; line-height:1.4; }
+    .student-dashboard .student-credit-copy small { font-size:.73rem; line-height:1.5; margin-top:3px; }
+    .student-dashboard .student-credit-link > i { font-size:.7rem; opacity:.8; }
+    @media(max-width:767.98px) {
+        .student-dashboard .welcome-layout { grid-template-columns:minmax(0,1fr); gap:20px; }
+        .student-dashboard .student-credit-stack { max-width:none; }
+    }
+    @media(max-width:575.98px) {
+        .student-dashboard .welcome-card { padding:18px!important; border-radius:18px; }
+        .student-dashboard .welcome-card h1 { font-size:1.25rem; }
+        .student-dashboard .welcome-meta { font-size:.75rem; line-height:1.5; }
+        .student-dashboard .student-credit-stack .student-credit-link { grid-template-columns:minmax(44px,max-content) minmax(0,1fr) 10px; gap:10px; min-height:64px; padding:10px; }
+        .student-dashboard .student-credit-stack .student-credit-score { min-width:44px; height:40px; font-size:1.15rem; }
+        .student-dashboard .student-credit-stack .student-credit-score.is-long { font-size:.8rem; }
+        .student-dashboard .student-credit-copy strong { font-size:.8rem; }
+        .student-dashboard .student-credit-copy small { font-size:.7rem; }
+    }
+    .student-dashboard .student-credit-stack a[href="kak.php"] .student-credit-score { background:linear-gradient(135deg,<?=$activity_palette[0]?>,<?=$activity_palette[1]?>);color:<?=$activity_palette[2]?>;border:1px solid rgba(255,255,255,.65);box-shadow:0 3px 10px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.45);text-shadow:0 1px 0 rgba(255,255,255,.25); }
+    .student-dashboard .student-credit-stack .student-credit-points .student-credit-score { background:linear-gradient(135deg,<?=$discipline_palette[0]?>,<?=$discipline_palette[1]?>);color:<?=$discipline_palette[2]?>;border:1px solid rgba(255,255,255,.65);box-shadow:0 3px 10px rgba(15,23,42,.12),inset 0 1px 0 rgba(255,255,255,.45);text-shadow:0 1px 0 rgba(255,255,255,.25); }
+    @media(max-width:575.98px) {
+        .student-dashboard .welcome-card { width:calc(100% - 12px); margin-left:6px; margin-right:6px; padding:14px 12px!important; border-radius:16px; }
+        .student-dashboard .welcome-layout { gap:10px; grid-template-rows:auto auto; }
+        .student-dashboard .welcome-profile { min-height:0; padding:0; margin:0; }
+        .student-dashboard .welcome-profile h1 { margin:5px 0 7px!important; font-size:1.15rem; line-height:1.4; overflow-wrap:anywhere; }
+        .student-dashboard .welcome-meta { font-size:.7rem; line-height:1.6; }
+        .student-dashboard .student-credit-stack { gap:7px; padding-top:8px; border-top:1px solid rgba(255,255,255,.15); }
+        .student-dashboard .student-credit-stack .student-credit-link { grid-template-columns:minmax(38px,max-content) minmax(0,1fr) 10px; gap:8px; min-height:56px; padding:8px; border-radius:11px; background:rgba(17,39,88,.28); }
+        .student-dashboard .student-credit-stack .student-credit-score { min-width:40px; height:38px; padding:0 5px; font-size:1.1rem; flex-basis:auto; }
+        .student-dashboard .student-credit-stack .student-credit-copy { min-width:0; }
+        .student-dashboard .student-credit-stack .student-credit-copy strong { font-size:.78rem; line-height:1.5; overflow-wrap:anywhere; }
+        .student-dashboard .student-credit-stack .student-credit-copy small { font-size:.67rem; line-height:1.6; margin-top:2px; overflow-wrap:anywhere; }
+        .student-dashboard .student-credit-link>i { margin-left:0!important; }
+    }
+    .student-dashboard .student-credit-stack.credit-cards { display:grid;grid-template-columns:minmax(0,1fr);gap:0;padding:0 18px;border:1px solid #e0e7f2;border-radius:15px;background:#fff;box-shadow:0 3px 12px rgba(29,61,121,.035); }
+    .student-dashboard .student-credit-stack.credit-cards .student-credit-link { grid-template-columns:30px minmax(0,1fr) minmax(44px,max-content) 12px;grid-template-areas:"symbol copy score arrow";align-items:center;gap:14px;background:transparent;color:#263d5e;border:0;border-radius:0;box-shadow:none;padding:16px 0;min-height:76px; }
+    .student-dashboard .student-credit-stack.credit-cards .student-credit-link+.student-credit-link { border-top:1px solid #edf1f7; }
+    .student-dashboard .student-credit-stack.credit-cards .student-credit-link:hover { background:#f8faff; }
+    .student-dashboard .credit-cards .student-credit-link::before { content:"\f5a2";font-family:"Font Awesome 6 Free";font-weight:900;grid-area:symbol;text-align:center;color:#3970d2;font-size:1.25rem; }
+    .student-dashboard .credit-cards .student-credit-points::before { content:"\f3ed";color:#269471; }
+    .student-dashboard .credit-cards .student-credit-score { grid-area:score;justify-self:end; }
+    .student-dashboard .credit-cards .student-credit-copy { grid-area:copy; }
+    .student-dashboard .credit-cards .student-credit-copy strong { color:#294567; }
+    .student-dashboard .credit-cards .student-credit-copy small { color:#7486a1; }
+    .student-dashboard .credit-cards .student-credit-link>i { grid-area:arrow;color:#6d87af;opacity:1; }
+    @media(max-width:575.98px) {
+        .student-dashboard .welcome-card { width:100%;margin-left:0;margin-right:0;padding:16px!important; }
+        .student-dashboard .student-credit-stack.credit-cards { padding:0 12px; }
+        .student-dashboard .student-credit-stack.credit-cards .student-credit-link { grid-template-columns:22px minmax(0,1fr) minmax(38px,max-content) 8px;grid-template-areas:"symbol copy score arrow";gap:9px;padding:13px 0;min-height:68px;align-items:center; }
+        .student-dashboard .credit-cards .student-credit-link::before { font-size:1.05rem; }
+        .student-dashboard .credit-cards .student-credit-score { grid-area:score;justify-self:end;min-width:38px;height:38px; }
+        .student-dashboard .credit-cards .student-credit-copy { grid-area:copy; }
+        .student-dashboard .credit-cards .student-credit-copy strong { font-size:.78rem;line-height:1.5; }
+        .student-dashboard .credit-cards .student-credit-copy small { font-size:.66rem;line-height:1.6; }
+        .student-dashboard .credit-cards .student-credit-link>i { grid-area:arrow;align-self:center; }
+    }
 </style>
+<link rel="stylesheet" href="../assets/css/student-credit-banner.css?v=<?=filemtime(__DIR__.'/../assets/css/student-credit-banner.css')?>">
 <div id="page-content-wrapper" class="student-dashboard">
     <nav class="student-topbar px-4 py-3">
         <div class="d-flex align-items-center justify-content-between gap-2">
@@ -485,13 +562,17 @@ $nilai_terbaru = $stmt_nilai_terbaru->fetchAll();
     </nav>
 
     <main class="student-main p-3 p-md-4">
+        <?php require __DIR__.'/../includes/student_attendance_warning_view.php'; ?>
         <?php if($absensi_menunggu): ?><a href="absensi.php" class="attendance-alert alert alert-warning border-warning d-flex align-items-center gap-3 text-decoration-none text-dark shadow-sm"><span class="quick-icon bg-warning text-dark flex-shrink-0"><i class="fa-solid fa-bell"></i></span><span class="flex-grow-1"><strong class="d-block">Absensi sedang dibuka!</strong><small>Anda memiliki <?= $absensi_menunggu ?> sesi yang belum di-check-in. Ketuk di sini sebelum waktunya berakhir.</small></span><i class="fa-solid fa-chevron-right"></i></a><?php endif; ?>
-        <section class="welcome-card p-4 mb-4">
+        <section class="welcome-card welcome-reference p-4 mb-4">
             <div class="welcome-layout">
-                <div class="welcome-profile"><small class="opacity-75">Selamat datang 👋</small>
+                <div class="welcome-profile"><div><small class="opacity-75">Selamat datang 👋</small>
                 <h1 class="h4 fw-bold mb-2 position-relative"><?= sanitize($siswa['nama_lengkap'] ?? $_SESSION['username']) ?></h1>
-                <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div></div>
-                <a href="kak.php" class="student-credit-link flex-shrink-0"><span class="student-credit-score <?= strlen((string)$total_poin_kredit) > 3 ? 'is-long' : '' ?>" aria-label="Total <?= $total_poin_kredit ?> poin"><?= $total_poin_kredit ?></span><span class="student-credit-copy"><strong>Kredit Aktivitas Siswa</strong><small><?php if($target_kredit_kumulatif > 0): ?><b><?= $persentase_kredit ?>%</b> target kelas X–XII<?php else: ?>Target kelas X–XII belum ditetapkan<?php endif; ?></small></span><i class="fa-solid fa-chevron-right ms-auto small"></i></a>
+                <div class="welcome-meta opacity-75 position-relative">NIS <?= sanitize($siswa['nis'] ?? '-') ?> &middot; NISN <?= sanitize($siswa['nisn'] ?? '-') ?></div></div></div>
+                <div class="student-credit-stack" role="group" aria-label="Ringkasan kredit siswa">
+                <a href="kak.php" class="student-credit-link"><span class="credit-banner-heading"><i class="fa-solid fa-chart-line" aria-hidden="true"></i><strong>Kredit Aktivitas Siswa</strong><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span><span class="credit-banner-value"><span class="student-credit-score <?=strlen((string)$total_poin_kredit)>3?'is-long':''?>"><?=$total_poin_kredit?></span><small>aktivitas disetujui</small></span><span class="credit-banner-progress"><span class="credit-banner-track" role="progressbar" aria-label="Pencapaian aktivitas" aria-valuenow="<?=$persentase_kredit?>" aria-valuemin="0" aria-valuemax="100"><span style="width:<?=$persentase_kredit?>%"></span></span><b><?=$persentase_kredit?>%</b></span><small class="credit-banner-caption"><?=$target_kredit_kumulatif>0?$total_poin_kredit.' dari '.$target_kredit_kumulatif.' aktivitas disetujui':'Belum ada aktivitas'?></small></a>
+                <a href="kredit_poin.php" class="student-credit-link student-credit-points"><span class="credit-banner-heading"><i class="fa-solid fa-shield-halved" aria-hidden="true"></i><strong>Kredit Poin Siswa</strong><i class="fa-solid fa-chevron-right" aria-hidden="true"></i></span><span class="credit-banner-value"><span class="student-credit-score <?=strlen((string)$saldo_kredit_poin)>3?'is-long':''?>"><?=$kps_aktif?$saldo_kredit_poin:'—'?></span><small>poin</small></span><?php $sisa_persen=$kps_aktif?max(0,min(100,(int)round($saldo_kredit_poin/max(1,KPS_SALDO_AWAL)*100))):0;?><span class="credit-banner-progress"><span class="credit-banner-track" role="progressbar" aria-label="Sisa poin kedisiplinan" aria-valuenow="<?=$sisa_persen?>" aria-valuemin="0" aria-valuemax="100"><span style="width:<?=$sisa_persen?>%"></span></span><b><?=$sisa_persen?>%</b></span><small class="credit-banner-caption"><?=$kps_aktif?'Sisa '.$saldo_kredit_poin.' dari '.KPS_SALDO_AWAL.' poin':'Belum diaktifkan'?></small></a>
+                </div>
             </div>
         </section>
 

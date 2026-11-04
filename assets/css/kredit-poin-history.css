@@ -1,0 +1,68 @@
+.kps-history-heading{display:flex;align-items:center;gap:12px;margin-bottom:20px}.kps-history-heading>div{min-width:0;flex:1}.kps-history-heading p{font-size:.73rem;line-height:1.6;color:#7c8da6;margin:0}
+.kps-history-icon{display:grid;place-items:center;flex:0 0 40px;width:40px;height:40px;border-radius:12px;background:#edf4ff;color:#2563eb;font-size:1.1rem}
+.kps-history-count{background:#f1f5fa;color:#7285a2;border:1px solid #e8eef6;border-radius:8px;padding:6px 9px;font-size:.68rem;white-space:nowrap}
+.kps-student-history .kps-entry{padding:18px;margin-top:12px;border:1px solid #e2e9f3;border-radius:13px;background:#fff;gap:16px;box-shadow:0 2px 8px #23426703}
+.kps-student-history .kps-delta{min-width:78px;max-width:110px;font-size:1.35rem;border:1px solid #fbd1d5;background:#fff0f1;color:#b42332;border-radius:11px;padding:14px 8px;line-height:1.4}
+.kps-student-history .kps-delta small{font-size:.6rem;font-weight:500;margin-top:4px}
+.kps-category{display:inline-flex;align-items:center;gap:6px;max-width:100%;font-size:.64rem;font-weight:600;line-height:1.6;color:#4c6d9b;background:#edf3fc;border:1px solid #e0e9f7;border-radius:6px;padding:4px 8px;overflow-wrap:anywhere}
+.kps-category>i{color:#5a7db3;flex-shrink:0}
+.kps-category.kps-severity-ringan{background:#ecfdf3;border-color:#cdeedb;color:#21734c}.kps-category.kps-severity-sedang{background:#fff7e8;border-color:#f5dfb7;color:#9a600d}.kps-category.kps-severity-berat{background:#fff0f1;border-color:#f6d2d7;color:#b42332}.kps-category[class*=kps-severity-]>i{color:inherit}
+.kps-entry-copy h3{font-size:.9rem;font-weight:650;line-height:1.7;margin:9px 0 10px;color:#2c405b;overflow-wrap:anywhere}
+.kps-student-history{container-type:inline-size;container-name:student-history}
+@container student-history (min-width:700px){
+ .kps-student-history .kps-entry{align-items:center;padding:16px 18px;gap:20px}
+ .kps-student-history .kps-entry-copy{display:grid;grid-template-columns:auto minmax(0,1fr) auto;align-items:center;gap:12px 20px}
+ .kps-student-history .kps-category{justify-self:start;white-space:nowrap}
+ .kps-student-history .kps-entry-copy h3{margin:0}
+ .kps-student-history .kps-entry-meta{display:grid;gap:5px;min-width:130px}
+ .kps-student-history .kps-student-detail{grid-column:1/-1;margin-top:0}
+ .kps-student-history .kps-delta{padding:9px 8px;font-size:1.2rem}
+}
+.kps-entry-meta{display:flex;flex-wrap:wrap;gap:8px 18px;color:#7a8da7;font-size:.69rem;line-height:1.6}.kps-entry-meta>span{display:flex;align-items:baseline;gap:7px;min-width:0;overflow-wrap:anywhere}.kps-entry-meta i{font-size:.8rem;color:#7892b5;flex-shrink:0}
+.kps-student-detail{margin-top:13px;border-top:1px solid #edf1f7;padding-top:5px}.kps-student-detail summary{display:flex;align-items:center;gap:7px;list-style:none;cursor:pointer;min-height:44px;color:#54739e;font-size:.7rem}.kps-student-detail summary::-webkit-details-marker{display:none}.kps-student-detail summary>i:last-child{margin-left:auto;font-size:.65rem}.kps-student-detail[open] summary>i:last-child{transform:rotate(180deg)}.kps-student-detail summary:focus-visible{outline:2px solid #2563eb;outline-offset:2px;border-radius:4px}
+.kps-student-detail>div{padding:10px 12px;background:#f8faff;border-radius:8px}.kps-entry-copy .kps-student-detail p{font-size:.73rem;line-height:1.7;color:#7385a0;margin:0 0 10px}.kps-student-detail p:last-child{margin-bottom:0}.kps-student-detail strong{display:block;color:#49617f;font-size:.68rem;margin-bottom:3px}
+@media(max-width:575.98px){.kps-history-heading{gap:9px;flex-wrap:wrap;margin-bottom:15px}.kps-history-heading h2{font-size:.85rem}.kps-history-heading p{font-size:.66rem}.kps-history-count{font-size:.62rem;padding:5px 7px}.kps-history-icon{width:34px;height:34px;flex-basis:34px;font-size:1rem}.kps-student-history .kps-entry{padding:13px 11px;gap:11px}.kps-student-history .kps-delta{min-width:58px;max-width:76px;padding:10px 5px;font-size:1.15rem}.kps-student-history .kps-delta small{font-size:.55rem}.kps-entry-copy h3{font-size:.8rem;margin:8px 0}.kps-category{font-size:.6rem;padding:3px 6px}.kps-entry-meta{font-size:.64rem;gap:5px 12px}}
+
+/* Ringkasan siswa dengan identitas batik Jaya Buana. */
+.kps-student-page .kps-main{max-width:1100px}
+.kps-student-page .kps-balance{padding:18px 22px;gap:22px;border-radius:14px;background:#17366d;background-image:linear-gradient(110deg,rgba(15,32,66,.94),rgba(24,59,118,.84) 58%,rgba(29,78,160,.72)),url('../img/batikjb.webp');background-position:center;background-size:cover;border:1px solid rgba(255,255,255,.15)}
+.kps-student-page .kps-balance-copy h2{font-size:.85rem;font-weight:650}
+.kps-student-page .kps-total{font-size:1.9rem;margin:5px 6px 5px 0}
+.kps-student-page .kps-balance-copy>span{font-size:.8rem}
+.kps-student-page .kps-balance-copy>div{font-size:.75rem}
+.kps-student-page .kps-balance-copy p{font-size:.7rem;line-height:1.5;max-width:440px}
+.kps-student-page .kps-remaining{flex:0 1 280px}
+.kps-student-page .kps-remaining-label{font-size:.73rem;margin-bottom:6px}
+.kps-student-page .kps-progress{height:7px;margin-bottom:10px!important}
+.kps-student-page .kps-remaining .badge{font-size:.66rem;padding:5px 8px}
+.kps-student-page .kps-student-history>.card-body{padding:18px!important}
+.kps-student-page .kps-history-heading{gap:10px;margin-bottom:12px}
+.kps-student-page .kps-history-heading h2{font-size:.9rem}
+.kps-student-page .kps-history-icon{width:34px;height:34px;flex-basis:34px;border-radius:10px;font-size:.95rem}
+.kps-student-page .kps-student-history .kps-entry{padding:11px 12px;margin-top:8px;gap:12px;border-radius:10px}
+.kps-student-page .kps-student-history .kps-delta{min-width:62px;padding:7px;font-size:1.1rem;border-radius:8px}
+.kps-student-page .kps-delta small{font-size:.55rem}
+.kps-student-page .kps-entry-copy h3{font-size:.8rem;line-height:1.5}
+.kps-student-page .kps-category{padding:3px 6px;font-size:.6rem}
+@media(max-width:767.98px){
+ .kps-student-page .kps-balance{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;padding:16px}
+ .kps-student-page .kps-balance-copy p{grid-column:1/-1}
+ .kps-student-page .kps-remaining{align-self:center}
+ .kps-student-page .kps-balance-copy p{display:none}
+}
+@media(max-width:575.98px){
+ .kps-student-page .kps-balance{padding:14px;gap:12px;border-radius:12px}
+ .kps-student-page .kps-balance-copy h2{font-size:.74rem;line-height:1.5}
+ .kps-student-page .kps-total{font-size:1.65rem}
+ .kps-student-page .kps-balance-copy>div{font-size:.65rem}
+ .kps-student-page .kps-remaining-label{font-size:.65rem;gap:5px}
+ .kps-student-page .kps-remaining .badge{font-size:.6rem}
+ .kps-student-page .kps-student-history>.card-body{padding:12px!important}
+ .kps-student-page .kps-history-heading p{display:none}
+ .kps-student-page .kps-history-heading h2{font-size:.8rem}
+ .kps-student-page .kps-history-icon{width:30px;height:30px;flex-basis:30px}
+ .kps-student-page .kps-student-history .kps-entry{padding:10px;gap:9px}
+ .kps-student-page .kps-student-history .kps-delta{min-width:48px;max-width:60px;padding:7px 4px;font-size:1rem}
+ .kps-student-page .kps-entry-copy h3{margin:5px 0;font-size:.76rem}
+ .kps-student-page .kps-entry-meta{font-size:.62rem;gap:4px 10px}
+}

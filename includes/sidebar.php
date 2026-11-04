@@ -1,6 +1,11 @@
 <?php
 $current_page = basename($_SERVER['PHP_SELF']);
 $role_id = (int)($_SESSION['role_id'] ?? 0);
+$sidebar_kredit_modules=[];
+if($role_id===2&&class_exists('Database')){
+    require_once __DIR__.'/kredit_akses.php';
+    $sidebar_kredit_modules=kredit_access_modules(Database::getInstance(),(int)($_SESSION['user_id']??0));
+}
 $sidebar_profile_name = $_SESSION['username'] ?? 'Pengguna';
 $sidebar_profile_role = [1 => 'Administrator', 2 => 'Guru', 3 => 'Siswa'][$role_id] ?? 'Pengguna';
 if(($_SESSION['role_nama']??'')==='Akademik')$sidebar_profile_role='Wakasek Bidang Akademik';
@@ -274,10 +279,24 @@ if ($role_id === 3 && class_exists('Database')) {
     </button>
     <?php endif; ?>
     <div class="list-group list-group-flush mt-3">
+        <?php if (in_array($role_id, [1, 2], true)): ?>
+        <a href="rapor.php" class="list-group-item list-group-item-action <?= $current_page === 'rapor.php' ? 'active' : '' ?>"><i class="fa-solid fa-file-lines me-2"></i><span class="sidebar-menu-label">Rapor Siswa</span></a>
+        <?php endif; ?>
         <?php if ($role_id === 1): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= ($current_page == 'index.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-gauge me-2"></i><span class="sidebar-menu-label">Dashboard</span>
         </a>
+        <?php $admin_kredit_aktif = in_array($current_page, ['kredit_poin.php','master_pelanggaran.php','master_aktivitas.php','kak.php','kak_bukti.php','kredit_akses.php'], true); ?>
+        <a href="#sidebarAdminKredit" class="list-group-item list-group-item-action <?= $admin_kredit_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" role="button" aria-expanded="<?= $admin_kredit_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminKredit">
+            <i class="fa-solid fa-graduation-cap me-2"></i><span class="sidebar-menu-label flex-grow-1">Kredit Siswa</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
+        </a>
+        <div class="collapse sidebar-submenu <?= $admin_kredit_aktif ? 'show' : '' ?>" id="sidebarAdminKredit">
+            <a href="kredit_poin.php" class="list-group-item list-group-item-action <?= $current_page === 'kredit_poin.php' ? 'active' : '' ?>"><i class="fa-solid fa-coins me-2"></i><span class="sidebar-menu-label">Kredit Poin Siswa</span></a>
+            <a href="master_pelanggaran.php" class="list-group-item list-group-item-action <?= $current_page === 'master_pelanggaran.php' ? 'active' : '' ?>"><i class="fa-solid fa-list-check me-2"></i><span class="sidebar-menu-label">Master Pelanggaran</span></a>
+            <a href="kak.php" class="list-group-item list-group-item-action <?= in_array($current_page, ['kak.php','kak_bukti.php'], true) ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i><span class="sidebar-menu-label">Kredit Aktivitas Siswa</span></a>
+            <a href="master_aktivitas.php" class="list-group-item list-group-item-action <?= $current_page === 'master_aktivitas.php' ? 'active' : '' ?>"><i class="fa-solid fa-table-list me-2"></i><span class="sidebar-menu-label">Master Aktivitas</span></a>
+            <a href="kredit_akses.php" class="list-group-item list-group-item-action <?= $current_page === 'kredit_akses.php' ? 'active' : '' ?>"><i class="fa-solid fa-user-lock me-2"></i><span class="sidebar-menu-label">Pengaturan Akses Kredit Siswa</span></a>
+        </div>
         <?php $admin_master_aktif = in_array($current_page, ['users.php','akun_akademik.php','monitoring_kbm.php','guru.php','siswa.php','kelas.php','mapel.php','pengajaran.php'], true); ?>
         <a href="#sidebarAdminMaster" class="list-group-item list-group-item-action <?= $admin_master_aktif ? 'active' : '' ?>" data-bs-toggle="collapse" aria-expanded="<?= $admin_master_aktif ? 'true' : 'false' ?>" aria-controls="sidebarAdminMaster">
             <i class="fa-solid fa-database me-2"></i><span class="sidebar-menu-label flex-grow-1">Master Data</span><i class="fa-solid fa-chevron-down sidebar-menu-chevron"></i>
@@ -366,7 +385,8 @@ if ($role_id === 3 && class_exists('Database')) {
         <a href="rekap_mengajar.php" class="list-group-item list-group-item-action <?= ($current_page === 'rekap_mengajar.php') ? 'active' : '' ?>">
             <i class="fa-solid fa-person-chalkboard me-2"></i> Rekap Mengajar
         </a>
-        <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> Kredit Aktivitas Siswa</a>
+        <?php if(in_array('aktivitas',$sidebar_kredit_modules,true)): ?><a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> Kredit Aktivitas Siswa</a><?php endif ?>
+        <?php if(in_array('poin',$sidebar_kredit_modules,true)): ?><a href="kredit_poin.php" class="list-group-item list-group-item-action <?= $current_page === 'kredit_poin.php' ? 'active' : '' ?>"><i class="fa-solid fa-coins me-2"></i> Kredit Poin Siswa</a><?php endif ?>
         <?php elseif (($_SESSION['role_nama']??'')==='Akademik'): ?>
         <a href="index.php" class="list-group-item list-group-item-action <?= $current_page==='index.php'?'active':'' ?>"><i class="fa-solid fa-gauge me-2"></i>Dashboard Akademik</a>
         <a href="riwayat_kbm.php" class="list-group-item list-group-item-action <?= $current_page==='riwayat_kbm.php'?'active':'' ?>"><i class="fa-solid fa-clock-rotate-left me-2"></i>Riwayat KBM</a>
@@ -403,6 +423,9 @@ if ($role_id === 3 && class_exists('Database')) {
             <i class="fa-solid fa-file-pen me-2"></i> Ulangan Harian
         </a>
         <a href="kak.php" class="list-group-item list-group-item-action <?= ($current_page === 'kak.php') ? 'active' : '' ?>"><i class="fa-solid fa-medal me-2"></i> Kredit Aktivitas Siswa</a>
+        <?php endif; ?>
+        <?php if ($role_id === 3): ?>
+        <a href="kredit_poin.php" class="list-group-item list-group-item-action <?= $current_page === 'kredit_poin.php' ? 'active' : '' ?>"><i class="fa-solid fa-coins me-2"></i> Kredit Poin Siswa</a>
         <?php endif; ?>
         <a href="../logout.php" class="list-group-item list-group-item-action text-danger mt-4">
             <i class="fa-solid fa-right-from-bracket me-2"></i> Keluar

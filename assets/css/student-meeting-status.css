@@ -1,0 +1,45 @@
+.student-meeting-page{background:#f5f7fb;min-width:0}
+.student-meeting-page .top-navbar h5{font-size:1.05rem;line-height:1.5}
+.student-meeting-page .top-navbar small{font-size:.75rem}
+.student-meeting-page .student-access-shell{max-width:1000px}
+.student-meeting-page .subject-access-card{border:1px solid #e1e7f0;border-radius:14px;box-shadow:0 5px 18px rgba(30,58,110,.04)}
+.student-meeting-page .subject-access-card>.card-body{padding:18px!important}
+.student-meeting-page .form-label{font-size:.78rem;color:#354862;margin-bottom:8px}
+.student-meeting-page .form-select{min-width:0;max-width:100%;min-height:42px;border-radius:9px;border-color:#d9e2ee;font-size:.79rem;color:#334155;background-color:#fafcff}
+.student-meeting-page .form-select:focus{border-color:#8db1f2;box-shadow:0 0 0 3px rgba(37,99,235,.1)}
+.student-meeting-page .subject-access-card>.card-body>small{font-size:.7rem;line-height:1.5;color:#7c8da6!important}
+.student-meeting-page .subject-access-panel>.card-header{padding:16px 18px!important;border-bottom:1px solid #e5ebf4!important;background:#f5f8fd!important}
+.student-meeting-page .subject-access-panel>.card-header h2{font-size:.88rem;line-height:1.5;color:#243650}
+.student-meeting-page .subject-access-panel>.card-header small{font-size:.7rem;line-height:1.6;color:#71829c!important}
+.student-meeting-page .subject-access-panel>.card-header .badge{font-size:.64rem;font-weight:650;border-radius:7px;padding:6px 8px;background:#e6efff!important;color:#1d4ed8;line-height:1.4}
+.student-meeting-page .meeting-selector{margin-bottom:12px!important}
+.student-meeting-page .meeting-status-card{padding:13px;border-radius:10px;border-color:#dbe2ec;background:#f8fafc}
+.student-meeting-page .meeting-status-card.is-open{background:#f1fbf5;border-color:#b7e3c9}
+.student-meeting-page .meeting-status-icon{width:34px;height:34px;flex-basis:34px;border-radius:9px;font-size:.9rem}
+.student-meeting-page .meeting-status-card .flex-grow-1{min-width:0}
+.student-meeting-page .meeting-status-card strong{font-size:.8rem;line-height:1.5}
+.student-meeting-page .meeting-status-card small{font-size:.71rem;line-height:1.6}
+.student-meeting-page .meeting-status-card .badge{font-size:.62rem;align-self:flex-start;border-radius:6px;padding:5px 7px;line-height:1.4}
+.student-meeting-page .meeting-status-card .bg-success{background:#15803d!important;color:#fff}
+.student-meeting-page .meeting-status-card .bg-secondary{background:#64748b!important;color:#fff}
+.student-meeting-page .meeting-status-card .btn{min-height:40px;border-radius:8px;font-size:.74rem;display:inline-flex;align-items:center;justify-content:center;gap:4px;white-space:normal}
+.student-meeting-page .meeting-status-card .btn:disabled{opacity:1;color:#7b8798!important;background:#edf1f5;border-color:#dce3ec!important}
+.student-meeting-page .meeting-actions{margin-top:12px!important}
+@media(max-width:575.98px){
+ .student-meeting-page .student-access-shell{padding:12px!important}
+ .student-meeting-page .top-navbar h5{font-size:.94rem}
+ .student-meeting-page .top-navbar small{font-size:.68rem}
+ .student-meeting-page .subject-access-card{border-radius:12px;margin-bottom:12px!important}
+ .student-meeting-page .subject-access-card>.card-body{padding:12px!important}
+ .student-meeting-page .subject-access-panel>.card-header{padding:12px!important}
+ .student-meeting-page .subject-access-panel>.card-header h2{font-size:.82rem}
+ .student-meeting-page .subject-access-panel>.card-header small{font-size:.65rem}
+ .student-meeting-page .form-label{font-size:.73rem}
+ .student-meeting-page .form-select{font-size:16px;min-height:44px}
+ .student-meeting-page .subject-access-card>.card-body>small{font-size:.65rem}
+ .student-meeting-page .meeting-status-card{padding:11px}
+ .student-meeting-page .meeting-status-card small{font-size:.67rem}
+ .student-meeting-page .meeting-status-card .btn{min-height:44px;font-size:.7rem}
+ .student-meeting-page .meeting-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px!important}
+}
+@media(prefers-reduced-motion:reduce){.student-meeting-page .meeting-status-panel:not([hidden]){animation:none}}

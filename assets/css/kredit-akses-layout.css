@@ -1,0 +1,25 @@
+#page-content-wrapper.credit-access-page .credit-access-main{max-width:none}
+#creditAccessForm{background:#fff;border:1px solid #e0e7f2;border-radius:16px;overflow:hidden;box-shadow:0 4px 18px #253e6a04}
+#creditAccessForm .credit-module-tabs{background:#fff;border:0;border-bottom:1px solid #e6ecf5;border-radius:0;margin:0;padding:0 22px;gap:22px;justify-content:flex-start}
+#creditAccessForm .credit-module-tabs>button{flex:0 1 auto;min-height:58px;padding:15px 3px;border-radius:0;border-bottom:3px solid transparent;color:#7687a0;box-shadow:none;font-size:.8rem;gap:9px}
+#creditAccessForm .credit-module-tabs>button[aria-selected=true]{background:transparent;color:#245fc7;border-bottom-color:#2563eb}
+#creditAccessForm .credit-module-tabs>button[data-credit-tab=aktivitas][aria-selected=true]{color:#16845e;border-bottom-color:#16845e}
+#creditAccessForm .credit-access-toolbar{background:transparent;border:0;border-radius:0;margin:0;padding:18px 22px 12px;gap:14px;flex-direction:row;align-items:center}
+#creditAccessForm .credit-access-search{max-width:440px;flex:1;min-width:0}
+.credit-search-field{display:block;position:relative}.credit-search-field>i{position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#6e87ad;font-size:.9rem;pointer-events:none}
+#creditAccessForm .credit-search-field input{padding-left:39px;background:#f8faff;min-height:44px}
+#creditAccessForm .credit-teacher-total{background:transparent;padding:0;font-size:.7rem;color:#8291a8;align-self:auto}
+#creditAccessForm .credit-access-grid{padding:0 22px 18px}
+#creditAccessForm .credit-access-card{padding:0;border:0;border-radius:0;box-shadow:none}
+#creditAccessForm .credit-module-heading{align-items:center;gap:10px;padding:8px 0 12px}
+#creditAccessForm .credit-module-heading h2{font-size:.8rem;font-weight:600;margin-bottom:2px}
+#creditAccessForm .credit-module-heading p{font-size:.68rem}
+#creditAccessForm .credit-module-icon{width:30px;height:32px;flex-basis:30px;border:0;border-radius:8px;font-size:1rem}
+#creditAccessForm .credit-list-toolbar{border:0;margin:0;padding:0 0 9px}
+#creditAccessForm .credit-teacher-list{max-height:320px;border-radius:9px}
+#creditAccessForm .credit-teacher-row{min-height:56px;padding:9px 12px}
+#creditAccessForm .credit-access-footer{background:#fbfcff;border:0;border-top:1px solid #e6ecf5;border-radius:0;margin:0;padding:14px 22px;gap:12px}
+#creditAccessForm .credit-access-footer>span{font-size:.69rem}
+#creditAccessForm .credit-access-footer>span i{background:transparent;flex-basis:17px;width:17px;height:20px;font-size:.85rem}
+#creditAccessForm .credit-access-footer .btn{min-height:44px;font-size:.75rem;padding:10px 16px;box-shadow:none}
+@media(max-width:575.98px){#creditAccessForm .credit-module-tabs{padding:0 14px;gap:18px}#creditAccessForm .credit-module-tabs>button{min-height:52px;font-size:.74rem}#creditAccessForm .credit-access-toolbar{padding:14px 14px 8px;gap:10px}#creditAccessForm .credit-access-search{max-width:none}#creditAccessForm .credit-teacher-total{font-size:.65rem;gap:4px;white-space:normal;flex:0 0 58px;flex-wrap:wrap}#creditAccessForm .credit-access-grid{padding:0 14px 14px}#creditAccessForm .credit-access-footer{padding:13px 14px}#creditAccessForm .credit-teacher-list{max-height:280px}#creditAccessForm .credit-module-heading p{line-height:1.6}}

@@ -1,0 +1,17 @@
+.kps-page{background:#f5f7fb;min-width:0}
+.kps-main{width:100%;max-width:1100px;margin:0 auto}
+.kps-card{border:0;border-radius:18px;box-shadow:0 6px 22px rgba(15,23,42,.06)}
+.kps-balance{display:flex;align-items:center;justify-content:space-between;gap:28px;padding:24px;border-radius:18px;background:linear-gradient(125deg,#172554,#1d4ed8 65%,#3b82f6);color:#fff;box-shadow:0 6px 22px rgba(15,23,42,.06)}
+.kps-balance-copy{flex:1;min-width:0}.kps-balance-copy p{opacity:.8}
+.kps-total{display:inline-block;font-size:2.15rem;line-height:1.2;margin:8px 8px 8px 0;overflow-wrap:anywhere;max-width:100%}
+.kps-remaining{flex:0 1 320px;min-width:0}.kps-progress{height:10px;background:rgba(255,255,255,.2);border-radius:10px;overflow:hidden}.kps-progress-bar{height:100%;background:#fbbf24;border-radius:10px}
+.kps-remaining-label{display:flex;justify-content:space-between;gap:12px;font-size:.85rem;margin-bottom:8px}
+.kps-remaining .badge{white-space:normal;text-align:left;line-height:1.5}
+.kps-entry{display:flex;align-items:flex-start;gap:16px;padding:18px 0;border-bottom:1px solid #edf1f5}.kps-entry:last-child{border-bottom:0}
+.kps-delta{flex:0 0 auto;min-width:76px;max-width:130px;overflow-wrap:anywhere;text-align:center;border-radius:12px;padding:10px;font-weight:800;font-size:1.1rem;font-variant-numeric:tabular-nums}
+.kps-delta small{display:block;font-size:.7rem;font-weight:500}.kps-page .is-minus{background:#fee2e2;color:#991b1b}
+.kps-entry-copy{flex:1;min-width:0;overflow-wrap:anywhere}.kps-entry-copy p{margin:6px 0;font-size:.9rem}.kps-entry-copy small{font-size:.78rem}
+.kps-card .form-control,.kps-card .form-select,.kps-card .btn{min-height:44px;border-radius:10px}.kps-card label{margin-bottom:6px}
+.kps-table{min-width:640px}.kps-table td{vertical-align:middle}.kps-table .kps-reason{min-width:200px;max-width:400px;overflow-wrap:anywhere;white-space:normal}
+@media(max-width:767.98px){.kps-balance{align-items:stretch;flex-direction:column;gap:20px}.kps-remaining{flex:auto}}
+@media(max-width:575.98px){.kps-main{padding:13px!important}.kps-card,.kps-balance{border-radius:15px}.kps-balance{padding:22px}.kps-entry{gap:12px}.kps-delta{min-width:62px;max-width:100px;padding:8px;font-size:.95rem}.kps-page .top-navbar{gap:12px}}
