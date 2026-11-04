@@ -14,6 +14,9 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
         if($action==='buat_acara'){
             kak_staff_create($db,$user_id,$_POST);
             $_SESSION['kak_staff_success']='Acara diterbitkan. Siswa harus mengunggah bukti dan mendapatkan persetujuan sebelum aktivitas disetujui.';
+        }elseif($action==='ubah_tanggal'){
+            kak_staff_update_date($db,$user_id,$_POST);
+            $_SESSION['kak_staff_success']='Tanggal acara berhasil diperbarui.';
         }elseif($action==='verifikasi'){
             $changed=kak_staff_review($db,$user_id,$_POST);
             $_SESSION['kak_staff_success']=$changed?'Verifikasi tersimpan. Status aktivitas siswa sudah diperbarui.':'Klaim ini sudah diverifikasi sebelumnya.';
@@ -21,7 +24,7 @@ if($_SERVER['REQUEST_METHOD']==='POST'){
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();error_log('Pengelolaan klaim aktivitas: '.$e->getMessage());$_SESSION['kak_staff_error']=$e instanceof InvalidArgumentException||$e instanceof DomainException?$e->getMessage():'Proses gagal disimpan. Silakan coba kembali.';}
     $return_query=[];
     foreach(['claims_q','claims_status','claims_page','events_q','events_page'] as $key)if(is_string($_GET[$key]??null))$return_query[$key]=mb_substr($_GET[$key],0,100);
-    $return_query['halaman']=($_POST['action']??'')==='verifikasi'?'verifikasi':$kak_view;
+    $return_query['halaman']=($_POST['action']??'')==='ubah_tanggal'?'acara':(( $_POST['action']??'')==='verifikasi'?'verifikasi':$kak_view);
     redirect('kak.php?'.http_build_query($return_query).(($return_query['halaman']==='verifikasi')?'#kakReviewPanel':''));
 }
 if(($_GET['export']??'')==='excel'){
@@ -44,9 +47,9 @@ if($ready){
     if($kak_view==='verifikasi')$claim_list=kak_staff_list($db,$user_id,'claims',['q'=>$_GET['claims_q']??'','status'=>$_GET['claims_status']??'','page'=>$_GET['claims_page']??1]);
     if($kak_view==='acara')$event_list=kak_staff_list($db,$user_id,'events',['q'=>$_GET['events_q']??'','page'=>$_GET['events_page']??1]);
     $claims=$claim_list['rows'];$events=$event_list['rows'];
-    $panel_query=['halaman'=>$kak_view,'claims_q'=>$claim_list['search'],'claims_status'=>$claim_list['status'],'claims_page'=>$claim_list['page'],'events_q'=>$event_list['search'],'events_page'=>$event_list['page']];
-    $panel_url=static function(array $changes,string $anchor)use($panel_query):string{return 'kak.php?'.http_build_query(array_replace($panel_query,$changes)).'#'.$anchor;};
 }
+$panel_query=['halaman'=>$kak_view,'claims_q'=>$claim_list['search'],'claims_status'=>$claim_list['status'],'claims_page'=>$claim_list['page'],'events_q'=>$event_list['search'],'events_page'=>$event_list['page']];
+$panel_url=static function(array $changes,string $anchor)use($panel_query):string{return 'kak.php?'.http_build_query(array_replace($panel_query,$changes)).'#'.$anchor;};
 require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 ?>
 <link rel="stylesheet" href="../assets/css/kak-klaim.css?v=<?=filemtime(__DIR__.'/../assets/css/kak-klaim.css')?>">
@@ -107,9 +110,15 @@ require_once __DIR__.'/header.php';require_once __DIR__.'/sidebar.php';
 <?php if(!$events):?><div class="kak-staff-empty"><i class="fa-regular fa-calendar" aria-hidden="true"></i><strong><?=$event_list['search']?'Acara tidak ditemukan':'Belum ada acara'?></strong><p><?=$event_list['search']?'Coba kata pencarian yang berbeda.':'Mulai dengan menerbitkan acara di formulir atas.'?></p></div><?php endif ?>
 <p class="kak-grid-hint"><i class="fa-solid fa-arrows-left-right" aria-hidden="true"></i>Geser tabel untuk melihat seluruh kolom. Maksimal 10 data per halaman.</p>
 <div class="kak-published-list kak-data-scroll" tabindex="0" role="region" aria-label="Tabel acara diterbitkan"><table class="kak-data-table kak-events-table"><caption class="visually-hidden">Acara sekolah yang diterbitkan</caption><thead><tr><th scope="col">No.</th><th scope="col"><i class="fa-regular fa-calendar" aria-hidden="true"></i>Tanggal acara</th><th scope="col"><i class="fa-solid fa-medal" aria-hidden="true"></i>Nama aktivitas</th><th scope="col"><i class="fa-solid fa-users" aria-hidden="true"></i>Sasaran</th><th scope="col"><i class="fa-solid fa-infinity" aria-hidden="true"></i>Periode klaim</th></tr></thead><tbody>
-<?php foreach($events as $index=>$e):?><tr><td><?=($event_list['page']-1)*10+$index+1?></td><td><?=date('d/m/Y',strtotime($e['tanggal_acara']))?></td><td><strong><?=sanitize($e['nama'])?></strong></td><td><?=sanitize($e['target_tingkat']?'Semua kelas '.(['X'=>'10','XI'=>'11','XII'=>'12'][$e['target_tingkat']]).' ('.$e['target_tingkat'].')':($e['nama_lengkap']??$e['nama_kelas']??'Semua siswa'))?></td><td>Tanpa batas waktu</td></tr><?php endforeach ?>
+<?php foreach($events as $index=>$e):?><tr><td><?=($event_list['page']-1)*10+$index+1?></td><td><div class="kak-event-date-cell"><span><?=date('d/m/Y',strtotime($e['tanggal_acara']))?></span>
+<button type="button" class="kak-edit-date-button" data-edit-event-date data-id="<?=(int)$e['id']?>" data-date="<?=sanitize($e['tanggal_acara'])?>" data-name="<?=sanitize($e['nama'])?>" aria-label="Edit tanggal <?=sanitize($e['nama'])?>" aria-haspopup="dialog" aria-controls="kakDateDialog"><i class="fa-regular fa-pen-to-square" aria-hidden="true"></i></button></div></td><td><strong><?=sanitize($e['nama'])?></strong></td><td><?=sanitize($e['target_tingkat']?'Semua kelas '.(['X'=>'10','XI'=>'11','XII'=>'12'][$e['target_tingkat']]).' ('.$e['target_tingkat'].')':($e['nama_lengkap']??$e['nama_kelas']??'Semua siswa'))?></td><td>Tanpa batas waktu</td></tr><?php endforeach ?>
 <?php if(!$events):?><tr><td colspan="5" class="kak-cell-empty">Tidak ada acara untuk ditampilkan.</td></tr><?php endif ?>
 </tbody></table></div>
+<dialog id="kakDateDialog" class="kak-date-dialog" aria-labelledby="kakDateTitle">
+<div class="kak-date-dialog-heading"><h2 id="kakDateTitle">Edit Tanggal Acara</h2><button type="button" data-close-date aria-label="Tutup"><i class="fa-solid fa-xmark" aria-hidden="true"></i></button></div>
+<p data-date-event-name></p>
+<form method="post" id="kakDateForm"><input type="hidden" name="csrf_token" value="<?=sanitize($_SESSION['csrf_token'])?>"><input type="hidden" name="action" value="ubah_tanggal"><input type="hidden" name="acara_id"><label for="kakDateInput">Tanggal acara</label><input id="kakDateInput" type="date" name="tanggal_acara" min="1000-01-01" max="9999-12-31" class="form-control" required><div class="kak-date-dialog-actions"><button type="button" class="btn btn-outline-secondary" data-close-date>Batal</button><button type="submit" class="btn btn-primary">Simpan Tanggal</button></div></form>
+</dialog>
 <?php $panel_records=$event_list;$panel_page_key='events_page';$panel_anchor='kakEventsPanel';require __DIR__.'/kak_staff_pagination.php'; ?></div></section>
 <?php endif ?>
 </div>

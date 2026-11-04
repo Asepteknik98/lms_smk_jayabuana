@@ -102,3 +102,22 @@ function kak_staff_review(PDO $db,int $user_id,array $input,?string $storage=nul
         $db->commit();return true;
     }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
 }
+
+function kak_staff_update_date(PDO $db,int $user_id,array $input): void {
+    $actor=kak_staff_actor($db,$user_id);
+    $id=filter_var($input['acara_id']??null,FILTER_VALIDATE_INT,['options'=>['min_range'=>1]]);
+    $tanggal=is_string($input['tanggal_acara']??null)?$input['tanggal_acara']:'';
+    $date=DateTimeImmutable::createFromFormat('!Y-m-d',$tanggal);
+    if(!$id||!$date||$date->format('Y-m-d')!==$tanggal||$tanggal<'1000-01-01'||$tanggal>'9999-12-31')throw new InvalidArgumentException('Pilih acara dan tanggal yang valid.');
+    $db->beginTransaction();
+    try{
+        $q=$db->prepare('SELECT tanggal_acara,dibuat_oleh FROM kak_acara WHERE id=? FOR UPDATE');$q->execute([$id]);$event=$q->fetch();
+        if(!$event||((int)$actor['role_id']!==1&&(int)$event['dibuat_oleh']!==$user_id))throw new DomainException('Acara tidak ditemukan atau bukan acara yang Anda buat.');
+        if($event['tanggal_acara']!==$tanggal){
+            $q=$db->prepare('UPDATE kak_acara SET tanggal_acara=? WHERE id=?');$q->execute([$tanggal,$id]);
+            $q=$db->prepare('INSERT INTO log_aktivitas(user_id,aktivitas,ip_address,user_agent) VALUES(?,?,?,?)');
+            $q->execute([$user_id,'Mengubah tanggal acara #'.$id.' dari '.$event['tanggal_acara'].' menjadi '.$tanggal,$_SERVER['REMOTE_ADDR']??'UNKNOWN',$_SERVER['HTTP_USER_AGENT']??'UNKNOWN']);
+        }
+        $db->commit();
+    }catch(Throwable $e){if($db->inTransaction())$db->rollBack();throw $e;}
+}

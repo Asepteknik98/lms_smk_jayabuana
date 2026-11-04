@@ -92,3 +92,22 @@ if (kakComposer && document.querySelector('[data-preview-name]')) {
     window.addEventListener('pageshow', updateEventPreview);
     updateEventPreview();
 }
+
+const dateDialog = document.querySelector('#kakDateDialog');
+if (dateDialog) {
+    document.body.append(dateDialog);
+    const form = dateDialog.querySelector('form');
+    let opener;
+    document.querySelectorAll('[data-edit-event-date]').forEach(button => button.addEventListener('click', () => {
+        opener = button;
+        form.elements.acara_id.value = button.dataset.id;
+        form.elements.tanggal_acara.value = button.dataset.date;
+        form.querySelector('[type="submit"]').disabled = false;
+        dateDialog.querySelector('[data-date-event-name]').textContent = button.dataset.name;
+        dateDialog.showModal();
+        form.elements.tanggal_acara.focus();
+    }));
+    dateDialog.querySelectorAll('[data-close-date]').forEach(button => button.addEventListener('click', () => dateDialog.close()));
+    dateDialog.addEventListener('close', () => opener?.focus());
+    form.addEventListener('submit', () => { form.querySelector('[type="submit"]').disabled = true; });
+}
