@@ -18,13 +18,14 @@ unset($_SESSION['rekap_absensi_success'], $_SESSION['rekap_absensi_error']);
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $pengajaran_post = (int)($_POST['pengajaran_id'] ?? 0);
     $kelas_post = (int)($_POST['kelas_id'] ?? 0);
-    $mode_post = ($_POST['mode'] ?? 'semua') === 'pertemuan' ? 'pertemuan' : 'semua';
+    $mode_post = in_array($_POST['mode'] ?? '', ['pertemuan', 'beberapa'], true) ? $_POST['mode'] : 'semua';
     $sesi_filter_post = (int)($_POST['sesi_filter_id'] ?? 0);
     $redirect_url = 'rekap_absensi.php?' . http_build_query([
         'kelas_id' => $kelas_post,
         'pengajaran_id' => $pengajaran_post,
         'mode' => $mode_post,
         'sesi_id' => $sesi_filter_post,
+        'sesi_ids' => array_values(array_filter(array_map('intval', (array)($_POST['sesi_ids'] ?? [])), static fn($id) => $id > 0)),
     ]);
 
     if (!verify_csrf($_POST['csrf_token'] ?? '')) {
@@ -34,6 +35,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     $sesi_id = (int)($_POST['sesi_id'] ?? 0);
+    if (($_POST['action'] ?? '') === 'batalkan_pertemuan') {
+        try {
+            $db->beginTransaction();
+            // Lock the session as check-in and automatic closing do, before deleting its details.
+            $stmt = $db->prepare(
+                'SELECT sa.id, sa.pertemuan_ke, sa.tanggal
+                 FROM sesi_absensi sa
+                 JOIN pengajaran p ON p.id=sa.pengajaran_id
+                 WHERE sa.id=? AND p.id=? AND p.guru_id=? FOR UPDATE'
+            );
+            $stmt->execute([$sesi_id, $pengajaran_post, $guru_id]);
+            $sesi_batal = $stmt->fetch();
+            if (!$sesi_batal) {
+                $db->rollBack();
+                $_SESSION['rekap_absensi_error'] = 'Pertemuan tidak ditemukan atau bukan milik Anda.';
+            } else {
+                $stmt = $db->prepare('DELETE FROM detail_absensi WHERE sesi_absensi_id=?');
+                $stmt->execute([$sesi_id]);
+                $stmt = $db->prepare('DELETE FROM sesi_absensi WHERE id=? AND pengajaran_id=?');
+                $stmt->execute([$sesi_id, $pengajaran_post]);
+                catat_log($_SESSION['user_id'], "Membatalkan absensi seluruh siswa: sesi $sesi_id, pengajaran $pengajaran_post, pertemuan {$sesi_batal['pertemuan_ke']}, tanggal {$sesi_batal['tanggal']}");
+                $db->commit();
+                $_SESSION['rekap_absensi_success'] = "Pertemuan {$sesi_batal['pertemuan_ke']} berhasil dibatalkan. Absensi seluruh siswa pada pertemuan tersebut telah dihapus dan tidak dihitung dalam rekap.";
+            }
+        } catch (Throwable $e) {
+            if ($db->inTransaction()) $db->rollBack();
+            error_log('Pembatalan pertemuan absensi gagal: ' . $e->getMessage());
+            $_SESSION['rekap_absensi_error'] = 'Pertemuan gagal dibatalkan. Silakan coba kembali.';
+        }
+        header('Location: ' . $redirect_url);
+        exit;
+    }
     $siswa_id = (int)($_POST['siswa_id'] ?? 0);
     $status_dipilih = $_POST['status'] ?? '';
     $keterangan = trim($_POST['keterangan'] ?? '');
@@ -98,8 +131,13 @@ if (!array_filter($pengajaran_kelas, static fn($item) => (int)$item['id'] === $p
     $pengajaran_id = (int)($pengajaran_kelas[0]['id'] ?? 0);
 }
 
-$mode_rekap = ($_GET['mode'] ?? 'semua') === 'pertemuan' ? 'pertemuan' : 'semua';
+$mode_rekap = in_array($_GET['mode'] ?? '', ['pertemuan', 'beberapa'], true) ? $_GET['mode'] : 'semua';
 $sesi_filter_id = (int)($_GET['sesi_id'] ?? 0);
+$sesi_filter_ids = array_values(array_unique(array_filter(array_map('intval', (array)($_GET['sesi_ids'] ?? [])), static fn($id) => $id > 0)));
+$kolom_pertemuan = range(1, 30);
+$filter_sesi_sql = '';
+$filter_sesi_params = [];
+$label_pilihan = '';
 $info = null; $rekap = []; $rekap_pertemuan = []; $total_sesi = 0; $sesi_manual = []; $daftar_sesi = []; $sesi_terpilih = null; $status_pertemuan = []; $sesi_pertemuan = [];
 if ($pengajaran_id > 0) {
     $stmt = $db->prepare('SELECT p.id,p.kelas_id,m.nama_mapel,k.nama_kelas,p.semester,p.tahun_ajaran,g.nama_lengkap nama_guru FROM pengajaran p JOIN mapel m ON m.id=p.mapel_id JOIN kelas k ON k.id=p.kelas_id JOIN guru g ON g.id=p.guru_id WHERE p.id=? AND p.guru_id=?');
@@ -111,6 +149,18 @@ if ($pengajaran_id > 0) {
     $stmt->execute([$pengajaran_id]);
     $daftar_sesi = $stmt->fetchAll();
     foreach ($daftar_sesi as $sesi) $sesi_pertemuan[(int)$sesi['pertemuan_ke']] = $sesi;
+    if ($mode_rekap === 'beberapa') {
+        // Only sessions belonging to the teacher's selected teaching assignment are accepted.
+        $sesi_pilihan = array_values(array_filter($daftar_sesi, static fn($sesi) => in_array((int)$sesi['id'], $sesi_filter_ids, true)));
+        usort($sesi_pilihan, static fn($a, $b) => (int)$a['pertemuan_ke'] <=> (int)$b['pertemuan_ke']);
+        $sesi_filter_ids = array_map(static fn($sesi) => (int)$sesi['id'], $sesi_pilihan);
+        $kolom_pertemuan = array_values(array_unique(array_map(static fn($sesi) => (int)$sesi['pertemuan_ke'], $sesi_pilihan)));
+        $total_sesi = count(array_filter($sesi_pilihan, static fn($sesi) => $sesi['status'] === 'Ditutup'));
+        $filter_sesi_sql = $sesi_filter_ids ? ' AND sa.id IN ('.implode(',', array_fill(0, count($sesi_filter_ids), '?')).')' : ' AND 1=0';
+        $filter_sesi_params = $sesi_filter_ids;
+        $label_pilihan = $kolom_pertemuan ? 'Pertemuan '.implode(', ', $kolom_pertemuan).' | '.$total_sesi.' sesi ditutup' : 'Silakan pilih minimal satu pertemuan.';
+    }
+
     if ($mode_rekap === 'pertemuan') {
         foreach ($daftar_sesi as $sesi) {
             if ((int)$sesi['id'] === $sesi_filter_id) {
@@ -130,10 +180,10 @@ if ($pengajaran_id > 0) {
         SUM(CASE WHEN sa.id IS NOT NULL AND (da.id IS NULL OR da.status='Alpa') THEN 1 ELSE 0 END) alpa,
         COUNT(sa.id) total_tercatat
         FROM siswa s
-        LEFT JOIN sesi_absensi sa ON sa.pengajaran_id=? AND sa.status='Ditutup'
+        LEFT JOIN sesi_absensi sa ON sa.pengajaran_id=? AND sa.status='Ditutup' {$filter_sesi_sql}
         LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=s.id
         WHERE s.kelas_id=? GROUP BY s.id ORDER BY s.nama_lengkap");
-    $stmt->execute([$pengajaran_id,$info['kelas_id']]); $rekap = $stmt->fetchAll();
+    $stmt->execute(array_merge([$pengajaran_id], $filter_sesi_params, [$info['kelas_id']])); $rekap = $stmt->fetchAll();
     foreach ($rekap as &$row) {
         $row['persentase']=$total_sesi ? ((int)$row['hadir']/$total_sesi)*100 : 0;
     } unset($row);
@@ -154,12 +204,12 @@ if ($pengajaran_id > 0) {
         "SELECT s.id siswa_id, sa.id sesi_id, sa.pertemuan_ke, sa.tanggal,
                 COALESCE(da.status, 'Alpa') status, COALESCE(da.keterangan, '') keterangan
          FROM siswa s
-         JOIN sesi_absensi sa ON sa.pengajaran_id=? AND sa.status='Ditutup'
+         JOIN sesi_absensi sa ON sa.pengajaran_id=? AND sa.status='Ditutup' {$filter_sesi_sql}
          LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=s.id
          WHERE s.kelas_id=?
          ORDER BY s.id,sa.tanggal DESC,sa.pertemuan_ke DESC"
     );
-    $stmt->execute([$pengajaran_id,$info['kelas_id']]);
+    $stmt->execute(array_merge([$pengajaran_id], $filter_sesi_params, [$info['kelas_id']]));
     foreach ($stmt->fetchAll() as $item) $sesi_manual[(int)$item['siswa_id']][] = $item;
     $stmt = $db->prepare(
         "SELECT s.id siswa_id,sa.pertemuan_ke,
@@ -170,11 +220,11 @@ if ($pengajaran_id > 0) {
                     ELSE 'Belum'
                 END status
          FROM siswa s
-         JOIN sesi_absensi sa ON sa.pengajaran_id=?
+         JOIN sesi_absensi sa ON sa.pengajaran_id=? {$filter_sesi_sql}
          LEFT JOIN detail_absensi da ON da.sesi_absensi_id=sa.id AND da.siswa_id=s.id
          WHERE s.kelas_id=?"
     );
-    $stmt->execute([$pengajaran_id,$info['kelas_id']]);
+    $stmt->execute(array_merge([$pengajaran_id], $filter_sesi_params, [$info['kelas_id']]));
     foreach ($stmt->fetchAll() as $item) $status_pertemuan[(int)$item['siswa_id']][(int)$item['pertemuan_ke']] = $item['status'];
 }
 
@@ -184,7 +234,9 @@ if (in_array($format,['excel','pdf'],true) && $info) {
     $label_rekap = $mode_rekap === 'pertemuan' && $sesi_terpilih
         ? 'Pertemuan '.$sesi_terpilih['pertemuan_ke'].' | '.date('d/m/Y',strtotime($sesi_terpilih['tanggal']))
         : 'Semua Pertemuan | Sesi tercatat: '.count($daftar_sesi).' | Sesi ditutup: '.$total_sesi;
+    if ($mode_rekap === 'beberapa') $label_rekap = $label_pilihan;
     $suffix_rekap = $mode_rekap === 'pertemuan' && $sesi_terpilih ? '_Pertemuan_'.$sesi_terpilih['pertemuan_ke'] : '_Semua_Pertemuan';
+    if ($mode_rekap === 'beberapa') $suffix_rekap = '_Pertemuan_'.implode('_', $kolom_pertemuan);
     $filename='Rekap_Absensi_'.trim($safe,'_').$suffix_rekap.'_'.date('Ymd');
     if ($format === 'excel') {
         $xml=static fn($v)=>htmlspecialchars((string)$v,ENT_QUOTES|ENT_XML1,'UTF-8');
@@ -198,15 +250,15 @@ if (in_array($format,['excel','pdf'],true) && $info) {
 <Row><?php foreach(['No','NISN','Nama Siswa','Status','Waktu Check-in','Keterangan'] as $h): ?><Cell ss:StyleID="H"><Data ss:Type="String"><?= $xml($h) ?></Data></Cell><?php endforeach ?></Row>
 <?php foreach($rekap_pertemuan as $i=>$r): ?><Row><Cell><Data ss:Type="Number"><?= $i+1 ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['nisn']) ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['nama_lengkap']) ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['status']) ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['waktu_checkin']?date('H:i:s',strtotime($r['waktu_checkin'])):'-') ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['keterangan']?:'-') ?></Data></Cell></Row><?php endforeach ?>
 <?php else: ?>
-<Row><?php foreach(array_merge(['No','NISN','Nama Siswa'],array_map(static fn($p)=>'P'.$p,range(1,30)),['Hadir','Sakit','Izin','Alpa','Kehadiran (%)']) as $h): ?><Cell ss:StyleID="H"><Data ss:Type="String"><?= $xml($h) ?></Data></Cell><?php endforeach ?></Row>
-<?php foreach($rekap as $i=>$r): ?><Row><Cell><Data ss:Type="Number"><?= $i+1 ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['nisn']) ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['nama_lengkap']) ?></Data></Cell><?php for($p=1;$p<=30;$p++): ?><Cell><Data ss:Type="String"><?= $xml($status_pertemuan[(int)$r['id']][$p]??'-') ?></Data></Cell><?php endfor ?><?php foreach(['hadir','sakit','izin','alpa'] as $k): ?><Cell><Data ss:Type="Number"><?= (int)$r[$k] ?></Data></Cell><?php endforeach ?><Cell><Data ss:Type="Number"><?= number_format($r['persentase'],2,'.','') ?></Data></Cell></Row><?php endforeach ?>
+<Row><?php foreach(array_merge(['No','NISN','Nama Siswa'],array_map(static fn($p)=>'P'.$p,$kolom_pertemuan),['Hadir','Sakit','Izin','Alpa','Kehadiran (%)']) as $h): ?><Cell ss:StyleID="H"><Data ss:Type="String"><?= $xml($h) ?></Data></Cell><?php endforeach ?></Row>
+<?php foreach($rekap as $i=>$r): ?><Row><Cell><Data ss:Type="Number"><?= $i+1 ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['nisn']) ?></Data></Cell><Cell><Data ss:Type="String"><?= $xml($r['nama_lengkap']) ?></Data></Cell><?php foreach($kolom_pertemuan as $p): ?><Cell><Data ss:Type="String"><?= $xml($status_pertemuan[(int)$r['id']][$p]??'-') ?></Data></Cell><?php endforeach ?><?php foreach(['hadir','sakit','izin','alpa'] as $k): ?><Cell><Data ss:Type="Number"><?= (int)$r[$k] ?></Data></Cell><?php endforeach ?><Cell><Data ss:Type="Number"><?= number_format($r['persentase'],2,'.','') ?></Data></Cell></Row><?php endforeach ?>
 <?php endif ?>
 </Table></Worksheet></Workbook><?php exit;
     }
     function ra_pdf_text(mixed $v): string {$v=iconv('UTF-8','Windows-1252//TRANSLIT//IGNORE',(string)$v);return str_replace(['\\','(',')'],['\\\\','\\(','\\)'],(string)$v);}
     $lines=['REKAP ABSENSI SISWA - SMK JAYA BUANA',$info['nama_mapel'].' | '.$info['nama_kelas'].' | '.$info['nama_guru'],'Semester '.$info['semester'].' | '.$info['tahun_ajaran'].' | '.$label_rekap,str_repeat('-',112)];
     if($mode_rekap === 'pertemuan' && $sesi_terpilih){$lines[]=sprintf('%-3s %-15s %-28s %-10s %-12s %-32s','No','NISN','Nama','Status','Check-in','Keterangan');$lines[]=str_repeat('-',112);foreach($rekap_pertemuan as $i=>$r){$nama=function_exists('mb_strimwidth')?mb_strimwidth($r['nama_lengkap'],0,28,'..','UTF-8'):substr($r['nama_lengkap'],0,28);$ket=function_exists('mb_strimwidth')?mb_strimwidth($r['keterangan']?:'-',0,32,'..','UTF-8'):substr($r['keterangan']?:'-',0,32);$lines[]=sprintf('%-3d %-15s %-28s %-10s %-12s %-32s',$i+1,$r['nisn'],$nama,$r['status'],$r['waktu_checkin']?date('H:i:s',strtotime($r['waktu_checkin'])):'-',$ket);}}
-    else{$lines[]='Kode: H=Hadir, P=PKL (dihitung Hadir), S=Sakit, I=Izin, A=Alpa, B=Belum check-in, -=Belum ada sesi';$lines[]=sprintf('%-3s %-13s %-20s %s %3s %3s %3s %3s %6s','No','NISN','Nama',implode(' ',array_map(static fn($p)=>sprintf('%02d',$p),range(1,30))),'H','S','I','A','%');$lines[]=str_repeat('-',112);foreach($rekap as $i=>$r){$nama=function_exists('mb_strimwidth')?mb_strimwidth($r['nama_lengkap'],0,20,'..','UTF-8'):substr($r['nama_lengkap'],0,20);$kode=[];for($p=1;$p<=30;$p++){$status=$status_pertemuan[(int)$r['id']][$p]??'-';$kode[]=in_array($status,['Hadir','PKL','Sakit','Izin','Alpa','Belum'],true)?$status[0]:'-';}$lines[]=sprintf('%-3d %-13s %-20s %s %3d %3d %3d %3d %6.1f',$i+1,$r['nisn'],$nama,implode('  ',$kode),$r['hadir'],$r['sakit'],$r['izin'],$r['alpa'],$r['persentase']);}}
+    else{$lines[]='Kode: H=Hadir, P=PKL (dihitung Hadir), S=Sakit, I=Izin, A=Alpa, B=Belum check-in, -=Belum ada sesi';$lines[]=sprintf('%-3s %-13s %-20s %s %3s %3s %3s %3s %6s','No','NISN','Nama',implode(' ',array_map(static fn($p)=>sprintf('%02d',$p),$kolom_pertemuan)),'H','S','I','A','%');$lines[]=str_repeat('-',112);foreach($rekap as $i=>$r){$nama=function_exists('mb_strimwidth')?mb_strimwidth($r['nama_lengkap'],0,20,'..','UTF-8'):substr($r['nama_lengkap'],0,20);$kode=[];foreach($kolom_pertemuan as $p){$status=$status_pertemuan[(int)$r['id']][$p]??'-';$kode[]=in_array($status,['Hadir','PKL','Sakit','Izin','Alpa','Belum'],true)?$status[0]:'-';}$lines[]=sprintf('%-3d %-13s %-20s %s %3d %3d %3d %3d %6.1f',$i+1,$r['nisn'],$nama,implode('  ',$kode),$r['hadir'],$r['sakit'],$r['izin'],$r['alpa'],$r['persentase']);}}
     if(!($mode_rekap === 'pertemuan' ? $rekap_pertemuan : $rekap))$lines[]='Belum ada siswa pada kelas ini.'; $chunks=array_chunk($lines,47); $objs=[1=>'<< /Type /Catalog /Pages 2 0 R >>',3=>'<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>'];$kids=[];$n=4;
     foreach($chunks as $chunk){$p=$n++;$c=$n++;$kids[]="$p 0 R";$cmd="BT /F1 8 Tf 35 560 Td 11 TL\n";foreach($chunk as $line)$cmd.='('.ra_pdf_text($line).") Tj T*\n";$cmd.='ET';$objs[$p]="<< /Type /Page /Parent 2 0 R /MediaBox [0 0 842 595] /Resources << /Font << /F1 3 0 R >> >> /Contents $c 0 R >>";$objs[$c]="<< /Length ".strlen($cmd)." >>\nstream\n$cmd\nendstream";}
     $objs[2]='<< /Type /Pages /Kids ['.implode(' ',$kids).'] /Count '.count($kids).' >>';ksort($objs);$pdf="%PDF-1.4\n";$off=[0];foreach($objs as $i=>$o){$off[$i]=strlen($pdf);$pdf.="$i 0 obj\n$o\nendobj\n";}$xref=strlen($pdf);$max=max(array_keys($objs));$pdf.="xref\n0 ".($max+1)."\n0000000000 65535 f \n";for($i=1;$i<=$max;$i++)$pdf.=sprintf('%010d 00000 n ',$off[$i])."\n";$pdf.="trailer\n<< /Size ".($max+1)." /Root 1 0 R >>\nstartxref\n$xref\n%%EOF";
@@ -224,27 +276,49 @@ require_once __DIR__ . '/../includes/sidebar.php';
 <section class="card border-0 shadow-sm mb-3" style="border-radius:18px"><div class="card-body p-3 p-md-4"><form method="get" class="row g-2 align-items-end" id="formFilterRekap">
 <div class="col-md-3"><label class="form-label fw-semibold">Kelas</label><select name="kelas_id" id="filterKelas" class="form-select" required><?php foreach($kelas_list as $id_kelas=>$nama_kelas): ?><option value="<?= (int)$id_kelas ?>" <?= $kelas_id===(int)$id_kelas?'selected':'' ?>><?= sanitize($nama_kelas) ?></option><?php endforeach ?></select></div>
 <div class="col-md-3"><label class="form-label fw-semibold">Mata Pelajaran</label><select name="pengajaran_id" id="filterPengajaran" class="form-select" required><?php foreach($pengajaran_kelas as $p): ?><option value="<?= (int)$p['id'] ?>" <?= $pengajaran_id===(int)$p['id']?'selected':'' ?>><?= sanitize($p['nama_mapel'].' ('.$p['semester'].' / '.$p['tahun_ajaran'].')') ?></option><?php endforeach ?></select></div>
-<div class="col-md-3"><label class="form-label fw-semibold">Jenis Rekap</label><select name="mode" id="filterMode" class="form-select"><option value="semua" <?= $mode_rekap==='semua'?'selected':'' ?>>Semua Pertemuan</option><option value="pertemuan" <?= $mode_rekap==='pertemuan'?'selected':'' ?>>Per Pertemuan</option></select></div>
-<div class="col-md-3"><label class="form-label fw-semibold">Pertemuan</label><select name="sesi_id" id="filterSesi" class="form-select" <?= $mode_rekap==='semua'?'disabled':'' ?>><?php if(!$daftar_sesi): ?><option value="">Belum ada sesi absensi</option><?php else: foreach($daftar_sesi as $sesi): ?><option value="<?= (int)$sesi['id'] ?>" <?= $sesi_filter_id===(int)$sesi['id']?'selected':'' ?>>Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> · <?= date('d/m/Y',strtotime($sesi['tanggal'])) ?> · <?= sanitize($sesi['status']) ?></option><?php endforeach; endif ?></select></div>
+<div class="col-md-3"><label class="form-label fw-semibold">Jenis Rekap</label><select name="mode" id="filterMode" class="form-select"><option value="semua" <?= $mode_rekap==='semua'?'selected':'' ?>>Semua Pertemuan</option><option value="pertemuan" <?= $mode_rekap==='pertemuan'?'selected':'' ?>>Per Pertemuan</option><option value="beberapa" <?= $mode_rekap==='beberapa'?'selected':'' ?>>Beberapa Pertemuan</option></select></div>
+<div class="col-md-3"><label class="form-label fw-semibold">Pertemuan</label><select name="sesi_id" id="filterSesi" class="form-select" <?= $mode_rekap!=='pertemuan'?'disabled':'' ?>><?php if(!$daftar_sesi): ?><option value="">Belum ada sesi absensi</option><?php else: foreach($daftar_sesi as $sesi): ?><option value="<?= (int)$sesi['id'] ?>" <?= $sesi_filter_id===(int)$sesi['id']?'selected':'' ?>>Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> · <?= date('d/m/Y',strtotime($sesi['tanggal'])) ?> · <?= sanitize($sesi['status']) ?></option><?php endforeach; endif ?></select></div>
+<div class="col-12" id="pilihanBeberapa" <?= $mode_rekap!=='beberapa'?'hidden':'' ?>><label class="form-label fw-semibold">Pilih Pertemuan</label><div class="border rounded p-3 d-flex flex-wrap gap-3" style="max-height:240px;overflow:auto"><?php foreach($daftar_sesi as $sesi): ?><label class="form-check mb-0"><input type="checkbox" class="form-check-input" name="sesi_ids[]" value="<?= (int)$sesi['id'] ?>" <?= in_array((int)$sesi['id'],$sesi_filter_ids,true)?'checked':'' ?> <?= $mode_rekap!=='beberapa'?'disabled':'' ?>><span class="form-check-label">Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> &middot; <?= date('d/m/Y',strtotime($sesi['tanggal'])) ?></span></label><?php endforeach ?><?php if(!$daftar_sesi): ?><span class="text-muted">Belum ada sesi absensi.</span><?php endif ?></div><small class="text-muted">Centang satu atau lebih pertemuan, lalu klik Tampilkan Rekap.</small></div>
 <div class="col-12"><button class="btn btn-primary w-100"><i class="fa-solid fa-filter me-1"></i>Tampilkan Rekap</button></div>
 </form></div></section>
 <?php if(!$pengajaran_list): ?><div class="alert alert-warning">Admin belum memberikan pengajaran kepada Anda.</div><?php elseif($info): ?>
-<section class="card border-0 shadow-sm" style="border-radius:18px"><div class="card-body p-3 p-md-4"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h6 class="fw-bold mb-1"><?= sanitize($info['nama_mapel'].' — '.$info['nama_kelas']) ?></h6><small class="text-muted"><?= $mode_rekap==='pertemuan'&&$sesi_terpilih?'Pertemuan '.(int)$sesi_terpilih['pertemuan_ke'].' · '.date('d/m/Y',strtotime($sesi_terpilih['tanggal'])).' · '.$sesi_terpilih['status']:'Semua pertemuan · '.count($daftar_sesi).' sesi tercatat · '.$total_sesi.' sesi ditutup' ?></small></div><div class="d-flex gap-2"><?php $query_ekspor=http_build_query(['kelas_id'=>$kelas_id,'pengajaran_id'=>$pengajaran_id,'mode'=>$mode_rekap,'sesi_id'=>$sesi_filter_id]); ?><a class="btn btn-sm btn-success" href="?<?= sanitize($query_ekspor) ?>&amp;format=excel"><i class="fa-solid fa-file-excel me-1"></i>Excel</a><a class="btn btn-sm btn-danger" href="?<?= sanitize($query_ekspor) ?>&amp;format=pdf"><i class="fa-solid fa-file-pdf me-1"></i>PDF</a></div></div>
+<section class="card border-0 shadow-sm" style="border-radius:18px"><div class="card-body p-3 p-md-4"><div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3"><div><h6 class="fw-bold mb-1"><?= sanitize($info['nama_mapel'].' — '.$info['nama_kelas']) ?></h6><small class="text-muted"><?= $mode_rekap==='beberapa'?sanitize($label_pilihan):($mode_rekap==='pertemuan'&&$sesi_terpilih?'Pertemuan '.(int)$sesi_terpilih['pertemuan_ke'].' · '.date('d/m/Y',strtotime($sesi_terpilih['tanggal'])).' · '.$sesi_terpilih['status']:'Semua pertemuan · '.count($daftar_sesi).' sesi tercatat · '.$total_sesi.' sesi ditutup') ?></small></div><div class="d-flex gap-2"><?php $query_ekspor=http_build_query(['kelas_id'=>$kelas_id,'pengajaran_id'=>$pengajaran_id,'mode'=>$mode_rekap,'sesi_id'=>$sesi_filter_id,'sesi_ids'=>$sesi_filter_ids]); ?><a class="btn btn-sm btn-success" href="?<?= sanitize($query_ekspor) ?>&amp;format=excel"><i class="fa-solid fa-file-excel me-1"></i>Excel</a><a class="btn btn-sm btn-danger" href="?<?= sanitize($query_ekspor) ?>&amp;format=pdf"><i class="fa-solid fa-file-pdf me-1"></i>PDF</a></div></div>
+<?php if($daftar_sesi): ?>
+<details class="border rounded p-3 mb-3">
+<summary class="text-danger fw-semibold">Batalkan Pertemuan</summary>
+<p class="small text-muted mt-2 mb-2">Untuk sesi online maupun offline/manual yang salah dibuat. Pembatalan menghapus pertemuan beserta absensi seluruh siswa secara permanen. Pertemuan tidak lagi dihitung dalam rekap. Nomor pertemuan lainnya tetap.</p>
+<form method="post" id="formBatalkanPertemuan" class="row g-2 align-items-end">
+<input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>">
+<input type="hidden" name="action" value="batalkan_pertemuan">
+<input type="hidden" name="pengajaran_id" value="<?= $pengajaran_id ?>">
+<input type="hidden" name="kelas_id" value="<?= $kelas_id ?>">
+<input type="hidden" name="mode" value="<?= sanitize($mode_rekap) ?>">
+<input type="hidden" name="sesi_filter_id" value="<?= $sesi_filter_id ?>">
+<?php foreach($sesi_filter_ids as $id_filter): ?><input type="hidden" name="sesi_ids[]" value="<?= $id_filter ?>"><?php endforeach ?>
+<div class="col-md-8"><label class="form-label" for="sesiBatal">Pertemuan yang dibatalkan</label><select name="sesi_id" id="sesiBatal" class="form-select" required><option value="">Pilih pertemuan</option><?php foreach($daftar_sesi as $sesi): ?><option value="<?= (int)$sesi['id'] ?>">Pertemuan <?= (int)$sesi['pertemuan_ke'] ?> &middot; <?= date('d/m/Y',strtotime($sesi['tanggal'])) ?> &middot; <?= sanitize($sesi['status']) ?></option><?php endforeach ?></select></div>
+<div class="col-md-4"><button type="submit" class="btn btn-outline-danger w-100">Batalkan Pertemuan</button></div>
+</form>
+</details>
+<?php endif ?>
 <?php if($mode_rekap==='pertemuan'): ?>
 <?php if(!$sesi_terpilih): ?><div class="alert alert-info mb-0">Belum ada sesi absensi yang ditutup untuk mata pelajaran ini.</div><?php else: ?>
 <div class="table-responsive"><table class="table table-hover align-middle"><thead class="table-light"><tr><th>No</th><th>Siswa</th><th>Status</th><th>Waktu Check-in</th><th>Keterangan</th><th>Aksi</th></tr></thead><tbody><?php foreach($rekap_pertemuan as $i=>$r): ?><tr><td><?= $i+1 ?></td><td><strong><?= sanitize($r['nama_lengkap']) ?></strong><br><small class="text-muted"><?= sanitize($r['nisn']) ?></small></td><td><span class="badge <?= $r['status']==='Hadir'?'bg-success':($r['status']==='Alpa'?'bg-danger':($r['status']==='Belum'?'bg-secondary':'bg-warning text-dark')) ?>"><?= sanitize($r['status']) ?></span></td><td><?= $r['waktu_checkin']?date('H:i:s',strtotime($r['waktu_checkin'])):'—' ?></td><td><?= sanitize($r['keterangan']?:'—') ?></td><td><?php if($sesi_terpilih['status']==='Ditutup'): $opsi_sesi=$sesi_manual[(int)$r['id']]??[]; ?><button type="button" class="btn btn-sm btn-outline-warning text-nowrap" data-bs-toggle="modal" data-bs-target="#modalAbsensiManual" onclick='isiAbsensiManual(<?= json_encode(["id"=>(int)$r["id"],"nama"=>$r["nama_lengkap"],"sesi"=>array_values(array_filter($opsi_sesi,static fn($s)=>(int)$s["sesi_id"]===$sesi_filter_id))],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-user-pen me-1"></i>Ubah Status</button><?php else: ?><span class="badge bg-success-subtle text-success">Sesi masih dibuka</span><?php endif ?></td></tr><?php endforeach ?></tbody></table></div>
 <?php endif ?>
 <?php else: ?>
 <div class="d-flex flex-wrap gap-2 mb-3 small"><span class="badge bg-success">H = Hadir</span><span class="badge bg-primary">P = PKL</span><span class="badge bg-warning text-dark">S = Sakit</span><span class="badge bg-info text-dark">I = Izin</span><span class="badge bg-danger">A = Alpa</span><span class="badge bg-secondary">B = Belum check-in</span><span class="badge bg-light text-dark border">— = Belum ada sesi</span></div>
-<div class="table-responsive"><table class="table table-hover table-bordered align-middle text-center" style="font-size:.875rem"><thead class="table-light"><tr><th rowspan="2">No</th><th rowspan="2" class="text-start" style="min-width:180px">Siswa</th><th colspan="30">Status Pertemuan</th><th colspan="5">Ringkasan</th><th rowspan="2">Aksi</th></tr><tr><?php for($p=1;$p<=30;$p++): ?><th title="Pertemuan <?= $p ?>">P<?= $p ?></th><?php endfor ?><th>H</th><th>S</th><th>I</th><th>A</th><th>%</th></tr></thead><tbody><?php foreach($rekap as $i=>$r): ?><tr><td><?= $i+1 ?></td><td class="text-start"><strong><?= sanitize($r['nama_lengkap']) ?></strong><br><small class="text-muted"><?= sanitize($r['nisn']) ?></small></td><?php for($p=1;$p<=30;$p++): $status_p=$status_pertemuan[(int)$r['id']][$p]??null; $kode_p=$status_p?substr($status_p,0,1):'—'; $kelas_p=$status_p==='Hadir'?'bg-success':($status_p==='PKL'?'bg-primary':($status_p==='Sakit'?'bg-warning text-dark':($status_p==='Izin'?'bg-info text-dark':($status_p==='Alpa'?'bg-danger':($status_p==='Belum'?'bg-secondary':'bg-light text-dark border'))))); ?><td title="<?= sanitize($status_p?:'Belum ada sesi') ?>"><span class="badge <?= $kelas_p ?>"><?= $kode_p ?></span></td><?php endfor ?><td class="text-success fw-semibold"><?= (int)$r['hadir'] ?></td><td><?= (int)$r['sakit'] ?></td><td><?= (int)$r['izin'] ?></td><td class="text-danger fw-semibold"><?= (int)$r['alpa'] ?></td><td><span class="badge bg-primary-subtle text-primary"><?= number_format($r['persentase'],1) ?>%</span></td><td><?php $opsi_sesi=$sesi_manual[(int)$r['id']]??[]; ?><button type="button" class="btn btn-sm btn-outline-warning text-nowrap" <?= !$opsi_sesi?'disabled':'' ?> data-bs-toggle="modal" data-bs-target="#modalAbsensiManual" onclick='isiAbsensiManual(<?= json_encode(["id"=>(int)$r["id"],"nama"=>$r["nama_lengkap"],"sesi"=>$opsi_sesi],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-user-pen me-1"></i>Input Status</button></td></tr><?php endforeach ?><?php if(!$rekap): ?><tr><td colspan="38" class="text-center text-muted py-4">Belum ada siswa pada kelas ini.</td></tr><?php endif ?></tbody></table></div>
+<div class="table-responsive"><table class="table table-hover table-bordered align-middle text-center" style="font-size:.875rem"><thead class="table-light"><tr><th rowspan="2">No</th><th rowspan="2" class="text-start" style="min-width:180px">Siswa</th><th colspan="<?= max(1,count($kolom_pertemuan)) ?>">Status Pertemuan</th><th colspan="5">Ringkasan</th><th rowspan="2">Aksi</th></tr><tr><?php if(!$kolom_pertemuan): ?><th>Belum dipilih</th><?php endif ?><?php foreach($kolom_pertemuan as $p): ?><th title="Pertemuan <?= $p ?>">P<?= $p ?></th><?php endforeach ?><th>H</th><th>S</th><th>I</th><th>A</th><th>%</th></tr></thead><tbody><?php foreach($rekap as $i=>$r): ?><tr><td><?= $i+1 ?></td><td class="text-start"><strong><?= sanitize($r['nama_lengkap']) ?></strong><br><small class="text-muted"><?= sanitize($r['nisn']) ?></small></td><?php foreach($kolom_pertemuan as $p): $status_p=$status_pertemuan[(int)$r['id']][$p]??null; $kode_p=$status_p?substr($status_p,0,1):'—'; $kelas_p=$status_p==='Hadir'?'bg-success':($status_p==='PKL'?'bg-primary':($status_p==='Sakit'?'bg-warning text-dark':($status_p==='Izin'?'bg-info text-dark':($status_p==='Alpa'?'bg-danger':($status_p==='Belum'?'bg-secondary':'bg-light text-dark border'))))); ?><td title="<?= sanitize($status_p?:'Belum ada sesi') ?>"><span class="badge <?= $kelas_p ?>"><?= $kode_p ?></span></td><?php endforeach ?><?php if(!$kolom_pertemuan): ?><td>&mdash;</td><?php endif ?><td class="text-success fw-semibold"><?= (int)$r['hadir'] ?></td><td><?= (int)$r['sakit'] ?></td><td><?= (int)$r['izin'] ?></td><td class="text-danger fw-semibold"><?= (int)$r['alpa'] ?></td><td><span class="badge bg-primary-subtle text-primary"><?= number_format($r['persentase'],1) ?>%</span></td><td><?php $opsi_sesi=$sesi_manual[(int)$r['id']]??[]; ?><button type="button" class="btn btn-sm btn-outline-warning text-nowrap" <?= !$opsi_sesi?'disabled':'' ?> data-bs-toggle="modal" data-bs-target="#modalAbsensiManual" onclick='isiAbsensiManual(<?= json_encode(["id"=>(int)$r["id"],"nama"=>$r["nama_lengkap"],"sesi"=>$opsi_sesi],JSON_HEX_APOS|JSON_HEX_QUOT|JSON_HEX_TAG|JSON_HEX_AMP) ?>)'><i class="fa-solid fa-user-pen me-1"></i>Input Status</button></td></tr><?php endforeach ?><?php if(!$rekap): ?><tr><td colspan="<?= max(1,count($kolom_pertemuan))+8 ?>" class="text-center text-muted py-4">Belum ada siswa pada kelas ini.</td></tr><?php endif ?></tbody></table></div>
 <?php endif ?>
 </div></section><?php endif ?>
 </main></div>
-<div class="modal fade" id="modalAbsensiManual" tabindex="-1" aria-labelledby="judulAbsensiManual" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="post" id="formAbsensiManual"><div class="modal-header"><div><h5 class="modal-title fw-bold" id="judulAbsensiManual">Ubah Status Absensi</h5><small class="text-muted" id="namaSiswaManual"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="pengajaran_id" value="<?= $pengajaran_id ?>"><input type="hidden" name="kelas_id" value="<?= $kelas_id ?>"><input type="hidden" name="mode" value="<?= sanitize($mode_rekap) ?>"><input type="hidden" name="sesi_filter_id" value="<?= $sesi_filter_id ?>"><input type="hidden" name="siswa_id" id="siswaIdManual"><div class="alert alert-info small"><i class="fa-solid fa-circle-info me-1"></i>Pilih pertemuan yang sudah ditutup, kemudian tentukan status baru. PKL akan tercatat dan dihitung sebagai Hadir.</div><label class="form-label fw-semibold">Pertemuan</label><select class="form-select mb-3" name="sesi_id" id="sesiManual" required></select><label class="form-label fw-semibold">Status Baru</label><select class="form-select mb-3" name="status" id="statusManual" required><option value="Hadir">Hadir</option><option value="PKL">PKL</option><option value="Sakit">Sakit</option><option value="Izin">Izin</option><option value="Alpa">Alpa</option></select><label class="form-label fw-semibold">Keterangan</label><textarea class="form-control" name="keterangan" id="keteranganManual" rows="3" maxlength="255" placeholder="Contoh: Surat dokter / izin dari orang tua / lokasi PKL"></textarea></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Status</button></div></form></div></div></div>
+<div class="modal fade" id="modalAbsensiManual" tabindex="-1" aria-labelledby="judulAbsensiManual" aria-hidden="true"><div class="modal-dialog modal-dialog-centered"><div class="modal-content"><form method="post" id="formAbsensiManual"><div class="modal-header"><div><h5 class="modal-title fw-bold" id="judulAbsensiManual">Ubah Status Absensi</h5><small class="text-muted" id="namaSiswaManual"></small></div><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Tutup"></button></div><div class="modal-body"><input type="hidden" name="csrf_token" value="<?= sanitize($_SESSION['csrf_token']) ?>"><input type="hidden" name="pengajaran_id" value="<?= $pengajaran_id ?>"><input type="hidden" name="kelas_id" value="<?= $kelas_id ?>"><input type="hidden" name="mode" value="<?= sanitize($mode_rekap) ?>"><input type="hidden" name="sesi_filter_id" value="<?= $sesi_filter_id ?>"><?php foreach($sesi_filter_ids as $id_filter): ?><input type="hidden" name="sesi_ids[]" value="<?= $id_filter ?>"><?php endforeach ?><input type="hidden" name="siswa_id" id="siswaIdManual"><div class="alert alert-info small"><i class="fa-solid fa-circle-info me-1"></i>Pilih pertemuan yang sudah ditutup, kemudian tentukan status baru. PKL akan tercatat dan dihitung sebagai Hadir.</div><label class="form-label fw-semibold">Pertemuan</label><select class="form-select mb-3" name="sesi_id" id="sesiManual" required></select><label class="form-label fw-semibold">Status Baru</label><select class="form-select mb-3" name="status" id="statusManual" required><option value="Hadir">Hadir</option><option value="PKL">PKL</option><option value="Sakit">Sakit</option><option value="Izin">Izin</option><option value="Alpa">Alpa</option></select><label class="form-label fw-semibold">Keterangan</label><textarea class="form-control" name="keterangan" id="keteranganManual" rows="3" maxlength="255" placeholder="Contoh: Surat dokter / izin dari orang tua / lokasi PKL"></textarea></div><div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Batal</button><button class="btn btn-primary"><i class="fa-solid fa-floppy-disk me-1"></i>Simpan Status</button></div></form></div></div></div>
 <script>
-document.getElementById('filterKelas')?.addEventListener('change',function(){document.getElementById('filterPengajaran').disabled=true;document.getElementById('formFilterRekap').submit();});
-document.getElementById('filterPengajaran')?.addEventListener('change',function(){document.getElementById('filterSesi').disabled=true;document.getElementById('formFilterRekap').submit();});
-document.getElementById('filterMode')?.addEventListener('change',function(){document.getElementById('filterSesi').disabled=this.value!=='pertemuan';document.getElementById('formFilterRekap').submit();});
+document.getElementById('formBatalkanPertemuan')?.addEventListener('submit',function(event){
+    const opsi=document.getElementById('sesiBatal').selectedOptions[0];
+    if(!opsi?.value||!confirm('Batalkan '+opsi.textContent+'?\nAbsensi seluruh siswa pada pertemuan ini akan dihapus permanen dan tidak lagi dihitung dalam rekap.'))event.preventDefault();
+});
+document.getElementById('filterKelas')?.addEventListener('change',function(){document.getElementById('filterPengajaran').disabled=true;document.querySelectorAll('#pilihanBeberapa input').forEach(input=>input.disabled=true);document.getElementById('formFilterRekap').submit();});
+document.getElementById('filterPengajaran')?.addEventListener('change',function(){document.getElementById('filterSesi').disabled=true;document.querySelectorAll('#pilihanBeberapa input').forEach(input=>input.disabled=true);document.getElementById('formFilterRekap').submit();});
+document.getElementById('filterMode')?.addEventListener('change',function(){document.getElementById('filterSesi').disabled=this.value!=='pertemuan';document.getElementById('pilihanBeberapa').hidden=this.value!=='beberapa';document.querySelectorAll('#pilihanBeberapa input').forEach(input=>input.disabled=this.value!=='beberapa');});
 function isiAbsensiManual(data){
     document.getElementById('siswaIdManual').value=data.id;
     document.getElementById('namaSiswaManual').textContent=data.nama;
